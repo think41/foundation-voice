@@ -3,15 +3,15 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "open-source-cai-pipecat-core"
+name = "foundational-ai-server"
 version = "0.1.0"
 authors = [
-    { name="Aniket-think41" }
+    { name="think41" }
 ]
-description = "Core package for Open Source CAI Pipecat"
+description = "Foundational AI Server"
 readme = "README.md"
 requires-python = ">=3.8"
-keywords = ["ai", "pipecat", "open-source"]
+keywords = ["ai", "foundational-ai", "open-source"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -19,18 +19,18 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/Aniket-think41/Open-Source-CAI-Pipecat"
+"Homepage" = "https://github.com/think41/foundational-ai-server"
 
 
 [tool.setuptools.package-data]
-"open_source_cai_pipecat_core" = ["*.py", "*.txt", "*.md"]
+"foundational_ai_server" = ["*.py", "*.txt", "*.md"]
 
 [tool.setuptools.dynamic]
-version = { attr = "open_source_cai_pipecat_core.__version__" }
+version = { attr = "foundational_ai_server.__version__" }
 
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["open_source_cai_pipecat_core"]
+include = ["foundational_ai_server"]
 exclude = ["tests", "docs"]
 

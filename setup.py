@@ -4,11 +4,11 @@ with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="open-source-cai-pipecat-core",
+    name="foundational-ai-server",
     version="0.1.0",
     author="Aniket-think41",
     description="Core package for Open Source CAI Pipecat",
-    url="https://github.com/Aniket-think41/Open-Source-CAI-Pipecat",
+    url="https://github.com/think41/foundational-ai-server",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",

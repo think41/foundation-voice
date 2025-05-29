@@ -4,10 +4,7 @@ include requirements.txt
 include pyproject.toml
 
 # Include all directories and their contents
-recursive-include agent *
-recursive-include utils *
-recursive-include custom_plugins *
-recursive-include agent_configure *
+recursive-include src/*
 
 # Global exclude patterns
 global-exclude __pycache__
