@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "foundational-ai-server"
+name = "foundational_ai_server"
 version = "0.1.0"
 authors = [
     { name="Aniket-think41" }
@@ -46,8 +46,9 @@ dependencies = [
 [project.scripts]
 "foundational-ai-server-cli" = "main:main"
 
-[tool.setuptools]
-py-modules = ["main", "models"]
-packages = ["agent", "agent_configure", "custom_plugins", "utils"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["foundational_ai_server*"]
+exclude = ["examples*"]
 # MANIFEST.in will be used due to include_package_data=True being default or set by setup.py
 

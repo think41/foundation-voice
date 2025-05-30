@@ -2,16 +2,30 @@ include README.md
 include requirements.txt
 include pyproject.toml
 
-# Include all directories and their contents
-recursive-include agent *
-recursive-include utils *
-recursive-include custom_plugins *
-recursive-include agent_configure *
+# Include all package directories
+recursive-include foundational_ai_server *
 
 # Global exclude patterns
 global-exclude __pycache__
-global-exclude *.pyc
+global-exclude *.py[cod]
+global-exclude *~.py
+
 global-exclude .env
-global-exclude venv/
-global-exclude .gitignore
+
 global-exclude .git/
+global-exclude .gitignore
+
+global-exclude .mypy_cache/
+global-exclude .pytest_cache/
+global-exclude .vscode/
+
+global-exclude venv/
+global-exclude env/
+global-exclude .venv/
+global-exclude .eggs/
+global-exclude *.egg-info/
+
+# Ignore development and testing files
+prune tests/
+prune examples/
+prune docs/

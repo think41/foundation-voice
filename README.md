@@ -1,67 +1,60 @@
-# Pipecat Voice Bot Pipeline
+# Foundational AI Server
 
-An open-source voice bot pipeline project built on the Pipecat framework. This project provides a foundation for creating voice-based conversational AI applications.
+A Python package for building AI-powered applications with the Pipecat framework. This package provides a foundation for creating voice-based conversational AI applications.
 
-## Overview
+## Installation
 
-This project implements a voice bot pipeline using the Pipecat framework and follows the CAI base structure. It provides components for speech recognition, natural language processing, and speech synthesis to create interactive voice experiences.
+You can install the package directly from GitHub using pip:
 
+```bash
+pip install git+https://github.com/think41/foundational-ai-server.git
+```
 
-## Getting Started
+Or add it to your `requirements.txt`:
 
-### Prerequisites
-
-- Docker
-- Git
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Aniket-think41/Open-Source-CAI-Pipecat.git
-   cd Open-Source-CAI-Pipecat/core
-   ```
-
-2. Manual setup:
-   ```bash
-   # Create and activate virtual environment
-   python3 -m venv venv
-   source venv/bin/activate
-
-   # Install dependencies
-   pip install -r requirements.txt
-   ```
-
-3. Start the backend:
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-4. Start the frontend:
-   ```bash
-   pnpm i
-   pnpm dev
-   ```
-
-5. Build the Docker image:
-   ```bash
-   docker build -t pipecat-voice-bot .
-   ```
-
-6. Run the Docker container:
-   ```bash
-   docker run -p 8000:8000 pipecat-voice-bot
-   ```
-
-7. Access the application at `http://localhost:8000`
+```
+git+https://github.com/think41/foundational-ai-server.git#egg=foundational_ai_server
+```
 
 ## Usage
 
-Once the application is running, you can interact with the voice bot through the web interface or API endpoints.
+```python
+from foundational_ai_server.agent.agent import YourMainClass
 
-## API Documentation
+# Example usage
+# ...
+```
 
-API documentation is available at `http://localhost:8000/docs` when the server is running.
+## Development
+
+### Prerequisites
+
+- Python 3.8+
+- Git
+
+### Setting up for development
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/think41/foundational-ai-server.git
+   cd foundational-ai-server
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install the package in development mode:
+   ```bash
+   pip install -e .
+   ```
+
+4. Install development dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ## Contributing
 
@@ -69,4 +62,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
