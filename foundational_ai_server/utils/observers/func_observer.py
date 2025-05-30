@@ -5,7 +5,7 @@ from pipecat.processors.frameworks.rtvi import RTVIProcessor, RTVIObserver, RTVI
 from pipecat.frames.frames import FunctionCallInProgressFrame, FunctionCallResultFrame, FunctionCallResultFrame
 from pipecat.frames.frames import Frame
 
-from custom_plugins.frames.frames import ToolCallFrame, ToolResultFrame
+from ...custom_plugins.frames.frames import ToolCallFrame, ToolResultFrame
 
 
 class FunctionObserver(RTVIObserver):

@@ -1,12 +1,12 @@
 import argparse
 from dotenv import load_dotenv
+from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, WebSocket, BackgroundTasks, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
-from agent.agent import run_agent
-from foundational_ai_server.utils.transport.session_manager import session_manager
-from foundational_ai_server.utils.transport.connection_manager import connection_manager, WebRTCOffer
+from foundational_ai_server.agent.agent import run_agent
+from foundational_ai_server.utils.transport import session_manager, connection_manager, WebRTCOffer
 import aiohttp
 import logging
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -14,8 +14,12 @@ from fastapi.openapi.utils import get_openapi
 
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
+# Define base directories
+EXAMPLES_DIR = Path(__file__).resolve().parent
+ROOT_DIR = EXAMPLES_DIR.parent
+
+# Load environment variables from root directory
+load_dotenv(dotenv_path=ROOT_DIR / ".env")
 
 app = FastAPI(
     title="Pipecat Voice Bot API",
@@ -53,12 +57,12 @@ async def index():
 
 @app.get("/client")
 async def serve_index():
-    return FileResponse("client/index.html")
+    return FileResponse(EXAMPLES_DIR / "client/index.html")
 
 
 @app.get("/frames.proto")
 async def serve_proto():
-    return FileResponse("client/frames.proto")
+    return FileResponse(EXAMPLES_DIR / "client/frames.proto")
 
 
 # WebSocket Connection

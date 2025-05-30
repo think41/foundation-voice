@@ -13,7 +13,7 @@ from agents import (
     GuardrailFunctionOutput
 )
 
-from custom_plugins.services.openai_agents.agents_sdk.utils.tools import tool_config
+from .utils.tools import tool_config
 
 class OffTopic(BaseModel):
     is_off_topic: bool

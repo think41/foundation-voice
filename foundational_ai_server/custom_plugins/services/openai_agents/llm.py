@@ -25,14 +25,14 @@ from pipecat.processors.aggregators.openai_llm_context import (
 
 from openai.types.chat import ChatCompletionMessageParam
 
-from custom_plugins.services.openai_agents.agents_sdk.handler import AgentHandler
-from custom_plugins.frames.frames import (
+from .agents_sdk.handler import AgentHandler
+from ...frames.frames import (
     ToolCallFrame,
     ToolResultFrame,
     AgentHandoffFrame,
     GuardrailTriggeredFrame,
 )
-from custom_plugins.processors.aggregators.agent_context import AgentChatContext, AgentChatContextFrame
+from ...processors.aggregators.agent_context import AgentChatContext, AgentChatContextFrame
 
 
 # Aggregators for user and assistant context

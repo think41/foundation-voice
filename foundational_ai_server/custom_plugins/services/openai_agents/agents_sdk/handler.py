@@ -9,7 +9,7 @@ from agents import (
 
 from openai.types.responses import ResponseTextDeltaEvent
 
-from custom_plugins.services.openai_agents.agents_sdk.agent import AgentFactory
+from .agent import AgentFactory
 
 class AgentHandler:
     def __init__(

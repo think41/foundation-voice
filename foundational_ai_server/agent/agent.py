@@ -10,20 +10,20 @@ from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.frames.frames import BotInterruptionFrame, TextFrame
 from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIProcessor, RTVIObserver, RTVIAction, RTVIActionArgument
-from utils.providers.stt_provider import create_stt_service
-from utils.providers.tts_provider import create_tts_service
-from utils.providers.llm_provider import create_llm_service, create_llm_context
-from utils.config_loader import ConfigLoader
+from ..utils.providers.stt_provider import create_stt_service
+from ..utils.providers.tts_provider import create_tts_service
+from ..utils.providers.llm_provider import create_llm_service, create_llm_context
+from ..utils.config_loader import ConfigLoader
 from pipecat.processors.transcript_processor import TranscriptProcessor
-from utils.transport.transport import TransportFactory
-from utils.transport.session_manager import session_manager
-from utils.observers.func_observer import FunctionObserver
-from agent_configure.utils.context import contexts
-from agent_configure.utils.tool import tool_config
-from utils.transcripts.transcript_handler import TranscriptHandler
+from ..utils.transport.transport import TransportFactory
+from ..utils.transport import session_manager
+from ..utils.observers.func_observer import FunctionObserver
+from ..agent_configure.utils.context import contexts
+from ..agent_configure.utils.tool import tool_config
+from ..utils.transcripts.transcript_handler import TranscriptHandler
 
-from utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObserver
-from utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
+from ..utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObserver
+from ..utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 import uuid
 import json
 
