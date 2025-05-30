@@ -2,7 +2,7 @@ from collections import deque
 
 from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
 from pipecat.processors.frameworks.rtvi import RTVIProcessor, RTVIObserver, RTVIServerMessageFrame
-from pipecat.frames.frames import FunctionCallInProgressFrame, FunctionCallResultFrame, FunctionCallResultFrame
+from pipecat.frames.frames import FunctionCallInProgressFrame, FunctionCallResultFrame
 from pipecat.frames.frames import Frame
 
 from ...custom_plugins.frames.frames import ToolCallFrame, ToolResultFrame

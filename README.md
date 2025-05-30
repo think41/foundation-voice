@@ -1,13 +1,38 @@
-# Foundational AI Server
+# 🚀 Foundational AI Server
 
-A Python package for building AI-powered applications with the Pipecat framework. This package provides a foundation for creating voice-based conversational AI applications.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-## Installation
+A robust Python framework for building AI-powered voice applications using the Pipecat framework. This package provides essential tools and integrations for creating sophisticated voice-based conversational AI applications with ease.
+
+## ✨ Features
+
+- 🎙️ Voice interaction capabilities
+- 🤖 AI-powered conversation management
+- 🛠️ Extensible plugin architecture
+- 🔌 Multiple AI provider integrations (OpenAI, Deepgram, etc.)
+- 🚀 FastAPI-based web server
+- 📊 Real-time analytics and monitoring
+- 🔄 WebRTC support for real-time communication
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Git
+- pip (Python package manager)
+
+### Installation
 
 You can install the package directly from GitHub using pip:
 
 ```bash
+# Using HTTPS
 pip install git+https://github.com/think41/foundational-ai-server.git
+
+# Or using SSH (if you have SSH keys set up)
+pip install git+ssh://git@github.com/think41/foundational-ai-server.git
 ```
 
 Or add it to your `requirements.txt`:
@@ -16,50 +41,92 @@ Or add it to your `requirements.txt`:
 git+https://github.com/think41/foundational-ai-server.git#egg=foundational_ai_server
 ```
 
-## Usage
+## 🏗️ Project Structure
 
-```python
-from foundational_ai_server.agent.agent import YourMainClass
-
-# Example usage
-# ...
+```
+foundational-ai-server/
+├── foundational_ai_server/     # Main package
+│   ├── agent/                  # Agent implementation
+│   ├── agent_configure/        # Agent configuration
+│   ├── custom_plugins/         # Custom plugins
+│   │   ├── frames/            # Frame definitions
+│   │   ├── processors/        # Data processors
+│   │   └── services/          # Service integrations
+│   └── utils/                  # Utility functions
+├── examples/                   # Example implementations
+├── tests/                      # Test suite
+├── .env.example               # Example environment variables
+├── pyproject.toml             # Project configuration
+└── README.md                  # This file
 ```
 
-## Development
+## 🛠️ Configuration
 
-### Prerequisites
+1. Copy the example environment file and update with your credentials:
 
-- Python 3.8+
-- Git
+```bash
+cp .env.example .env
+```
 
-### Setting up for development
+2. Update the `.env` file with your API keys and configuration:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/think41/foundational-ai-server.git
-   cd foundational-ai-server
-   ```
+```env
+OPENAI_API_KEY=your_openai_api_key
+DEEPGRAM_API_KEY=your_deepgram_api_key
+DAILY_API_KEY=your_daily_api_key
+DAILY_SAMPLE_ROOM_URL=your_daily_room_url
+```
 
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+## 🚀 Running the Example
 
-3. Install the package in development mode:
-   ```bash
-   pip install -e .
-   ```
+1. Navigate to the examples directory:
 
-4. Install development dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+cd examples
+```
 
-## Contributing
+2. Run the example server:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+uvicorn main:app --reload
+```
 
-## License
+3. Open your browser and navigate to `http://localhost:8000`
+
+## 🧪 Running Tests
+
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run tests
+pytest
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how you can help:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) for more details.
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Support
+
+For support, please open an issue in the GitHub repository.
+
+## 📚 Documentation
+
+For detailed documentation, please refer to our [Documentation](https://github.com/think41/foundational-ai-server/wiki).
+
+---
+
+Made with ❤️ by Think41

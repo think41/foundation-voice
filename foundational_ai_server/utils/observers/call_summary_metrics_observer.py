@@ -1,7 +1,7 @@
 import asyncio
 import time
 from collections import defaultdict
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from loguru import logger
 
@@ -38,10 +38,56 @@ class CallSummaryMetricsObserver(BaseObserver):
         self._total_completion_tokens: int = 0
         self._total_tts_characters: int = 0
         self._summary_logged: bool = False
-        self._call_start_time: float = 0.0
+        self._call_start_time: float = time.time()
         # Userbot latency tracking
         self._user_stopped_time: Optional[float] = None
         self._userbot_latencies: List[float] = []
+
+    def get_metrics_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of all collected metrics as a JSON-compatible dictionary.
+        
+        Returns:
+            Dictionary containing:
+            - avg_ttfb: Average Time To First Byte in seconds
+            - ttfb_samples: Number of TTFB samples
+            - avg_processing_time: Average processing time in seconds
+            - processing_samples: Number of processing time samples
+            - total_prompt_tokens: Total number of prompt tokens used
+            - total_completion_tokens: Total number of completion tokens used
+            - total_llm_tokens: Total number of LLM tokens used
+            - estimated_cost: Estimated cost in USD
+            - total_tts_characters: Total number of TTS characters used
+            - call_duration: Total call duration in seconds
+            - avg_userbot_latency: Average latency between user stop and bot start in seconds
+            - userbot_latency_samples: Number of userbot latency samples
+        """
+        metrics = {
+            "avg_ttfb": None,
+            "ttfb_samples": len(self._ttfb_values),
+            "avg_processing_time": None,
+            "processing_samples": len(self._processing_times),
+            "total_prompt_tokens": self._total_prompt_tokens,
+            "total_completion_tokens": self._total_completion_tokens,
+            "total_llm_tokens": self._total_prompt_tokens + self._total_completion_tokens,
+            "estimated_cost": (self._total_prompt_tokens + self._total_completion_tokens) * 0.00002,
+            "total_tts_characters": self._total_tts_characters,
+            "call_duration": time.time() - self._call_start_time,
+            "avg_userbot_latency": None,
+            "userbot_latency_samples": len(self._userbot_latencies)
+        }
+
+        # Calculate averages if we have data
+        if self._ttfb_values:
+            metrics["avg_ttfb"] = sum(self._ttfb_values) / len(self._ttfb_values)
+        
+        if self._processing_times:
+            metrics["avg_processing_time"] = sum(self._processing_times) / len(self._processing_times)
+        
+        if self._userbot_latencies:
+            metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(self._userbot_latencies)
+
+        return metrics
 
     async def on_push_frame(
         self,
@@ -93,43 +139,33 @@ class CallSummaryMetricsObserver(BaseObserver):
             logger.trace(f"Userbot latency: {latency:.3f}s")
             self._user_stopped_time = None
 
-        # The summary will be triggered by the agent when a participant leaves
-
     async def _log_summary(self):
         """Log a summary of all collected metrics."""
+        metrics = self.get_metrics_summary()
+        
         logger.info("\n" + "=" * 50)
         logger.info("CALL METRICS SUMMARY")
         logger.info("=" * 50)
 
-        if self._ttfb_values:
-            avg_ttfb = sum(self._ttfb_values) / len(self._ttfb_values)
-            logger.info(f"• Average TTFB: {avg_ttfb:.4f} seconds ({len(self._ttfb_values)} samples)")
+        if metrics["avg_ttfb"] is not None:
+            logger.info(f"• Average TTFB: {metrics['avg_ttfb']:.4f} seconds ({metrics['ttfb_samples']} samples)")
         else:
             logger.info("• Average TTFB: No data")
 
-        if self._processing_times:
-            avg_processing_time = sum(self._processing_times) / len(self._processing_times)
-            logger.info(f"• Average Processing Time: {avg_processing_time:.4f} seconds ({len(self._processing_times)} samples)")
+        if metrics["avg_processing_time"] is not None:
+            logger.info(f"• Average Processing Time: {metrics['avg_processing_time']:.4f} seconds ({metrics['processing_samples']} samples)")
         else:
             logger.info("• Average Processing Time: No data")
 
-        logger.info(f"• Total Prompt Tokens: {self._total_prompt_tokens}")
-        logger.info(f"• Total Completion Tokens: {self._total_completion_tokens}")
-        total_llm_tokens = self._total_prompt_tokens + self._total_completion_tokens
-        logger.info(f"• Total LLM Tokens: {total_llm_tokens} (${total_llm_tokens * 0.00002:.4f} estimated cost)")
+        logger.info(f"• Total Prompt Tokens: {metrics['total_prompt_tokens']}")
+        logger.info(f"• Total Completion Tokens: {metrics['total_completion_tokens']}")
+        logger.info(f"• Total LLM Tokens: {metrics['total_llm_tokens']} (${metrics['estimated_cost']:.4f} estimated cost)")
 
-        logger.info(f"• Total TTS Characters: {self._total_tts_characters}")
+        logger.info(f"• Total TTS Characters: {metrics['total_tts_characters']}")
+        logger.info(f"• Call Duration: {metrics['call_duration']:.2f} seconds")
         
-        # Calculate and log call duration if we have timing data
-        if hasattr(self, '_call_start_time'):
-            import time
-            call_duration = time.time() - self._call_start_time
-            logger.info(f"• Call Duration: {call_duration:.2f} seconds")
-        
-        # Log userbot latency metrics if available
-        if hasattr(self, '_userbot_latencies') and self._userbot_latencies:
-            avg_latency = sum(self._userbot_latencies) / len(self._userbot_latencies)
-            logger.info(f"• Average Userbot Latency: {avg_latency:.3f} seconds ({len(self._userbot_latencies)} samples)")
+        if metrics["avg_userbot_latency"] is not None:
+            logger.info(f"• Average Userbot Latency: {metrics['avg_userbot_latency']:.3f} seconds ({metrics['userbot_latency_samples']} samples)")
         else:
             logger.info("• Average Userbot Latency: No data")
             
