@@ -39,9 +39,7 @@ class TranscriptHandler:
         else: 
             self._write_line: Callable[[str], None] = self._write_to_file
 
-        logger.debug(
-            f"Transcript handler initialized with {'logging and' if log_message else 'file write'}"
-        )
+        # logger.debug(f"Transcript handler initialized with " + logging and" if log_message else "file write"))
 
     def create_output_file(self):
         open(self._file_path, "a", encoding="utf-8").close()

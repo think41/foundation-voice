@@ -26,8 +26,7 @@ from utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObser
 from utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 import uuid
 import json
-from dotenv import load_dotenv
-load_dotenv()
+
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
 
