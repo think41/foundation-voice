@@ -1,4 +1,3 @@
-from typing import Optional
 from dataclasses import dataclass
 
 from pipecat.services.llm_service import LLMService
