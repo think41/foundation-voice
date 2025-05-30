@@ -5,8 +5,8 @@ from fastapi import FastAPI, WebSocket, BackgroundTasks, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from agent.agent import run_agent
-from utils.transport.session_manager import session_manager
-from utils.transport.connection_manager import connection_manager, WebRTCOffer
+from foundational_ai_server.utils.transport.session_manager import session_manager
+from foundational_ai_server.utils.transport.connection_manager import connection_manager, WebRTCOffer
 import aiohttp
 import logging
 from fastapi.openapi.docs import get_swagger_ui_html
