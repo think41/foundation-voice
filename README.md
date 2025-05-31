@@ -107,6 +107,10 @@ Here's a breakdown of the main sections and options:
   }
 }
 ```
+**Note:**
+after creating the agent_config.json file, copy its path and paste it in the .env file in the AGENT_CONFIG_PATH variable.
+you can find the example of these files in the foundational_ai_server/agent_configure/config
+
 
 **Key Configuration Details:**
 
