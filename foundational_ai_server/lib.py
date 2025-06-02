@@ -7,6 +7,7 @@ import aiohttp
 import time
 from .agent_configure.utils.callbacks import custom_callbacks
 from .utils.transport.transport import TransportType
+
 class CaiSDK:
     def __init__(self, agent_func: Optional[Callable] = None, agent_config: Optional[dict] = None):        
         self.agent_func = agent_func or run_agent
