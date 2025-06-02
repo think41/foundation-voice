@@ -26,17 +26,25 @@ class CaiSDK:
             return answer
             
         answer, connection = await connection_manager.handle_webrtc_connection(offer)
-        background_tasks.add_task(
-            run_agent, 
-            TransportType.WEBRTC, 
-            connection=connection, 
-            session_id=answer["pc_id"],
-            callbacks=agent.get("callbacks", {}),
-            tool_dict=agent.get("tool_dict", {}),
-            contexts=agent.get("contexts", {}),
-            config=agent.get("config", {})
-        )
-        return answer
+        connection_data = {
+            'func': run_agent,
+            'transport_type': TransportType.WEBRTC,
+            "session_id": answer["pc_id"],
+            "connection": connection,
+            
+            
+        }
+        # background_tasks.add_task(
+        #     run_agent, 
+        #     TransportType.WEBRTC, 
+        #     connection=connection, 
+        #     session_id=answer["pc_id"],
+        #     callbacks=agent.get("callbacks", {}),
+        #     tool_dict=agent.get("tool_dict", {}),
+        #     contexts=agent.get("contexts", {}),
+        #     config=agent.get("config", {})
+        # )
+        return answer, connection_data
     
     async def connect_handler(self, background_tasks: BackgroundTasks, request: dict, agent):
         try:
@@ -69,17 +77,23 @@ class CaiSDK:
                         return answer
                     
                     answer, connection = await connection_manager.handle_webrtc_connection(offer)
-                    background_tasks.add_task(
-                        run_agent,
-                        transport_type,
-                        connection=connection,
-                        session_id=answer["pc_id"],
-                        callbacks=agent.get("callbacks", {}),
-                        tool_dict=agent.get("tool_dict", {}),
-                        contexts=agent.get("contexts", {}),
-                        config=agent.get("config", {})
-                    )
-                    return answer
+                    connection_data = {
+                        'func': run_agent,
+                        'transport_type': transport_type,
+                        "session_id": answer["pc_id"],
+                        "connection": connection,
+                    }
+                    # background_tasks.add_task(
+                    #     run_agent,
+                    #     transport_type,
+                    #     connection=connection,
+                    #     session_id=answer["pc_id"],
+                    #     callbacks=agent.get("callbacks", {}),
+                    #     tool_dict=agent.get("tool_dict", {}),
+                    #     contexts=agent.get("contexts", {}),
+                    #     config=agent.get("config", {})
+                    # )
+                    return answer, connection_data
                 else:
                     # Return WebRTC UI details
                     return {
