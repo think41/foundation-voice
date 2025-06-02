@@ -21,7 +21,7 @@ class CaiSDK:
         except Exception:
             await websocket.close()
     
-    async def webrtc_endpoint(self, offer: WebRTCOffer, background_tasks: BackgroundTasks, tool_dict: dict, agent_callbacks: AgentCallbacks):
+    async def webrtc_endpoint(self, offer: WebRTCOffer, background_tasks: BackgroundTasks, agent):
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
             answer, connection = await connection_manager.handle_webrtc_connection(offer)
             return answer
@@ -32,13 +32,14 @@ class CaiSDK:
             TransportType.WEBRTC, 
             connection=connection, 
             session_id=answer["pc_id"],
-            callbacks=agent_callbacks,
-            tool_dict=tool_dict,
-            **self.agent_config
+            callbacks=agent.callbacks,
+            tool_dict=agent.tool_dict,
+            contexts=agent.contexts,
+            config=agent.agent_config
         )
         return answer
     
-    async def connect_handler(self, background_tasks: BackgroundTasks, request: dict, tool_dict: dict, agent_callbacks: AgentCallbacks):
+    async def connect_handler(self, background_tasks: BackgroundTasks, request: dict, agent):
         try:
             transport_type_str = request.get("transportType", "").lower()
             agent_config = request.get("agentConfig", {})
@@ -60,7 +61,8 @@ class CaiSDK:
                         sdp=request["sdp"],
                         type=request["type"],
                         pc_id=request.get("pc_id"),
-                        restart_pc=request.get("restart_pc", False)
+                        restart_pc=request.get("restart_pc", False),
+                        agent_name=request.get("agent_name")
                     )
                     
                     if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
@@ -73,9 +75,10 @@ class CaiSDK:
                         transport_type,
                         connection=connection,
                         session_id=answer["pc_id"],
-                        callbacks=agent_callbacks,
-                        tool_dict=tool_dict,
-                        **self.agent_config
+                        callbacks=agent.callbacks,
+                        tool_dict=agent.tool_dict,
+                        contexts=agent.contexts,
+                        config=agent.agent_config
                     )
                     return answer
                 else:

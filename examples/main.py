@@ -9,10 +9,17 @@ import logging
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from foundational_ai_server.lib import CaiSDK
-from foundational_ai_server.agent_configure.utils.tool import tool_config
-from foundational_ai_server.agent_configure.utils.callbacks import custom_callbacks, AgentCallbacks
+from foundational_ai_server.utils.config_loader import ConfigLoader
+
+from agent_configure.utils.context import contexts
+from agent_configure.utils.tool import tool_config
+from agent_configure.utils.callbacks import custom_callbacks
 
 cai_sdk = CaiSDK()
+
+agent_config_1 = ConfigLoader.load_config("agent_configure/config/agent_config.json")
+agent_config_2 = ConfigLoader.load_config("agent_configure/config/config_with_keys.json")
+agent_config_3 = ConfigLoader.load_config("agent_configure/config/basic_agent.json")
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +42,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+defined_agents = {
+    "agent1": {
+        "config": agent_config_1, 
+        "contexts": contexts,
+        "tools": tool_config,
+        "callbacks": custom_callbacks,
+    },
+    "agent2": {
+        "config": agent_config_2,
+        "callbacks": custom_callbacks,
+    },
+    "agent3": {
+        "config": agent_config_3,
+        "contexts": contexts,
+        "tools": tool_config,
+        "callbacks": custom_callbacks,
+    }
+}
+
 
 @app.get(
     "/",
@@ -52,15 +78,21 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/api/offer")
 async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
-    tool_dict = tool_config
-    agent_callbacks = custom_callbacks
-    return await cai_sdk.webrtc_endpoint(offer, background_tasks, tool_dict, agent_callbacks)
+    agent_name = offer.agent_name
+    if not agent_name:
+        agent_name = next(iter(defined_agents))
+    agent = defined_agents.get(agent_name)
+    return await cai_sdk.webrtc_endpoint(offer, background_tasks, agent)
 
 @app.post("/connect")
 async def connect_handler(background_tasks: BackgroundTasks, request: dict):
-    tool_dict = tool_config
-    agent_callbacks = custom_callbacks
-    return await cai_sdk.connect_handler(background_tasks, request, tool_dict, agent_callbacks)
+    agent_name = request.get("agent_name")
+    if not agent_name:
+        # Default to the first key in defined_agents
+        agent_name = next(iter(defined_agents))
+    agent = defined_agents.get(agent_name)
+    
+    return await cai_sdk.connect_handler(background_tasks, request, agent)
 
 
 @app.get("/sessions")

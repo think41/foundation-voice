@@ -18,7 +18,7 @@ from pipecat.processors.transcript_processor import TranscriptProcessor
 from ..utils.transport.transport import TransportFactory, TransportType
 from ..utils.transport.session_manager import session_manager
 from ..utils.observers.func_observer import FunctionObserver
-from ..agent_configure.utils.context import contexts
+# from ..agent_configure.utils.context import contexts
 from ..utils.transcripts.transcript_handler import TranscriptHandler
 from ..custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
 from ..utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObserver
@@ -31,6 +31,7 @@ logger.add(sys.stderr, level="DEBUG")
 
 async def create_agent_pipeline(
     transport_type: TransportType,
+    config: Dict[str, Any],
     connection: Optional[Union[WebSocket, SmallWebRTCConnection]] = None,
     room_url: str = None,
     token: str = None,
@@ -38,6 +39,7 @@ async def create_agent_pipeline(
     session_id: uuid.UUID = None,
     callbacks: Optional[AgentCallbacks] = None,
     tool_dict: Dict[str, Any] = None,
+    contexts: Optional[Dict[str, Any]] = None,
 ):
     """
     Creates and returns the agent pipeline with the specified transport.
@@ -60,13 +62,12 @@ async def create_agent_pipeline(
     # Set up RTVI processor for transcript and event emission
     rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
 
-    config_path = os.getenv("CONFIG_PATH")
-    if not config_path:
-        logger.error("CONFIG_PATH environment variable not set")
-        raise ValueError("CONFIG_PATH environment variable must be set")
+    # config_path = os.getenv("CONFIG_PATH")
+    # if not config_path:
+    #     logger.error("CONFIG_PATH environment variable not set")
+    #     raise ValueError("CONFIG_PATH environment variable must be set")
 
     try:
-        config = ConfigLoader.load_config(config_path)
         agent_config = config.get("agent", {})
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}")
@@ -85,7 +86,7 @@ async def create_agent_pipeline(
         logger.debug("Creating LLM service from configuration")
         args = {
             "rtvi": rtvi,
-            "context": contexts.get(agent_config.get("context")),
+            "context": contexts.get(agent_config.get("agent_name")),
             "tools": tool_dict,
         }
         llm = create_llm_service(
@@ -113,7 +114,7 @@ async def create_agent_pipeline(
     context = None
     try:
         logger.debug("Creating context")
-        context = create_llm_context(agent_config)
+        context = create_llm_context(agent_config, contexts.get(agent_config.get("agent_name")))
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise

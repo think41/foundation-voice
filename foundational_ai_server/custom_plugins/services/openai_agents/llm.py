@@ -85,12 +85,12 @@ class OpenAIAgentPlugin(LLMService):
         
         self._rtvi = data.get("rtvi")
         self._triage = data.get("triage", True)
-        self._create_agents(agent_config, data.get("context"), data.get("tools"))
+        self._create_agents(agent_config, data.get("contexts"), data.get("tools"))
 
     def _create_agents(self, config, context, tools):
         if not config:
             raise ValueError("Missing agent config")
-        self._client = AgentHandler(config, context, tools)
+        self._client = AgentHandler(config, contexts, tools)
 
     async def _process_context(self, context: AgentChatContext):
         """
