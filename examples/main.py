@@ -88,21 +88,51 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/api/offer")
 async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
-    agent_name = offer.agent_name
-    if not agent_name:
-        agent_name = next(iter(defined_agents))
+    agent_name = offer.agent_name or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
-    return await cai_sdk.webrtc_endpoint(offer, background_tasks, agent)
+
+    # Get both answer and connection_data
+    response = await cai_sdk.webrtc_endpoint(offer, background_tasks, agent)
+
+    answer = response["answer"]
+
+    # Add the background task here in the endpoint
+    background_tasks.add_task(
+        response["func"],
+        response["transport_type"],
+        connection=response["connection"],
+        session_id=response["session_id"],
+        callbacks=agent.get("callbacks", {}),
+        tool_dict=agent.get("tool_dict", {}),
+        contexts=agent.get("contexts", {}),
+        config=agent.get("config", {}),
+    )
+
+    return answer
+
 
 @app.post("/connect")
 async def connect_handler(background_tasks: BackgroundTasks, request: dict):
-    agent_name = request.get("agent_name")
-    if not agent_name:
-        # Default to the first key in defined_agents
-        agent_name = next(iter(defined_agents))
+    agent_name = request.get("agent_name") or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
-    
-    return await cai_sdk.connect_handler(background_tasks, request, agent)
+
+    # Get both answer and connection_data (or just answer if not WebRTC)
+    response = await cai_sdk.connect_handler(background_tasks, request, agent)
+    answer = response["answer"]
+
+    background_tasks.add_task(
+        response["func"],
+        response["transport_type"],
+        connection=response["connection"],
+        session_id=response["session_id"],
+        callbacks=agent.get("callbacks", {}),
+        tool_dict=agent.get("tool_dict", {}),
+        contexts=agent.get("contexts", {}),
+        config=agent.get("config", {}),
+    )
+    return answer
+
+
 
 
 @app.get("/sessions")
