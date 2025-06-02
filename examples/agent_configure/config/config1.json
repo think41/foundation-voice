@@ -1,0 +1,93 @@
+{
+    "agent": {
+      "title": "My LLM-Powered Voice Agent",
+      "initial_greeting": "Welcome! I'm here to assist you.",
+      "prompt": "You are a helpful and informative assistant. Please provide accurate and concise responses, and you have access to tools.",
+      "transport": {
+        "type": "daily-webrtc"
+      },
+      "vad": {
+        "provider": "silerio"
+      },
+      "stt": {
+        "provider": "deepgram",
+        "api_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "llm": {
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "api_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "tools": [  
+          {
+            "name": "search",
+            "description": "Use this tool to search the web for information.  Useful for answering questions about current events.",
+            "type": "function",
+            "config": {
+              "api_key": "YOUR_SEARCH_API_KEY"
+            }
+          },
+          {
+            "name": "calculator",
+            "description": "Use this tool to perform calculations.",
+            "type": "function",
+             "config": {}
+          },
+          {
+            "name": "knowledge_base",
+            "description": "Use this tool to retrieve information from internal knowledge base.",
+            "type": "function",
+            "config": {
+              "endpoint": "http://your-knowledge-base.com/api"
+            }
+          }
+        ]
+      },
+      "tts": {
+        "provider": "openai",
+        "voice": "alloy",
+        "api_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "mcp": { 
+        "type": "llm_orchestrator",
+        "config": {
+          "max_turns": 5,
+          "response_timeout": 10,
+          "history_length": 5,
+          "enable_tool_selection": true,
+          "tool_selection_strategy": "highest_confidence"
+        }
+      }
+    },
+    "pipeline": {
+      "name": "llm_agent_pipeline",
+      "stages": [
+        {
+          "type": "input",
+          "config": {}
+        },
+        {
+          "type": "vad",
+          "config": {}
+        },
+        {
+          "type": "stt",
+          "config": {}
+        },
+        {
+          "type": "llm",
+          "config": {
+            "use_tools": true 
+          }
+        },
+        {
+          "type": "tts",
+          "config": {}
+        },
+        {
+          "type": "output",
+          "config": {}
+        }
+      ]
+    }
+  }
+  

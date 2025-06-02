@@ -1,0 +1,92 @@
+
+
+{
+    "agent": {
+      "title": "MagicalNest Bot",
+      "initial_greeting": "Hello. How can I assist you today?",
+      "prompt": "You are a helpful and informative assistant. Please provide accurate and concise responses, and you have access to tools.",
+      "transport": {
+        "type": "webrtc"
+      },
+      "vad": {
+        "provider": "silerio"
+      },
+      "stt": {
+        "provider": "deepgram"
+      },
+      "llm": {
+        "provider": "openai_agents",
+        
+        "agent_config": {
+            "start_agent": "intro_agent",
+            "logfire_trace": true,
+            "triage": true,
+            "agents": {
+                "intro_agent": {
+                    "name": "intro_agent",
+                    "instructions": "You're an intro bot. Introduce yourself and converse with the user.",
+                    "handoffs": ["spanish_agent"],
+                    "tools": ["weather_tool", "search_tool"],
+                    "input_guardrails": ["off_topic_guardrail"]
+                },
+                "spanish_agent": {
+                    "name": "spanish_agent",
+                    "instructions": "You're a Spanish bot. Converse with the user in Spanish.",
+                    "handoff_description": "User wants to converse in Spanish"
+                }
+            },
+            "guardrails": {
+                "off_topic_guardrail": {
+                    "name": "off_topic_guardrail",
+                    "instructions": "If the user talks about space, consider it off-topic."
+                }
+            }
+        }
+      },
+      "tts": {
+        "provider": "deepgram"
+      },
+      "mcp": { 
+        "type": "llm_orchestrator",
+        "config": {
+          "max_turns": 5,
+          "response_timeout": 10,
+          "history_length": 5,
+          "enable_tool_selection": true,
+          "tool_selection_strategy": "highest_confidence"
+        }
+      }
+    },
+    "pipeline": {
+      "name": "llm_agent_pipeline",
+      "stages": [
+        {
+          "type": "input",
+          "config": {}
+        },
+        {
+          "type": "vad",
+          "config": {}
+        },
+        {
+          "type": "stt",
+          "config": {}
+        },
+        {
+          "type": "llm",
+          "config": {
+            "use_tools": true 
+          }
+        },
+        {
+          "type": "tts",
+          "config": {}
+        },
+        {
+          "type": "output",
+          "config": {}
+        }
+      ]
+    }
+  }
+  

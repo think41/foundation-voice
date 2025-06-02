@@ -4,8 +4,6 @@ Large Language Model (LLM) provider module.
 
 import os
 from typing import Dict, Any
-
-from loguru import logger
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.processors.frameworks.rtvi import RTVIProcessor
@@ -58,7 +56,7 @@ def create_llm_service(
     return provider_func()
 
 
-def create_llm_context(agent_config: Dict[str, Any]):
+def create_llm_context(agent_config: Dict[str, Any], context):
     """
     Create an LLM context based on configuration.
 
@@ -96,11 +94,9 @@ def create_llm_context(agent_config: Dict[str, Any]):
             config = agent_config.get("llm", {}).get("agent_config", {})
 
             start_agent = config.get("start_agent", None)
-            agent_context_key = config.get("context", None)
-            agent_context = contexts.get(agent_context_key, None)
 
             return AgentChatContext(
-                agent=start_agent, messages=messages, context=agent_context
+                agent=start_agent, messages=messages, context=context
             )
 
         except Exception as e:

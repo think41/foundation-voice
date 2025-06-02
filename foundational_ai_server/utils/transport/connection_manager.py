@@ -14,6 +14,7 @@ class WebRTCOffer(BaseModel):
     type: str
     pc_id: Optional[str] = None
     restart_pc: bool = False
+    agent_name: Optional[str] = None
 
 
 class ConnectionManager:
