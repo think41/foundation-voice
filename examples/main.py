@@ -1,3 +1,4 @@
+import os
 import argparse
 from dotenv import load_dotenv
 import uvicorn
@@ -15,11 +16,20 @@ from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 
+
+
 cai_sdk = CaiSDK()
 
-agent_config_1 = ConfigLoader.load_config("agent_configure/config/agent_config.json")
-agent_config_2 = ConfigLoader.load_config("agent_configure/config/config_with_keys.json")
-agent_config_3 = ConfigLoader.load_config("agent_configure/config/basic_agent.json")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+config_path1 = os.path.join(BASE_DIR, "agent_configure", "config", "agent_config.json")
+config_path2 = os.path.join(BASE_DIR, "agent_configure", "config", "config_with_keys.json")
+config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.json")
+
+
+
+agent_config_1 = ConfigLoader.load_config(config_path1)
+agent_config_2 = ConfigLoader.load_config(config_path2)
+agent_config_3 = ConfigLoader.load_config(config_path3)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +56,7 @@ defined_agents = {
     "agent1": {
         "config": agent_config_1, 
         "contexts": contexts,
-        "tools": tool_config,
+        "tool_dict": tool_config,
         "callbacks": custom_callbacks,
     },
     "agent2": {
@@ -56,7 +66,7 @@ defined_agents = {
     "agent3": {
         "config": agent_config_3,
         "contexts": contexts,
-        "tools": tool_config,
+        "tool_dict": tool_config,
         "callbacks": custom_callbacks,
     }
 }

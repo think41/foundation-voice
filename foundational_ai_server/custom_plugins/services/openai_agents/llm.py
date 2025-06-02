@@ -90,7 +90,7 @@ class OpenAIAgentPlugin(LLMService):
     def _create_agents(self, config, context, tools):
         if not config:
             raise ValueError("Missing agent config")
-        self._client = AgentHandler(config, contexts, tools)
+        self._client = AgentHandler(config, context, tools)
 
     async def _process_context(self, context: AgentChatContext):
         """

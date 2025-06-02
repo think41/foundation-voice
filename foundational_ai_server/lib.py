@@ -7,8 +7,6 @@ import aiohttp
 import time
 from .agent_configure.utils.callbacks import custom_callbacks
 from .utils.transport.transport import TransportType
-from .agent.agent import AgentCallbacks
-
 class CaiSDK:
     def __init__(self, agent_func: Optional[Callable] = None, agent_config: Optional[dict] = None):        
         self.agent_func = agent_func or run_agent
@@ -32,10 +30,10 @@ class CaiSDK:
             TransportType.WEBRTC, 
             connection=connection, 
             session_id=answer["pc_id"],
-            callbacks=agent.callbacks,
-            tool_dict=agent.tool_dict,
-            contexts=agent.contexts,
-            config=agent.agent_config
+            callbacks=agent.get("callbacks", {}),
+            tool_dict=agent.get("tool_dict", {}),
+            contexts=agent.get("contexts", {}),
+            config=agent.get("config", {})
         )
         return answer
     
@@ -75,10 +73,10 @@ class CaiSDK:
                         transport_type,
                         connection=connection,
                         session_id=answer["pc_id"],
-                        callbacks=agent.callbacks,
-                        tool_dict=agent.tool_dict,
-                        contexts=agent.contexts,
-                        config=agent.agent_config
+                        callbacks=agent.get("callbacks", {}),
+                        tool_dict=agent.get("tool_dict", {}),
+                        contexts=agent.get("contexts", {}),
+                        config=agent.get("config", {})
                     )
                     return answer
                 else:
