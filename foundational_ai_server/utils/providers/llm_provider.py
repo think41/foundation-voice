@@ -8,10 +8,11 @@ from typing import Dict, Any
 from loguru import logger
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.processors.frameworks.rtvi import RTVIProcessor
 
-from ...custom_plugins.services.openai_agents.llm import OpenAIAgentPlugin
-from ...custom_plugins.processors.aggregators.agent_context import AgentChatContext
-from ...agent_configure.utils.context import contexts
+from custom_plugins.services.openai_agents.llm import OpenAIAgentPlugin
+from custom_plugins.processors.aggregators.agent_context import AgentChatContext
+from agent_configure.utils.context import contexts
 
 
 def create_llm_service(
@@ -71,12 +72,16 @@ def create_llm_context(agent_config: Dict[str, Any]):
         "prompt",
         "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way.",
     )
+    initial_greeting = agent_config.get(
+        "initial_greeting",
+        "Hello. How can I help you today?",
+    )
 
     messages = [
         {
             "role": "system",
-            "content": prompt,
-        },
+            "content": f"{prompt}. Start by greeting the user with: '{initial_greeting}'",
+        }
     ]
 
     llm_provider = agent_config["llm"]["provider"]
@@ -101,6 +106,3 @@ def create_llm_context(agent_config: Dict[str, Any]):
         except Exception as e:
             logger.error(f"Failed to create OpenAI Agent LLM context: {e}")
             raise
-
-    # logger.debug("Creating LLM context")
-    # return OpenAILLMContext(messages=messages, tools=[])

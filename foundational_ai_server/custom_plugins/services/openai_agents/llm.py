@@ -1,9 +1,10 @@
+from typing import Optional
 from dataclasses import dataclass
 
 from pipecat.services.llm_service import LLMService
 from pipecat.frames.frames import (
     Frame,
-    TextFrame,
+    LLMTextFrame,
     LLMFullResponseStartFrame,
     LLMFullResponseEndFrame,
     LLMMessagesFrame,
@@ -24,14 +25,14 @@ from pipecat.processors.aggregators.openai_llm_context import (
 
 from openai.types.chat import ChatCompletionMessageParam
 
-from .agents_sdk.handler import AgentHandler
-from ...frames.frames import (
+from custom_plugins.services.openai_agents.agents_sdk.handler import AgentHandler
+from custom_plugins.frames.frames import (
     ToolCallFrame,
     ToolResultFrame,
     AgentHandoffFrame,
     GuardrailTriggeredFrame,
 )
-from ...processors.aggregators.agent_context import AgentChatContext, AgentChatContextFrame
+from custom_plugins.processors.aggregators.agent_context import AgentChatContext, AgentChatContextFrame
 
 
 # Aggregators for user and assistant context
@@ -83,6 +84,7 @@ class OpenAIAgentPlugin(LLMService):
         super().__init__(**kwargs)
         
         self._rtvi = data.get("rtvi")
+        self._triage = data.get("triage", True)
         self._create_agents(agent_config, data.get("context"), data.get("tools"))
 
     def _create_agents(self, config, context, tools):
@@ -109,7 +111,7 @@ class OpenAIAgentPlugin(LLMService):
 
             elif event.type == "raw_response_event":
                 # Streaming response chunks. Push text frame for each chunk
-                await self.push_frame(TextFrame(event.data.delta))
+                await self.push_frame(LLMTextFrame(event.data.delta))
 
             elif event.type == "tool_call_item":
                 # Push tool call frame when the agent makes a tool call
@@ -130,11 +132,15 @@ class OpenAIAgentPlugin(LLMService):
                 ))
 
             elif event.type == "agent_updated_stream_event":
-                # Push a frame to display agent handoff
-                await self.push_frame(AgentHandoffFrame(
-                    from_agent=event.data.from_agent,
-                    to_agent=event.data.to_agent
-                ))
+                if event.data.from_agent != event.data.to_agent:
+                    if not self._triage:
+                        context.agent = event.data.to_agent
+
+                    # Push a frame to display agent handoff
+                    await self.push_frame(AgentHandoffFrame(
+                        from_agent=event.data.from_agent,
+                        to_agent=event.data.to_agent
+                    ))
             
             elif event.type == "guardrail_triggered_event":
                 await self.push_frame(TTSSpeakFrame(

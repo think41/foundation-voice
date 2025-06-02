@@ -177,7 +177,6 @@ async def create_agent_pipeline(
     # Create observers
     call_metrics_observer = CallSummaryMetricsObserver()
     task_observers = [
-        RTVIObserver(rtvi),
         UserBotLatencyLogObserver(),
         call_metrics_observer,
         FunctionObserver(llm=llm, rtvi=rtvi)

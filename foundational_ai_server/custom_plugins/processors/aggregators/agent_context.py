@@ -52,6 +52,10 @@ class AgentChatContext:
     def context(self):
         return self._context
 
+    @agent.setter
+    def agent(self, agent: str):
+        self._agent = agent
+
     def add_message(self, message: ChatCompletionMessageParam):
         self._messages.append(message)
 
