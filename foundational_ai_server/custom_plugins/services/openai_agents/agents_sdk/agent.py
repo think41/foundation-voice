@@ -95,14 +95,13 @@ class AgentFactory:
                 
                 # Defined parameters
                 "tools": tools,
-                "input_guardrails": guardrails,
 
                 # Optional parameters
                 "output_type": value.get("output_type"),
             }
 
             agent = self._create_agent(self._context, **agent_params)
-            self.agents[key] = agent
+            self.agents[key] = (agent, guardrails)
         
         self._setup_handoffs(handoffs)
 
@@ -115,10 +114,10 @@ class AgentFactory:
         (There may be circular handoffs, henceforth the handoffs are setup at the end)
         """
         for name, handoff_names in handoffs.items():
-            agent = self.agents.get(name)
+            agent = self.agents.get(name)[0]
             if not agent:
                 raise ValueError(f"Agent {name} not found")
-            handoff_agents = [self.agents.get(agent_name) for agent_name in handoff_names]
+            handoff_agents = [self.agents.get(agent_name)[0] for agent_name in handoff_names]
             agent.handoffs = handoff_agents
         
 

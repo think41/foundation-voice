@@ -3,7 +3,7 @@
 {
     "agent": {
       "title": "MagicalNest Bot",
-      "initial_greeting": "Hello. Welcome to magical nest.",
+      "initial_greeting": "Hello. How can I assist you today?",
       "prompt": "You are a helpful and informative assistant. Please provide accurate and concise responses, and you have access to tools.",
       "transport": {
         "type": "webrtc"
@@ -20,6 +20,7 @@
         "agent_config": {
             "start_agent": "intro_agent",
             "logfire_trace": true,
+            "triage": true,
             "agents": {
                 "intro_agent": {
                     "name": "intro_agent",

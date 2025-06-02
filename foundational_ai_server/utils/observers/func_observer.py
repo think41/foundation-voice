@@ -2,11 +2,10 @@ from collections import deque
 
 from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
 from pipecat.processors.frameworks.rtvi import RTVIProcessor, RTVIObserver, RTVIServerMessageFrame
-from pipecat.frames.frames import FunctionCallInProgressFrame, FunctionCallResultFrame
+from pipecat.frames.frames import FunctionCallInProgressFrame, FunctionCallResultFrame, FunctionCallResultFrame
 from pipecat.frames.frames import Frame
 
-from ...custom_plugins.frames.frames import ToolCallFrame, ToolResultFrame
-
+from custom_plugins.frames.frames import ToolCallFrame, ToolResultFrame, AgentHandoffFrame, GuardrailTriggeredFrame
 
 class FunctionObserver(RTVIObserver):
     def __init__(
@@ -98,6 +97,32 @@ class FunctionObserver(RTVIObserver):
                     }
                 )
                 await self._rtvi.push_frame(frame)
+
+        elif isinstance(frame, AgentHandoffFrame):
+            data = {
+                "from_agent": frame.from_agent,
+                "to_agent": frame.to_agent
+            }
+            frame = RTVIServerMessageFrame(
+                data={
+                    "type": "agent_handoff",
+                    "payload": data
+                }
+            )
+            await self._rtvi.push_frame(frame)
+        
+        elif isinstance(frame, GuardrailTriggeredFrame):
+            data = {
+                "guardrail_name": frame.guardrail_name,
+                "is_off_topic": frame.is_off_topic,
+            }
+            frame = RTVIServerMessageFrame(
+                data={
+                    "type": "guardrail_triggered",
+                    "payload": data
+                }
+            )
+            await self._rtvi.push_frame(frame)
 
         if mark_as_seen:
             self._frame_seen.add(frame.id)
