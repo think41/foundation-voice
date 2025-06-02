@@ -92,14 +92,16 @@ async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks)
     agent = defined_agents.get(agent_name)
 
     # Get both answer and connection_data
-    answer, connection_data = await cai_sdk.webrtc_endpoint(offer, background_tasks, agent)
+    response = await cai_sdk.webrtc_endpoint(offer, background_tasks, agent)
+
+    answer = response["answer"]
 
     # Add the background task here in the endpoint
     background_tasks.add_task(
-        connection_data["func"],
-        connection_data["transport_type"],
-        connection=connection_data["connection"],
-        session_id=connection_data["session_id"],
+        response["func"],
+        response["transport_type"],
+        connection=response["connection"],
+        session_id=response["session_id"],
         callbacks=agent.get("callbacks", {}),
         tool_dict=agent.get("tool_dict", {}),
         contexts=agent.get("contexts", {}),
@@ -115,24 +117,21 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     agent = defined_agents.get(agent_name)
 
     # Get both answer and connection_data (or just answer if not WebRTC)
-    result = await cai_sdk.connect_handler(background_tasks, request, agent)
+    response = await cai_sdk.connect_handler(background_tasks, request, agent)
+    answer = response["answer"]
 
-    if isinstance(result, tuple):
-        answer, connection_data = result
+    background_tasks.add_task(
+        response["func"],
+        response["transport_type"],
+        connection=response["connection"],
+        session_id=response["session_id"],
+        callbacks=agent.get("callbacks", {}),
+        tool_dict=agent.get("tool_dict", {}),
+        contexts=agent.get("contexts", {}),
+        config=agent.get("config", {}),
+    )
+    return answer
 
-        background_tasks.add_task(
-            connection_data["func"],
-            connection_data["transport_type"],
-            connection=connection_data["connection"],
-            session_id=connection_data["session_id"],
-            callbacks=agent.get("callbacks", {}),
-            tool_dict=agent.get("tool_dict", {}),
-            contexts=agent.get("contexts", {}),
-            config=agent.get("config", {}),
-        )
-        return answer
-    else:
-        return result  # could be {"websocket_url": ...} or error message
 
 
 
