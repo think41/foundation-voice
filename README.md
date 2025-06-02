@@ -695,17 +695,6 @@ To run the basic example from Section 3:
 
 6. Your server will be available at `http://localhost:8000`.
 
-## 11. Further Exploration
-
-- **Multi-Agent Setups**: Configure multiple agents that can hand off conversations to each other based on specialized knowledge areas.
-
-- **Custom Pipeline Stages**: Extend the Pipecat framework with custom pipeline stages for specialized processing.
-
-- **Integration with External Services**: Connect your agent to databases, APIs, and other services through custom tools.
-
-- **Advanced Callbacks**: Implement sophisticated event handling for analytics, monitoring, and integration with other systems.
-
-- **Frontend Integration**: Build web or mobile interfaces that connect to your agent server using WebSocket or WebRTC.
 
 ---
 
@@ -748,16 +737,6 @@ Subclass `AgentCallbacks` and override methods to handle events. Register and pa
 
 ---
 
-## Project Structure Example
-```
-my-app/
-├── main.py                # Your FastAPI app
-├── my_tools.py            # Custom tool functions
-├── my_context.py          # Custom context (optional)
-├── .env                   # Environment variables
-├── my_agent_config.json   # Agent configuration
-└── ...
-```
 
 ## Running the Example
 1. Update your `.env` and `my_agent_config.json` as described above.
@@ -767,24 +746,11 @@ uvicorn main:app --reload
 ```
 3. Open your browser and navigate to `http://localhost:8000`
 
-## Further Exploration
-- **Multi-Agent Scenarios:** See the `llm.agent_config.agents` section in the config for setting up multiple interacting agents.
-- **Advanced Tools:** Tools can access shared context via context injection for more stateful operations.
-- **Custom Pipeline Stages:** The Pipecat framework (which this SDK builds upon) allows for creating custom pipeline stages if needed.
-
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
- "type": "vad", "config": {} },
-      { "type": "stt", "config": {} },
-      { "type": "llm", "config": { "use_tools": true } }, // "use_tools" enables tool usage for LLM
-      { "type": "tts", "config": {} },
-      { "type": "output", "config": {} }
-    ]
-  }
-}
-```
+
 **Note:**
 after creating the agent_config.json file, copy its path and paste it in the .env file in the AGENT_CONFIG_PATH variable.
 you can find the example of these files in the foundational_ai_server/agent_configure/config
@@ -996,11 +962,6 @@ The SDK allows you to hook into various agent events using a callback system. Th
 
 This setup allows you to react to key events in the agent's lifecycle and processing pipeline.
 
-## Further Exploration
-
-*   **Multi-Agent Scenarios:** Explore the `llm.agent_config.agents` section in the JSON configuration for setting up multiple interacting agents with handoffs.
-*   **Advanced Tools:** Tools can access shared context via `ctx.context` for more stateful operations.
-*   **Custom Pipeline Stages:** While not covered here, the Pipecat framework (which this SDK builds upon) allows for creating custom pipeline stages if needed.
 
 We hope this guide helps you get started with the Foundational AI Server SDK! If you have any questions or encounter issues, please refer to the source code or raise an issue on the GitHub repository.
 
