@@ -85,7 +85,11 @@ class OpenAIAgentPlugin(LLMService):
         
         self._rtvi = data.get("rtvi")
         self._triage = data.get("triage", True)
-        self._create_agents(agent_config, data.get("contexts"), data.get("tools"))
+        
+        self._create_agents(agent_config, self._get_context(agent_config, data.get("contexts")), data.get("tools"))
+
+    def _get_context(self, agent_config, contexts):
+        return contexts.get(agent_config.get("context"))
 
     def _create_agents(self, config, context, tools):
         if not config:

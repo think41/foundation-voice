@@ -86,7 +86,7 @@ async def create_agent_pipeline(
         logger.debug("Creating LLM service from configuration")
         args = {
             "rtvi": rtvi,
-            "context": contexts.get(agent_config.get("agent_name")),
+            "contexts": contexts,
             "tools": tool_dict,
         }
         llm = create_llm_service(
