@@ -2,7 +2,7 @@ import os
 import argparse
 from dotenv import load_dotenv
 import uvicorn
-from fastapi import FastAPI, WebSocket, BackgroundTasks
+from fastapi import FastAPI, WebSocket, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from foundational_ai_server.utils.transport.session_manager import session_manager
 from foundational_ai_server.utils.transport.connection_manager import WebRTCOffer
@@ -82,9 +82,12 @@ defined_agents = {
 async def index():
     return {"message": "welcome to cai"}
 
+
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await cai_sdk.websocket_endpoint(websocket)
+async def websocket_endpoint(websocket: WebSocket, session_id: str = Query(None), agent_name: str = Query(None)):
+    agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
+    await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id)
+
 
 @app.post("/api/offer")
 async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
@@ -116,21 +119,57 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     agent_name = request.get("agent_name") or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
 
-    # Get both answer and connection_data (or just answer if not WebRTC)
     response = await cai_sdk.connect_handler(background_tasks, request, agent)
-    answer = response["answer"]
 
-    background_tasks.add_task(
-        response["func"],
-        response["transport_type"],
-        connection=response["connection"],
-        session_id=response["session_id"],
-        callbacks=agent.get("callbacks", {}),
-        tool_dict=agent.get("tool_dict", {}),
-        contexts=agent.get("contexts", {}),
-        config=agent.get("config", {}),
-    )
-    return answer
+
+    # # Start background task if func and connection exist
+    # if all(k in response for k in ("func", "transport_type", "connection", "session_id")):
+    #     background_tasks.add_task(
+    #         response["func"],
+    #         response["transport_type"],
+    #         connection=response["connection"],
+    #         session_id=response["session_id"],
+    #         callbacks=agent.get("callbacks", {}),
+    #         tool_dict=agent.get("tool_dict", {}),
+    #         contexts=agent.get("contexts", {}),
+    #         config=agent.get("config", {}),
+    #     )
+    answer = response.get("answer")
+
+    if isinstance(answer, dict) and "room_url" in answer:
+        background_tasks.add_task(
+            response["func"],
+            response["transport_type"],
+            room_url=answer["room_url"],
+            token=answer["token"],
+            session_id=response["session_id"],
+            callbacks=agent.get("callbacks", {}),
+            tool_dict=agent.get("tool_dict", {}),
+            contexts=agent.get("contexts", {}),
+            config=agent.get("config", {}),
+        )
+    elif isinstance(answer, dict) and "websocket_url" in answer:
+        # WebSocket clients will connect separately to /ws
+        pass
+    elif answer is not None:
+        background_tasks.add_task(
+            response["func"],
+            response["transport_type"],
+            connection=response["connection"],
+            session_id=response["session_id"],
+            callbacks=agent.get("callbacks", {}),
+            tool_dict=agent.get("tool_dict", {}),
+            contexts=agent.get("contexts", {}),
+            config=agent.get("config", {}),
+        )
+    else:
+        # Possibly a WebSocket response with no answer key
+        return response
+
+
+    # Return `answer` if it exists (WebRTC), otherwise return the response itself
+    return response.get("answer")
+
 
 
 
