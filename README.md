@@ -97,7 +97,6 @@ async def connect_endpoint(
     # Initialize callbacks and tools
     callbacks = MyCallbacks()
     tool_config["get_weather"] = get_weather
-    context = MyContext()
 
     # Handle the connection
     return await cai_sdk.connect_handler(
@@ -105,7 +104,6 @@ async def connect_endpoint(
         request_data=request_data,
         tool_config=tool_config,
         app_callbacks=callbacks,
-        context=context  # Pass your custom context
     )
 
 # 6. Run the application
@@ -164,6 +162,12 @@ Callbacks provide hooks into the agent's lifecycle, allowing your application to
 - Client connections/disconnections
 
 Callbacks enable integration with your application logic. [Jump to Transport and Callbacks](#7-transport-and-callbacks-guide)
+
+### 4.4 Context
+
+Context is the mechanism that allows your agent to maintain state, remember information across conversational turns, and personalize interactions. It's key for building more sophisticated and stateful conversational experiences. Context is typically defined as a data structure (often a Pydantic model) and configured in your agent's JSON settings. This allows the agent to store and retrieve relevant information throughout a session.
+
+For a detailed guide on how context is configured, defined in Python, and utilized during agent operations, see [Section 8: Context In-Depth](#8-context-in-depth).
 
 ## 5. Creating a Configuration File
 
@@ -458,17 +462,6 @@ def get_weather(location: str) -> str:
 Register your tools by adding them to the `tool_config` dictionary:
 
 ```python
-from foundational_ai_server.agent_configure.utils.tool import tool_config
-
-# Register your tools
-tool_config["get_weather"] = get_weather
-tool_config["search_database"] = search_database
-```
-
-### 6.3 Using Context in Tools
-
-For more advanced tools that need to access or modify the conversation context:
-```python
 # main.py
 import uvicorn
 from fastapi import FastAPI, BackgroundTasks, Request
@@ -513,6 +506,7 @@ async def connect_endpoint(
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 ```
+
 
 ## 7. Transport and Callbacks Guide
 
@@ -602,9 +596,117 @@ class MyCallbacks(AgentCallbacks):
 ```
 
 
-## 8. Advanced Topics
+## 8. Context In-Depth
 
-### 8.1 Custom Contexts
+Context allows your agent to maintain state, remember information across conversational turns, and tailor its responses. It's a crucial component for building more sophisticated and personalized interactions. This section provides a detailed look into how context is managed within the Foundational AI Server SDK.
+
+**8.1. Configuration (in JSON files like `agent_config.json`):**
+
+*   Context is typically specified within your agent's configuration file (e.g., `my_agent_config.json` or the default `agent_config.json`).
+*   It's defined using a string name that refers to a predefined context structure. For example:
+    ```json
+    // In your agent_config.json
+    "agent_config": {
+      "start_agent": "your_start_agent_name",
+      "context": "MyCustomContextName", // Global context for the agent setup
+      // ... other agent_config settings
+    }
+    ```
+*   If you're using a multi-agent setup, context can also be specified for individual sub-agents.
+
+**8.2. Explanation :**
+
+*   The string names used in the JSON configuration (e.g., `"MyCustomContextName"`) should be mapped to a Python class that define the actual structure of the context.
+*   These classes are usually Pydantic `BaseModel`s. You can define your own custom context structures by creating new classes and importing it in your server endpoint 
+    ```python
+    # Example in foundational_ai_server/agent_configure/utils/context.py
+    from pydantic import BaseModel
+    from typing import Optional, List, Dict, Any # Ensure necessary imports
+
+    class MyCustomContextName(BaseModel):
+        user_id: Optional[str] = None
+        session_data: Dict[str, Any] = {}
+        conversation_history: List[Dict] = []
+        # ... other fields relevant to your application
+    
+    # ... ensure it's added to the 'contexts' dictionary
+    # This dictionary is typically located in the same file (context.py)
+    contexts = {
+        "MyCustomContextName": MyCustomContextName,
+        # ... other predefined contexts like MagicalNestContext
+    }
+    ```
+    *Note: Ensure you have the necessary imports like `Optional`, `List`, `Dict`, and `Any` from the `typing` module in your context definition file.*
+
+**8.3. Loading and Instantiation:**
+
+*   When your application starts and an agent session is initiated (e.g., via the `/connect` endpoint or similar SDK handler), the agent configuration JSON is loaded.
+*   The system uses the context string name from the configuration (e.g., `"MyCustomContextName"`) to look up the corresponding Python class in the `contexts` dictionary (usually found in `foundational_ai_server/agent_configure/utils/context.py`).
+*   An instance of this class (e.g., an object of `MyCustomContextName`) is then created. This object will hold the actual contextual data for that specific agent session.
+*   This context instance is then typically passed to the `CaiSDK` handler methods (like `connect_handler` or `webrtc_endpoint` if they are adapted to take it directly, or internally to `run_agent`).
+
+**8.5. Basic Context Usage in `main.py`**
+
+Here's a minimal example of using context with the SDK in your FastAPI application:
+
+```python
+from fastapi import FastAPI, BackgroundTasks
+from pipecat.sdk.base_ai_sdk import CaiSDK
+from pydantic import BaseModel
+
+# 1. Define your context model
+class UserSession(BaseModel):
+    user_id: str = "default_user"
+    conversation_history: list = []
+
+# 2. Create FastAPI app and SDK instance
+app = FastAPI()
+sdk = CaiSDK()
+
+@app.post("/connect")
+async def connect_endpoint(
+    request_data: dict,
+    background_tasks: BackgroundTasks
+):
+    # 3. Create and populate context
+    context = UserSession(
+        user_id=request_data.get("user_id", "default_user")
+    )
+    
+    # 4. Pass context to SDK
+    return await sdk.connect_handler(
+        background_tasks=background_tasks,
+        request_data=request_data,
+        context=context,
+        tool_config={},  # Add your tools here if needed
+        app_callbacks=None  # Add your callbacks here if needed
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+```
+
+Key points:
+1. Define a simple Pydantic model for your context
+2. Create a FastAPI app and SDK instance
+3. Instantiate your context with any initial data
+4. Pass the context to `sdk.connect_handler()`
+
+This basic example shows the minimal setup needed to use context with the SDK.
+
+**Example: Accessing Context in a Tool**
+
+If you've passed your context instance to the `CaiSDK` handlers, you might need a mechanism to make this context available to your tools. The SDK's `tool_config` and how tools are invoked would determine the exact way. Often, context is made available to tools either by:
+1.  The LLM providing relevant context snippets when calling a tool.
+2.  The tool execution framework having access to the session's context object. (This SDK's `connect_handler` example shows passing `context` which could then be made available to tools if the tool execution logic is designed to receive it).
+
+Refer to [Section 6.3 Using Context in Tools](#63-using-context-in-tools) for how you might structure your `main.py` to pass context. The tool itself would then need to be defined to accept this context if it's passed during invocation.
+
+
+## 9. Advanced Topics
+
+### 9.1 Custom Contexts
 
 To manage state or share data across agent interactions, define custom context classes inheriting from Pydantic's `BaseModel`:
 
@@ -632,7 +734,7 @@ return await cai_sdk.connect_handler(
 )
 ```
 
-### 8.2 Advanced Tool Definitions
+### 9.2 Advanced Tool Definitions
 
 Tools can perform complex operations and integrate with external systems:
 
@@ -656,7 +758,7 @@ def search_knowledge_base(query: str, max_results: int = 5) -> Dict[str, any]:
         return {"error": f"Search failed with status {response.status_code}"}
 ```
 
-### 8.3 Creating Server Endpoints
+### 9.3 Creating Server Endpoints
 
 Integrate `CaiSDK` into your FastAPI application with custom endpoints:
 
@@ -704,7 +806,7 @@ async def connect_endpoint(request_data: dict, background_tasks: BackgroundTasks
     )
 ```
 
-## 9. Project Structure
+## 10. Project Structure
 
 A typical project using the Foundational AI Server SDK might have the following structure:
 
@@ -729,7 +831,7 @@ my-app/
 
 This structure keeps your code organized and modular, making it easier to maintain and extend.
 
-## 10. Running the Example
+## 11. Running the Example
 
 To run the basic example from Section 3:
 
