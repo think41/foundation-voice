@@ -95,23 +95,13 @@ async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks)
     agent = defined_agents.get(agent_name)
 
     # Get both answer and connection_data
-    response = await cai_sdk.webrtc_endpoint(offer, background_tasks, agent)
+    response = await cai_sdk.webrtc_endpoint(offer, agent)
+    if "background_task_args" in response:
+        task_args = response.pop("background_task_args")
+        func = task_args.pop("func")
+        background_tasks.add_task(func, **task_args)
 
-    answer = response["answer"]
-
-    # Add the background task here in the endpoint
-    background_tasks.add_task(
-        response["func"],
-        response["transport_type"],
-        connection=response["connection"],
-        session_id=response["session_id"],
-        callbacks=agent.get("callbacks", {}),
-        tool_dict=agent.get("tool_dict", {}),
-        contexts=agent.get("contexts", {}),
-        config=agent.get("config", {}),
-    )
-
-    return answer
+    return response["answer"]
 
 
 @app.post("/connect")
@@ -119,59 +109,13 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     agent_name = request.get("agent_name") or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
 
-    response = await cai_sdk.connect_handler(background_tasks, request, agent)
-
-
-    # # Start background task if func and connection exist
-    # if all(k in response for k in ("func", "transport_type", "connection", "session_id")):
-    #     background_tasks.add_task(
-    #         response["func"],
-    #         response["transport_type"],
-    #         connection=response["connection"],
-    #         session_id=response["session_id"],
-    #         callbacks=agent.get("callbacks", {}),
-    #         tool_dict=agent.get("tool_dict", {}),
-    #         contexts=agent.get("contexts", {}),
-    #         config=agent.get("config", {}),
-    #     )
-    answer = response.get("answer")
-
-    if isinstance(answer, dict) and "room_url" in answer:
-        background_tasks.add_task(
-            response["func"],
-            response["transport_type"],
-            room_url=answer["room_url"],
-            token=answer["token"],
-            session_id=response["session_id"],
-            callbacks=agent.get("callbacks", {}),
-            tool_dict=agent.get("tool_dict", {}),
-            contexts=agent.get("contexts", {}),
-            config=agent.get("config", {}),
-        )
-    elif isinstance(answer, dict) and "websocket_url" in answer:
-        # WebSocket clients will connect separately to /ws
-        pass
-    elif answer is not None:
-        background_tasks.add_task(
-            response["func"],
-            response["transport_type"],
-            connection=response["connection"],
-            session_id=response["session_id"],
-            callbacks=agent.get("callbacks", {}),
-            tool_dict=agent.get("tool_dict", {}),
-            contexts=agent.get("contexts", {}),
-            config=agent.get("config", {}),
-        )
-    else:
-        # Possibly a WebSocket response with no answer key
-        return response
-
-
-    # Return `answer` if it exists (WebRTC), otherwise return the response itself
-    return response.get("answer")
-
-
-
+    response = await cai_sdk.connect_handler(request, agent)
+    if "background_task_args" in response:
+        task_args = response.pop("background_task_args")
+        func = task_args.pop("func")
+        background_tasks.add_task(func, **task_args)
+    print("response: ", response)
+    return response
 
 
 @app.get("/sessions")

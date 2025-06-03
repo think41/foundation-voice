@@ -1,11 +1,9 @@
-from fastapi import WebSocket, BackgroundTasks
-from typing import Optional, Callable, Dict
+from fastapi import WebSocket
+from typing import Optional, Callable
 from .agent.run import run_agent
 from .utils.transport.connection_manager import WebRTCOffer, connection_manager
 from .utils.transport.session_manager import session_manager
 import aiohttp
-import time
-from .agent_configure.utils.callbacks import custom_callbacks
 from .utils.transport.transport import TransportType
 import uuid
 
@@ -32,29 +30,41 @@ class CaiSDK:
             await websocket.close()
 
     
-    async def webrtc_endpoint(self, offer: WebRTCOffer, background_tasks: BackgroundTasks, agent):
+    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict):
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
             answer, connection = await connection_manager.handle_webrtc_connection(offer)
             response = {
-                'func': run_agent,
-                'transport_type': TransportType.WEBRTC,
-                "session_id": answer["pc_id"],
-                "connection": connection,
-                "answer": answer
+                "answer": answer,
+                "background_task_args": {
+                    "func": run_agent,
+                    "transport_type": TransportType.WEBRTC,
+                    "session_id": answer["pc_id"],
+                    "connection": connection,
+                    "config": agent["config"],
+                    "contexts": agent["contexts"],
+                    "tool_dict": agent["tool_dict"],
+                    "callbacks": agent["callbacks"],
+                }
             }
             return response
             
         answer, connection = await connection_manager.handle_webrtc_connection(offer)
         response = {
-            'func': run_agent,
-            'transport_type': TransportType.WEBRTC,
-            "session_id": answer["pc_id"],
-            "connection": connection,
-            "answer": answer
+            "answer": answer,
+            "background_task_args": {
+                "func": run_agent,
+                "transport_type": TransportType.WEBRTC,
+                "session_id": answer["pc_id"],
+                "connection": connection,
+                "config": agent["config"],
+                "contexts": agent["contexts"],
+                "tool_dict": agent["tool_dict"],
+                "callbacks": agent["callbacks"],
+            }
         }
         return response
     
-    async def connect_handler(self, background_tasks: BackgroundTasks, request: dict, agent):
+    async def connect_handler(self, request: dict, agent: dict):
         try:
             transport_type_str = request.get("transportType", "").lower()
             agent_config = request.get("agentConfig", {})
@@ -87,25 +97,34 @@ class CaiSDK:
                     )
                     
                     if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
-                        answer, _ = await connection_manager.handle_webrtc_connection(offer)
-                        response = {
-                            'func': run_agent,
-                            'transport_type': transport_type,
-                            "session_id": answer["pc_id"],
-                            "connection": connection,
-                            "answer": answer
+                        answer, connection = await connection_manager.handle_webrtc_connection(offer)
+                        return { 
+                            "answer": answer,
+                            "background_task_args": {
+                                "func": run_agent,
+                                "transport_type": transport_type,
+                                "session_id": answer["pc_id"],
+                                "config": agent["config"],
+                                "connection": connection,
+                                "contexts": agent["contexts"],
+                                "tool_dict": agent["tool_dict"],
+                                "callbacks": agent["callbacks"],
+                            }
                         }
-                        return response
                     
                     answer, connection = await connection_manager.handle_webrtc_connection(offer)
-                    response = {
-                        'func': run_agent,
-                        'transport_type': transport_type,
-                        "session_id": answer["pc_id"],
-                        "connection": connection,
-                        "answer": answer
+                    return {
+                        "answer": answer,
+                        "background_task_args": {
+                            "func": run_agent,
+                            "transport_type": transport_type,
+                            "connection": connection,
+                            "config": agent["config"],
+                            "contexts": agent["contexts"],
+                            "tool_dict": agent["tool_dict"],
+                            "callbacks": agent["callbacks"],
+                        }
                     }
-                    return response
                 else:
                     # Return WebRTC UI details
                     return {
@@ -116,81 +135,26 @@ class CaiSDK:
             elif transport_type == TransportType.DAILY:
                 async with aiohttp.ClientSession() as session:
                     url, token = await connection_manager.handle_daily_connection(session)
-                    session_id = str(uuid.uuid4())  # Generate a new session ID
-                    connection = {"room_url": url, "token": token}
-                    if not session_manager.get_daily_room_session(url):
-                        response = {
-                            'func': run_agent,
-                            'transport_type': transport_type,
+
+                    session_id = str(uuid.uuid4())
+                    return { 
+                        "room_url": url,
+                        "token": token,
+                        "background_task_args": {
+                            "func": run_agent,
+                            "transport_type": transport_type,
                             "session_id": session_id,
-                            "connection": connection,
-                            "answer": {
-                                "room_url": url,
-                                "token": token
-                            }
+                            "room_url": url,
+                            "token": token,
+                            "config": agent["config"],
+                            "contexts": agent["contexts"],
+                            "tool_dict": agent["tool_dict"],
+                            "callbacks": agent["callbacks"],
                         }
-                        return response
+                    }
                 
             else:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
                 
         except Exception as e:
             return {"error": f"Failed to establish connection: {str(e)}"}
-
-    # async def create_daily_room(
-    #     self,
-    #     background_tasks: BackgroundTasks,
-    #     room_config: Optional[Dict] = None,
-    #     bot_name: Optional[str] = None,
-    #     **kwargs
-    # ) -> Dict[str, str]:
-    #     try:
-    #         async with aiohttp.ClientSession() as session:
-    #             # Merge room_config with defaults
-    #             final_room_config = {
-    #                 "privacy": "public",  # default
-    #                 "exp": round(time.time()) + 86400,  # 1 day expiry
-    #                 **(room_config or {})
-    #             }
-                
-    #             url, token = await connection_manager.handle_daily_connection(
-    #                 session,
-    #                 room_config=final_room_config
-    #             )
-                
-    #             if not session_manager.get_daily_room_session(url):
-    #                 agent_config = {
-    #                     **self.agent_config,
-    #                     "bot_name": bot_name or self.agent_config.get("bot_name", "AI Assistant"),
-    #                     **kwargs
-    #                 }
-                    
-    #                 background_tasks.add_task(
-    #                     self.agent_func,
-    #                     "daily",
-    #                     room_url=url,
-    #                     token=token,
-    #                     callbacks=custom_callbacks,
-    #                     **agent_config
-    #                 )
-                
-    #             return {
-    #                 "room_url": url,
-    #                 "token": token,
-    #                 "room_config": final_room_config
-    #             }
-                
-    #     except Exception as e:
-    #         return {
-    #             "error": f"Failed to create Daily.co room: {str(e)}",
-    #             "details": str(e)
-    #         }
-    
-    # async def end_daily_room(self, room_url: str) -> Dict[str, str]:
-    #     try:
-    #         async with aiohttp.ClientSession() as session:
-    #             await connection_manager.end_daily_connection(session, room_url)
-    #             session_manager.remove_daily_session(room_url)
-    #             return {"status": "success", "message": f"Room {room_url} ended"}
-    #     except Exception as e:
-    #         return {"status": "error", "message": str(e)}
