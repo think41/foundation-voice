@@ -468,21 +468,50 @@ tool_config["search_database"] = search_database
 ### 6.3 Using Context in Tools
 
 For more advanced tools that need to access or modify the conversation context:
-
 ```python
-from foundational_ai_server.agent_configure.utils.tool import function_tool
-from foundational_ai_server.agent_configure.utils.context import RunContextWrapper
+# main.py
+import uvicorn
+from fastapi import FastAPI, BackgroundTasks, Request
+from typing import Dict, Any, Optional
 
-# Define a context-aware tool using the decorator
-@function_tool
-def update_user_preferences(ctx: RunContextWrapper, preferences: dict):
-    """Update the user's preferences in the context."""
-    # Access and modify the context
-    ctx.context.user_preferences = preferences
-    return f"Updated preferences: {preferences}"
+from foundational_ai_server.lib import CaiSDK
+from foundational_ai_server.agent_configure.utils.tool import tool_config
 
-# Register the tool
-tool_config["update_user_preferences"] = update_user_preferences
+
+#Define your tool functions
+def get_weather(location: str) -> str:
+    """Get the current weather for a location."""
+    # Replace with actual weather API call
+    return f"The weather in {location} is sunny."
+
+
+#Initialize FastAPI and SDK
+app = FastAPI()
+cai_sdk = CaiSDK()
+
+# 5. Create /connect endpoint
+@app.post("/connect")
+async def connect_endpoint(
+    request_data: dict, 
+    background_tasks: BackgroundTasks
+):
+    # Initialize callbacks and tools
+    callbacks = MyCallbacks()
+    tool_config["get_weather"] = get_weather
+    context = MyContext()
+
+    # Handle the connection
+    return await cai_sdk.connect_handler(
+        background_tasks=background_tasks,
+        request_data=request_data,
+        tool_config=tool_config,
+        app_callbacks=callbacks,
+        context=context  # Pass your custom context
+    )
+
+# 6. Run the application
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 ```
 
 ## 7. Transport and Callbacks Guide
