@@ -701,8 +701,6 @@ If you've passed your context instance to the `CaiSDK` handlers, you might need 
 1.  The LLM providing relevant context snippets when calling a tool.
 2.  The tool execution framework having access to the session's context object. (This SDK's `connect_handler` example shows passing `context` which could then be made available to tools if the tool execution logic is designed to receive it).
 
-Refer to [Section 6.3 Using Context in Tools](#63-using-context-in-tools) for how you might structure your `main.py` to pass context. The tool itself would then need to be defined to accept this context if it's passed during invocation.
-
 
 ## 9. Advanced Topics
 
