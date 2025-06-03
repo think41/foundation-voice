@@ -12,6 +12,7 @@ from .agent import AgentCallbacks
 
 async def run_agent(
     transport_type: TransportType,
+    config: Dict[str, Any],
     connection: Optional[Union[WebSocket, SmallWebRTCConnection]] = None,
     room_url: str = None,
     token: str = None,
@@ -19,6 +20,7 @@ async def run_agent(
     session_id: str = None,
     callbacks: Optional[AgentCallbacks] = None,
     tool_dict: Dict[str, Any] = None,
+    contexts: Optional[Dict[str, Any]] = None,
 ):
     if not session_id:
         session_id = str(uuid.uuid4())
@@ -43,7 +45,9 @@ async def run_agent(
         bot_name=bot_name,
         session_id=session_id,
         callbacks=callbacks,
-        tool_dict=tool_dict
+        tool_dict=tool_dict,
+        contexts=contexts,
+        config=config
     )
 
     try:

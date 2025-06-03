@@ -1,7 +1,8 @@
+import os
 import argparse
 from dotenv import load_dotenv
 import uvicorn
-from fastapi import FastAPI, WebSocket, BackgroundTasks
+from fastapi import FastAPI, WebSocket, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from foundational_ai_server.utils.transport.session_manager import session_manager
 from foundational_ai_server.utils.transport.connection_manager import WebRTCOffer
@@ -9,10 +10,26 @@ import logging
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from foundational_ai_server.lib import CaiSDK
-from foundational_ai_server.agent_configure.utils.tool import tool_config
-from foundational_ai_server.agent_configure.utils.callbacks import custom_callbacks, AgentCallbacks
+from foundational_ai_server.utils.config_loader import ConfigLoader
+
+from agent_configure.utils.context import contexts
+from agent_configure.utils.tool import tool_config
+from agent_configure.utils.callbacks import custom_callbacks
+
+
 
 cai_sdk = CaiSDK()
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+config_path1 = os.path.join(BASE_DIR, "agent_configure", "config", "agent_config.json")
+config_path2 = os.path.join(BASE_DIR, "agent_configure", "config", "config_with_keys.json")
+config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.json")
+
+
+
+agent_config_1 = ConfigLoader.load_config(config_path1)
+agent_config_2 = ConfigLoader.load_config(config_path2)
+agent_config_3 = ConfigLoader.load_config(config_path3)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +52,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+defined_agents = {
+    "agent1": {
+        "config": agent_config_1, 
+        "contexts": contexts,
+        "tool_dict": tool_config,
+        "callbacks": custom_callbacks,
+    },
+    "agent2": {
+        "config": agent_config_2,
+        "callbacks": custom_callbacks,
+    },
+    "agent3": {
+        "config": agent_config_3,
+        "contexts": contexts,
+        "tool_dict": tool_config,
+        "callbacks": custom_callbacks,
+    }
+}
+
 
 @app.get(
     "/",
@@ -46,21 +82,40 @@ app.add_middleware(
 async def index():
     return {"message": "welcome to cai"}
 
+
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await cai_sdk.websocket_endpoint(websocket)
+async def websocket_endpoint(websocket: WebSocket, session_id: str = Query(None), agent_name: str = Query(None)):
+    agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
+    await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id)
+
 
 @app.post("/api/offer")
 async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
-    tool_dict = tool_config
-    agent_callbacks = custom_callbacks
-    return await cai_sdk.webrtc_endpoint(offer, background_tasks, tool_dict, agent_callbacks)
+    agent_name = offer.agent_name or next(iter(defined_agents))
+    agent = defined_agents.get(agent_name)
+
+    # Get both answer and connection_data
+    response = await cai_sdk.webrtc_endpoint(offer, agent)
+    if "background_task_args" in response:
+        task_args = response.pop("background_task_args")
+        func = task_args.pop("func")
+        background_tasks.add_task(func, **task_args)
+
+    return response["answer"]
+
 
 @app.post("/connect")
 async def connect_handler(background_tasks: BackgroundTasks, request: dict):
-    tool_dict = tool_config
-    agent_callbacks = custom_callbacks
-    return await cai_sdk.connect_handler(background_tasks, request, tool_dict, agent_callbacks)
+    agent_name = request.get("agent_name") or next(iter(defined_agents))
+    agent = defined_agents.get(agent_name)
+
+    response = await cai_sdk.connect_handler(request, agent)
+    if "background_task_args" in response:
+        task_args = response.pop("background_task_args")
+        func = task_args.pop("func")
+        background_tasks.add_task(func, **task_args)
+    print("response: ", response)
+    return response
 
 
 @app.get("/sessions")
