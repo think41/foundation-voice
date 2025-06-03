@@ -7,18 +7,30 @@ import aiohttp
 import time
 from .agent_configure.utils.callbacks import custom_callbacks
 from .utils.transport.transport import TransportType
+import uuid
 
 class CaiSDK:
     def __init__(self, agent_func: Optional[Callable] = None, agent_config: Optional[dict] = None):        
         self.agent_func = agent_func or run_agent
         self.agent_config = agent_config or {}
     
-    async def websocket_endpoint(self, websocket: WebSocket):
+    async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None):
         await websocket.accept()
         try:
-            await self.agent_func(TransportType.WEBSOCKET, connection=websocket, **self.agent_config)
-        except Exception:
+            await self.agent_func(
+                TransportType.WEBSOCKET,
+                connection=websocket,
+                session_id=session_id,
+                callbacks=agent.get("callbacks", {}),
+                tool_dict=agent.get("tool_dict", {}),
+                contexts=agent.get("contexts", {}),
+                config=agent.get("config", {}),
+            )
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             await websocket.close()
+
     
     async def webrtc_endpoint(self, offer: WebRTCOffer, background_tasks: BackgroundTasks, agent):
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
@@ -54,7 +66,13 @@ class CaiSDK:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
             
             if transport_type == TransportType.WEBSOCKET:
-                return {"websocket_url": "/ws"}
+                session_id = str(uuid.uuid4())
+
+                return {
+                    'session_id': session_id,
+                    'websocket_url': f"/ws?session_id={session_id}&agent_name={request.get('agent_name')}"
+                }
+
                 
             elif transport_type == TransportType.WEBRTC:
                 # Check if this is a WebRTC offer
@@ -98,19 +116,21 @@ class CaiSDK:
             elif transport_type == TransportType.DAILY:
                 async with aiohttp.ClientSession() as session:
                     url, token = await connection_manager.handle_daily_connection(session)
+                    session_id = str(uuid.uuid4())  # Generate a new session ID
+                    connection = {"room_url": url, "token": token}
                     if not session_manager.get_daily_room_session(url):
-                        background_tasks.add_task(
-                            run_agent,
-                            transport_type,
-                            room_url=url,
-                            token=token,
-                            bot_name="AI Assistant",                            
-                            callbacks=agent_callbacks,
-                            tool_dict=tool_dict,
-                            **self.agent_config
-                        )   
-                return {"room_url": url, "token": token}
-            
+                        response = {
+                            'func': run_agent,
+                            'transport_type': transport_type,
+                            "session_id": session_id,
+                            "connection": connection,
+                            "answer": {
+                                "room_url": url,
+                                "token": token
+                            }
+                        }
+                        return response
+                
             else:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
                 
