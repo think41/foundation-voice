@@ -489,42 +489,61 @@ tool_config["update_user_preferences"] = update_user_preferences
 
 The SDK supports multiple transport methods for communication between clients and your agent. Each transport type supports specific callbacks.
 
-### 7.1 WebSocket Transport
+### 7.1 Available Callbacks and Their Parameters
 
-**Supported Callbacks:**
+All callbacks are asynchronous and should be defined with `async def`. The following callbacks are available in the `AgentCallbacks` class:
 
-1. `on_client_connected(client)`: Triggered when a WebSocket client connects.
-   - `client`: The WebSocket client connection object
+1. **on_client_connected(client: Dict[str, Any]) -> None**
+   - **Supported Transports**: WebSocket, WebRTC, Daily.co
+   - Triggered when a client connects to the agent
+   - `client`: Dictionary containing client connection details (format varies by transport)
+   - Default implementation: No-op
 
-2. `on_transcript_update(frame)`: Called when the transcript is updated.
-   - `frame`: Contains transcript messages and metadata
+2. **on_client_disconnected(data: Dict[str, Any]) -> None**
+   - **Supported Transports**: WebSocket, WebRTC, Daily.co
+   - Triggered when a client disconnects
+   - `data`: Dictionary containing:
+     - `transcript`: List[Dict] - Complete conversation transcript
+     - `metrics`: Dict - Call metrics and statistics including duration, latency, etc.
+   - Default implementation: Logs transcript and metrics to console
 
-3. `on_client_disconnected(data: Dict[str, Any])`: Triggered when the WebSocket client disconnects.
-   - `data`: Contains transcript and metrics information
+3. **on_first_participant_joined(participant: Dict[str, Any]) -> None**
+   - **Supported Transport**: Daily.co only
+   - Triggered when the first participant joins a Daily.co room
+   - `participant`: Dictionary containing participant details (Daily.co participant object)
+   - Default implementation: Logs participant info to console
 
-### 7.2 WebRTC Transport
-
-**Supported Callbacks:**
-
-1. `on_first_participant_joined(participant: Dict[str, Any])`: Triggered when the first participant joins the WebRTC session.
+4. **on_participant_left(participant: Dict[str, Any], reason: str) -> None**
+   - **Supported Transport**: Daily.co only
+   - Triggered when a participant leaves a Daily.co room
    - `participant`: Dictionary containing participant details
+   - `reason`: String describing why the participant left
+   - Default implementation: Logs participant and reason to console
 
-2. `on_participant_left(participant: Dict[str, Any], reason: str)`: Called when a participant leaves the session.
-   - `participant`: Contains participant information
-   - `reason`: Reason for leaving the session
+5. **on_transcript_update(frame: Any) -> None**
+   - **Supported Transports**: WebSocket, WebRTC, Daily.co
+   - Triggered when there's an update to the conversation transcript
+   - `frame`: Object containing:
+     - `messages`: List[Dict] - Message objects with:
+       - `role`: str - 'user' or 'assistant'
+       - `content`: str - Message content
+       - `timestamp`: str - ISO 8601 timestamp
+   - Default implementation: Logs transcript updates to console
 
-3. `on_transcript_update(frame)`: Same as WebSocket transport
+6. **on_session_timeout() -> None**
+   - **Status**: Defined but not implemented
+   - Note: This event is defined in the `AgentEvent` enum but is not currently used in the agent implementation
 
-4. `on_client_disconnected(data: Dict[str, Any])`: Same as WebSocket transport
+### 7.2 Notes
 
-### 7.3 Daily.co Transport
+- All callbacks are optional. If not implemented, default no-op implementations will be used.
+- Callbacks are called asynchronously, so they should be defined with `async def`.
+- The `data` parameter in `on_client_disconnected` contains both the transcript and call metrics.
+- For Daily.co transport, `on_first_participant_joined` is called only for the first participant.
+- The `on_participant_left` callback is only available for Daily.co transport.
 
-**Supported Callbacks:**
 
-1. All WebRTC callbacks are supported
-2. Additional Daily.co specific events are available through the Daily.co SDK
-
-### 7.4 Implementing Custom Callbacks
+### 7.3 Implementing Custom Callbacks
 
 Create a custom callbacks class by extending `AgentCallbacks`:
 
@@ -532,17 +551,27 @@ Create a custom callbacks class by extending `AgentCallbacks`:
 from foundational_ai_server.agent_configure.utils.callbacks import AgentCallbacks
 
 class MyCallbacks(AgentCallbacks):
-    async def on_agent_start(self, context):
-        print(f"Agent started with context: {context}")
-        # Add your custom logic here
+    async def on_client_connected(self, client):
+        print(f"Client connected: {client}")
     
-    async def on_transcript_update(self, data):
+    async def on_transcript_update(self, frame):
         # Process new transcript data
-        transcript = data.get("transcript", "")
-        print(f"New transcript: {transcript}")
+        for message in frame.messages:
+            print(f"Transcript: {message.role}: {message.content}")
+            
+    async def on_client_disconnected(self, data):
+        transcript = data.get("transcript", [])
+        metrics = data.get("metrics", {})
+        print(f"Client disconnected. Transcript length: {len(transcript)}")
         
-        # You could store this in a database, send to analytics, etc.
+    async def on_first_participant_joined(self, participant):
+        print(f"First participant joined: {participant}")
+        
+    async def on_participant_left(self, participant, reason):
+        print(f"Participant left: {participant}, reason: {reason}")
+        print(f"Participant left: {participant}, reason: {reason}")
 ```
+
 
 ## 8. Advanced Topics
 
