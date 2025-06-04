@@ -8,7 +8,7 @@ class IdleProcessor():
     def __init__(
         self, 
         context_aggregator: Any,
-        tries: Optional[int] = 3,
+        tries: Optional[int] = 1,
         timeout: Optional[int] = 10
     ):
         self.tries = tries
@@ -28,12 +28,16 @@ class IdleProcessor():
             ])
             await user_idle.push_frame(LLMMessagesFrame(self.context_aggregator.user().get_messages()))
             return True
-        
+        elif retry_count == self.tries:
+            self.context_aggregator.user().add_messages([
+                {
+                    "role": "system",
+                    "content": "The user has been quiet for too long. Politely and briefly inform them that you'll end the call and they can connect back whenever they're free."
+                }
+            ])
+            await user_idle.push_frame(LLMMessagesFrame(self.context_aggregator.user().get_messages()))
+            return True
         else:
-            await user_idle.push_frame(
-                TTSSpeakFrame("It seems that you're busy. I'll end the call and you can connect back whenever you're free. Have a nice day!")
-            )   
-            # TODO: Right now the task is cancelled before the tts can speak. (Known issue with pipecat)
             await self.task.stop_when_done() 
             return False
 
