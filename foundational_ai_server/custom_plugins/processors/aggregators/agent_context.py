@@ -35,8 +35,6 @@ class AgentChatContext:
         context = AgentChatContext()
 
         for message in messages:
-            if "name" not in message:
-                message["name"] = message["role"]
             context.add_message(message)
         return context
 
