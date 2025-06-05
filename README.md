@@ -1,20 +1,32 @@
 # Foundational AI Server SDK
 
-Welcome to the Foundational AI Server SDK! This SDK provides the core functionalities for building voice-based conversational AI applications using the Pipecat framework. It allows you to configure and run sophisticated AI agents capable of voice activity detection (VAD), speech-to-text (STT), language model processing (LLM), and text-to-speech (TTS).
+## 1. Introduction
 
-This guide will walk you through setting up the SDK, configuring your agent, creating custom server endpoints, and utilizing callbacks.
+Welcome to the Foundational AI Server SDK! This SDK provides the core functionalities for building voice-based conversational AI applications using the Pipecat framework. It allows you to configure and run sophisticated AI agents capable of:
 
-## 1. Installation
+- Voice Activity Detection (VAD)
+- Speech-to-Text (STT) conversion
+- Language Model Processing (LLM)
+- Text-to-Speech (TTS) synthesis
+
+This guide will walk you through setting up the SDK, configuring your agent, creating custom server endpoints, and utilizing callbacks to build powerful conversational AI applications.
+
+## 2. Installation
 
 To install the SDK, ensure you have Python 3.8 or higher. You can install the package directly from the GitHub repository using pip:
 
 ```bash
+# Always use a virtual environment for Python projects
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install the SDK
 pip install "git+ssh://git@github.com/think41/foundational-ai-server.git#egg=foundational_ai_server"
 ```
 
 This command will install the `foundational_ai_server` package and all its dependencies as listed in `pyproject.toml`.
 
-### Environment Variables
+### 2.1 Environment Variables
 
 Many services used by the SDK (like STT, LLM, TTS providers) require API keys. These should be set as environment variables. Create a `.env` file in your project's root directory (where you run your main application) with the necessary keys. Example:
 
@@ -31,11 +43,154 @@ CARTESIA_API_KEY="your_cartesia_api_key"
 # For Daily.co (Transport)
 DAILY_API_KEY="your_daily_api_key"
 DAILY_SAMPLE_ROOM_URL="your_daily_room_url_if_testing_daily"
+
+#config path
+CONFIG_PATH="path_to_your_config_file"
 ```
 
 Refer to the specific provider's documentation for how to obtain API keys.
 
-## 2. Creating a Configuration File
+## 3. Basic Implementation Example
+
+Here's a minimal example of implementing agent callbacks and tool configuration with a `/connect` endpoint in `main.py`:
+
+```python
+import uvicorn
+from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from foundational_ai_server.utils.transport.connection_manager import WebRTCOffer
+from foundational_ai_server.lib import CaiSDK
+from agent_configure.utils.context import contexts
+from agent_configure.utils.tool import tool_config
+from agent_configure.utils.callbacks import custom_callbacks
+from foundational_ai_server.utils.config_loader import ConfigLoader
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# Initialize the CAI SDK
+cai_sdk = CaiSDK()
+
+config_path = os.getenv("CONFIG_PATH")
+agent_config = ConfigLoader.load_config(config_path)
+
+defined_agent = {
+    "agent": {
+        "config": agent_config, 
+        "contexts": contexts,
+        "tool_dict": tool_config,
+        "callbacks": custom_callbacks,
+    },
+}
+
+# Create FastAPI app
+app = FastAPI(
+    title="WebRTC Endpoint",
+    description="Basic WebRTC endpoint implementation",
+    version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/connect") # rename this with your actual endpoint name
+async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
+    """
+    Handle WebRTC offer and return answer
+    """
+    agent = defined_agents.get("agent")
+    # Process the WebRTC offer and get response
+    response = await cai_sdk.webrtc_endpoint(offer, agent)
+    
+    # Handle background tasks if any
+    if "background_task_args" in response:
+        task_args = response.pop("background_task_args")
+        func = task_args.pop("func")
+        background_tasks.add_task(func, **task_args)
+
+    return response["answer"]
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+```
+
+### 3.1 Example Explanation
+
+
+1. You can use the cai sdk which is a class which provides multiple methods to run the agent with the choice of transport.
+
+2. Before running the agent, we need to create a json file with all the configartaions for the agent, then either put the path manual or load it from the environment variable.
+
+3. The ConfigLoader class is a utility class that loads the agent configuration from a JSON file. It can be used to load the configuration from a file.
+
+4. to use an agent we need to define it as a dictionary that contains the [agent configuration](#4-creating-a-configuration-file), [contexts](#3-context), [tools](#2-tool-configuration), and [callbacks](#3-callbacks), below you will find examples and explanation of each.
+
+5. create the FastAPI app:- the FastAPI app is a web server that handles the HTTP requests.
+
+6. create a endpoint:- for connecting to the agent, the example shows the webrtc endpoint, you can choose your any transport of your choice.
+
+> Note: we currently support webrtc, websocket and daily transports, make sure your client is configured to use the same transport, as the client is responsible for handling the connection.
+
+
+### 3.2 Core Concepts
+
+The Foundational AI Server SDK is built around several key concepts that work together to create a flexible and powerful conversational AI system:
+
+#### 1. Agent Configuration
+
+Agent configuration defines the behavior, capabilities, and components of your AI agent. This includes:
+
+- **Voice Processing**: VAD, STT, and TTS settings
+- **Language Model**: Which LLM to use and how to configure it
+- **Prompts**: Instructions that guide the agent's behavior
+
+You can configure these through a JSON file. [Jump to Configuration File](#4-creating-a-configuration-file)
+
+> Note: agent configuration is optional and can be defined in the agent you define in your main application.
+
+#### 2. Tool Configuration
+
+Tools are functions that extend your LLM capabilities, allowing it to perform actions beyond conversation. Tools can:
+
+- Access external APIs or databases
+- Modify application state
+- Perform calculations or data processing
+- Interact with other systems
+
+Tools are registered in the `tool_config` [Jump to Custom Tools](#4-using-custom-tools-with-openai-agents)
+
+> Note: tools are optional and can be defined in the agent you define in your main application.
+
+#### 3. Callbacks
+
+Callbacks provide hooks into the agent's lifecycle, allowing your application to respond to events such as:
+
+- Agent starting/ending
+- Tool calls
+- Transcript updates
+- Client connections/disconnections
+
+Callbacks enable integration with your application logic [Jump to Callbacks](#3-callbacks)
+
+> Note: callbacks are optional and can be defined in the agent you define in your main application. See [Callbacks Guide](#6callbacks-guide) for more details.
+
+#### 4. Context
+
+Context is the mechanism that allows your agent to maintain state, remember information across conversational turns, and personalize interactions. It's key for building more sophisticated and stateful conversational experiences. Context is typically defined as a data structure (often a Pydantic model) and configured in your agent's JSON settings. This allows the agent to store and retrieve relevant information throughout a session.
+
+For a detailed guide on how context is configured, defined in Python, and utilized during agent operations, see [Context In-Depth](#7-context-in-depth) section below.
+
+> Note: context is optional and can be defined in the agent you define in your main application.
+
+## 4. Creating a Configuration File
 
 The SDK uses a JSON file to configure the agent and the processing pipeline. You can create your own configuration file (e.g., `my_agent_config.json`).
 
@@ -47,283 +202,564 @@ Here's a breakdown of the main sections and options:
     "title": "My Custom Bot",
     "initial_greeting": "Hello! How can I help you today?",
     "prompt": "You are a helpful assistant.",
-    "transport": {
-      "type": "webrtc" // Supported: "webrtc", "websocket", "daily"
-    },
     "vad": {
       "provider": "silero" // Supported: "silero", "none"
     },
     "stt": {
-      "provider": "deepgram" // Supported: "deepgram" (ensure DEEPGRAM_API_KEY is set)
-      // Add other STT provider configs if supported by the SDK
+      "provider": "deepgram",
+      "model": "nova-2"
     },
     "llm": {
       "provider": "openai", // Supported: "openai", "openai_agents"
       "model": "gpt-4o-mini", // For "openai" provider
-      // API Key: Set OPENAI_API_KEY environment variable
-      "agent_config": { // Specific to "openai_agents" provider
-        "start_agent": "main_agent",
-        "context": "MyCustomContext", // Maps to a class in context.py
+      "tools": ['get_current_weather'],
+    },
+    "tts": {
+      "provider": "openai", // Supported: "openai", "deepgram", "cartesia"
+      "voice": "alloy" // For "openai" provider
+    }
+  }
+}
+```
+
+### 4.1 Configuration Options Explained
+
+1. **Agent Settings**:
+   - `title`: The name of your agent
+   - `initial_greeting`: First message sent by the agent
+   - `prompt`: System prompt that defines the agent's behavior
+
+2. **Transport Configuration**:
+   - `agent.transport.type`: Choose how the client will connect (`webrtc`, `websocket`, `daily`)
+
+3. **Voice Activity Detection**:
+   - `agent.vad.provider`: `silero` is recommended. Use `none` to disable VAD.
+
+4. **Speech-to-Text**:
+   - `agent.stt.provider`: Example `deepgram`. Requires the corresponding API key in your `.env` file.
+   - `agent.stt.model`: Model to use (provider-specific)
+
+5. **Language Model**:
+   - `agent.llm.provider`: Example `openai`. Requires `OPENAI_API_KEY` in your `.env` file.
+   - `agent.llm.model`: Model name (e.g., `gpt-4o-mini`)
+   - For multi-agent setups, use `openai_agents` provider with additional configuration
+
+6. **Text-to-Speech**:
+   - `agent.tts.provider`: Example `openai`. Requires the corresponding API key.
+   - `agent.tts.voice`: Voice ID to use (provider-specific)
+
+7. **Pipeline Configuration**:
+   - Defines the sequence of processing stages for your agent
+   - The `use_tools: true` setting in the LLM stage enables tool usage
+
+### 4.2 Supported Configurations
+
+#### Agent Settings
+- `title`: String (any text)
+- `initial_greeting`: String (any text)
+- `prompt`: String (system prompt text)
+
+#### Transport Configuration
+- `agent.transport.type`:
+  - `webrtc`: For WebRTC connections
+  - `websocket`: For WebSocket connections
+  - `daily`: For Daily.co integration
+
+#### Voice Activity Detection (VAD)
+- `agent.vad.provider`:
+  - `silero`: Recommended VAD provider
+  - `none`: Disable VAD
+
+#### Speech-to-Text (STT)
+- `agent.stt.provider`:
+  - `deepgram`: Deepgram speech recognition
+  - (Additional providers as supported)
+- `agent.stt.model`: Provider-specific model name (e.g., `nova-2` for Deepgram)
+
+#### Language Model (LLM)
+- `agent.llm.provider`:
+  - `openai`: Standard OpenAI models
+  - `openai_agents`: For multi-agent setups
+- `agent.llm.model`: Model name (e.g., `gpt-4o-mini` for OpenAI)
+- `agent.llm.temperature`: Float (0.0 to 2.0)
+- `agent.llm.max_tokens`: Integer
+
+#### Text-to-Speech (TTS)
+- `agent.tts.provider`:
+  - `openai`: OpenAI's text-to-speech
+  - `deepgram`: Deepgram's text-to-speech
+  - `cartesia`: Cartesia's text-to-speech
+- `agent.tts.voice`: Provider-specific voice ID (e.g., `alloy`, `nova` for OpenAI)
+
+
+### 4.3 Example Configurations:-
+
+#### 1. Basic Example with OpenAI
+
+This is a simple configuration using OpenAI for both LLM and TTS:
+
+```json
+{
+  "agent": {
+    "title": "Customer Support Bot",
+    "initial_greeting": "Hello! I'm your customer support assistant. How can I help you today?",
+    "prompt": "You are a helpful customer support assistant for a software company. Answer questions about our products, pricing, and provide technical support. Be friendly, concise, and professional.",
+    "transport": {
+      "type": "webrtc"
+    },
+    "vad": {
+      "provider": "silero"
+    },
+    "stt": {
+      "provider": "deepgram",
+      "model": "nova-2"
+    },
+    "llm": {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "temperature": 0.7,
+      "max_tokens": 150,
+    },
+    "tts": {
+      "provider": "openai",
+      "voice": "nova"
+    }
+  }
+}
+```
+
+**Explanation:**
+
+1. **Agent Configuration**:
+   - `title`: Names the bot "Customer Support Bot" - this will be displayed to users
+   - `initial_greeting`: The first message users will hear when connecting
+   - `prompt`: System instructions that define the bot's personality and capabilities
+
+2. **Transport**:
+   - Uses WebRTC for real-time audio communication (requires browser support)
+
+3. **Voice Processing**:
+   - `vad`: Uses Silero for voice activity detection to determine when the user is speaking
+   - `stt`: Configures Deepgram with the nova-2 model for speech-to-text conversion
+   - `tts`: Uses OpenAI's nova voice for text-to-speech synthesis
+
+4. **Language Model**:
+   - `provider`: Uses OpenAI's API
+   - `model`: Specifies gpt-4o-mini as the model
+   - `temperature`: Sets creativity level to 0.7 (moderate creativity)
+   - `max_tokens`: Limits responses to 150 tokens for concise answers
+
+5. **Pipeline**:
+   - Defines a linear processing flow from input to output
+   - `use_tools: true` in the LLM stage enables the bot to use custom tool functions
+
+#### 2. Complex Example with OpenAI Agents
+
+This example demonstrates a multi-agent system using `openai_agents` provider, similar to the MagicalNest Bot configuration:
+
+```json
+{
+  "agent": {
+    "title": "E-Commerce Assistant",
+    "initial_greeting": "Welcome to our online store! I'm here to help you find the perfect products.",
+    "prompt": "You are a helpful and informative assistant for an e-commerce platform. Please provide accurate and concise responses, and you have access to tools.",
+    "transport": {
+      "type": "daily-webrtc"
+    },
+    "vad": {
+      "provider": "silero"
+    },
+    "stt": {
+      "provider": "deepgram"
+    },
+    "llm": {
+      "provider": "openai_agents",
+      "triage": false,
+      "agent_config": {
+        "start_agent": "welcome_agent",
+        "context": "ShoppingContext",
         "logfire_trace": true,
         "agents": {
-          "main_agent": {
-            "name": "Main Agent",
-            "instructions": "Instructions for the main agent...",
-            "handoff_description": "When to hand off...",
-            "handoffs": ["another_agent"],
-            "tools": ["my_custom_tool"], // Maps to tools in tools.py
-            "context": "MyCustomContext"
+          "welcome_agent": {
+            "name": "welcome_agent",
+            "instructions": "You are the Welcome Agent for an e-commerce platform.\nIMPORTANT: Keep all responses SHORT, CRISP and CONVERSATIONAL - suitable for a voice interface.\nLimit responses to 1-2 short sentences whenever possible.\nYour responsibilities:\n- Warmly welcome customers to the store\n- Ask about what type of products they're looking for\n- Collect basic information about their preferences\n\nBe friendly and professional.\nAsk only ONE question at a time.\n\nWhen you've collected basic information, hand off to the Product Agent.",
+            "handoff_description": "When the conversation starts or needs to return to introduction",
+            "handoffs": ["product_agent"],
+            "tools": ["update_customer_info"],
+            "context": "ShoppingContext"
+          },
+          "product_agent": {
+            "name": "product_agent",
+            "instructions": "You are the Product Agent for an e-commerce platform.\nIMPORTANT: Keep all responses SHORT, CRISP and CONVERSATIONAL - suitable for a voice interface.\nLimit responses to 1-2 short sentences whenever possible.\n\nYour responsibilities:\n- Recommend products based on customer preferences\n- Provide details about products (features, pricing, availability)\n- Help customers compare different options\n- Add items to the shopping cart\n\nBe knowledgeable and helpful. Focus on suggesting products that match the customer's needs.\nAsk only ONE question at a time.\n\nIf the customer wants to check out, hand off to the Checkout Agent.\nIf the customer wants to start over, hand off to the Welcome Agent.",
+            "handoff_description": "When product information is needed or items need to be added to cart",
+            "handoffs": ["welcome_agent", "checkout_agent"],
+            "tools": ["search_products", "add_to_cart", "get_product_details"],
+            "context": "ShoppingContext"
+          },
+          "checkout_agent": {
+            "name": "checkout_agent",
+            "instructions": "You are the Checkout Agent for an e-commerce platform.\nIMPORTANT: Keep all responses SHORT, CRISP and CONVERSATIONAL - suitable for a voice interface.\nLimit responses to 1-2 short sentences whenever possible.\n\nYour responsibilities:\n- Guide customers through the checkout process\n- Handle payment method selection\n- Process shipping information\n- Confirm orders and provide order summaries\n\nBe efficient and reassuring. Make the checkout process as smooth as possible.\nAsk only ONE question at a time.\n\nIf the customer wants to continue shopping, hand off to the Product Agent.\nIf the customer wants to start over, hand off to the Welcome Agent.",
+            "handoff_description": "When the customer is ready to checkout",
+            "handoffs": ["welcome_agent", "product_agent"],
+            "tools": ["process_payment", "update_shipping", "complete_order"],
+            "context": "ShoppingContext"
           }
-          // Define other agents if using a multi-agent setup
         }
       }
     },
     "tts": {
-      "provider": "openai", // Supported: "openai", "cartesia", "deepgram"
-      "voice": "alloy", // Specific to the provider (e.g., OpenAI voices)
-      // API Key: Set relevant environment variables (OPENAI_API_KEY, CARTESIA_API_KEY, DEEPGRAM_API_KEY)
+      "provider": "openai",
+      "voice": "shimmer"
     },
     "mcp": { 
       "type": "llm_orchestrator",
       "config": {
-        "max_turns": 10,
-        "response_timeout": 15,
+        "max_turns": 5,
+        "response_timeout": 10,
         "history_length": 5,
         "enable_tool_selection": true,
         "tool_selection_strategy": "highest_confidence"
       }
     }
-  },
-  "pipeline": {
-    "name": "my_pipeline",
-    "stages": [
-      { "type": "input", "config": {} },
-      { "type": "vad", "config": {} },
-      { "type": "stt", "config": {} },
-      { "type": "llm", "config": { "use_tools": true } }, // "use_tools" enables tool usage for LLM
-      { "type": "tts", "config": {} },
-      { "type": "output", "config": {} }
-    ]
   }
 }
 ```
 
-**Key Configuration Details:**
-
-*   **`agent` Section:**
-    *   `transport.type`: Choose how the client will connect (e.g., `webrtc`, `websocket`, `daily`).
-    *   `vad.provider`: `silero` is a common choice. Use `none` to disable VAD.
-    *   `stt.provider`: Example `deepgram`. Ensure the corresponding API key (e.g., `DEEPGRAM_API_KEY`) is in your `.env` file.
-    *   `llm.provider`:
-        *   `openai`: Uses a standard OpenAI model. Set `model` (e.g., `gpt-4o-mini`). Requires `OPENAI_API_KEY`.
-        *   `openai_agents`: For multi-agent setups. Configure `start_agent`, `agents` dictionary with individual agent instructions, tools, handoffs, and context.
-    *   `llm.agent_config.context`: A string name that maps to a Pydantic `BaseModel` class you define (see Custom Contexts below).
-    *   `llm.agent_config.agents.*.tools`: A list of tool names that map to functions (see Custom Tools below).
-    *   `tts.provider`: Examples `openai`, `cartesia`, `deepgram`. Set `voice` and ensure the API key is in `.env`.
-*   **`pipeline` Section:**
-    *   Defines the sequence of processing stages. The example shows a typical voice pipeline.
-
-### Custom Contexts
-
-To manage state or share data across agent interactions, you can define custom context classes. These classes should inherit from Pydantic's `BaseModel`.
-
-1.  Open/Create `foundational_ai_server/agent_configure/utils/context.py` (or your custom path if you modify the loading logic).
-2.  Define your context class:
-    ```python
-    from pydantic import BaseModel
-
-    class MyCustomContext(BaseModel):
-        user_id: str | None = None
-        session_data: dict = {}
-        # Add other fields relevant to your application
-    ```
-3.  Register it in the `contexts` dictionary in the same file:
-    ```python
-    contexts = {
-        "MyCustomContext": MyCustomContext,
-        # Add other contexts here
-        "MagicalNestContext": MagicalNestContext # Existing example
-    }
-    ```
-4.  You can then reference `"MyCustomContext"` in your `agent_config.json`.
-
-### Custom Tools
-
-For agents to perform actions, you can define tools.
-
-1.  Define tool functions in `foundational_ai_server/custom_plugins/services/openai_agents/agents_sdk/utils/tools.py` (or your custom path).
-    ```python
-    from agents import function_tool, RunContextWrapper # Assuming 'agents' library is used
-
-    @function_tool
-    def my_custom_tool(ctx: RunContextWrapper, parameter: str):
-        # ctx.context gives access to the agent's context (e.g., MyCustomContext instance)
-        # Perform some action with 'parameter'
-        return f"Tool executed with {parameter}"
-    ```
-2.  Register these tools in the `tool_config` dictionary in `foundational_ai_server/agent_configure/utils/tool.py`:
-    ```python
-    from foundational_ai_server.custom_plugins.services.openai_agents.agents_sdk.utils.tools import my_custom_tool # Import your tool
-
-    tool_config = {
-        "my_custom_tool": my_custom_tool,
-        # Add other tools here
-        "weather_tool": weather_tool # Existing example
-    }
-    ```
-3.  Reference `"my_custom_tool"` in the `tools` list for an agent in your `agent_config.json`.
-
-## 3. Creating Server Endpoints
-
-You can integrate the `CaiSDK` into your own FastAPI (or other ASGI framework) application to expose communication endpoints. Here's an example based on `examples/main.py`:
-
-```python
-# main_app.py (your application file)
-import uvicorn
-from fastapi import FastAPI, WebSocket, BackgroundTasks, Request
-from dotenv import load_dotenv
-
-from foundational_ai_server.lib import CaiSDK
-from foundational_ai_server.utils.transport.connection_manager import WebRTCOffer
-# Import your tool_config and custom_callbacks
-from foundational_ai_server.agent_configure.utils.tool import tool_config
-from foundational_ai_server.agent_configure.utils.callbacks import custom_callbacks, AgentCallbacks # AgentCallbacks for type hinting
-
-# Load .env file from your project root
-load_dotenv()
-
-app = FastAPI()
-
-# Initialize the SDK
-# You can optionally pass a default agent_config dictionary here if you don't want it loaded by run_agent
-# cai_sdk = CaiSDK(agent_config=your_loaded_config_dict)
-cai_sdk = CaiSDK()
-
-@app.get("/")
-async def health_check():
-    return {"status": "healthy"}
-
-@app.websocket("/ws")
-async def ws_endpoint(websocket: WebSocket):
-    # The agent_config, tools, and callbacks might be implicitly handled by the default run_agent
-    # or passed if CaiSDK was initialized with a global agent_config.
-    # For more explicit control per call, see the /connect endpoint example.
-    await cai_sdk.websocket_endpoint(websocket)
-
-@app.post("/api/offer") # For WebRTC offers
-async def webrtc_offer_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
-    # Pass your specific tool configurations and callback handlers
-    return await cai_sdk.webrtc_endpoint(offer, background_tasks, tool_config, custom_callbacks)
-
-@app.post("/connect") # General connection handler
-async def handle_connect(request_data: dict, background_tasks: BackgroundTasks):
-    # request_data might contain 'transportType', 'agentConfig', 'sdp', 'type', etc.
-    # This allows dynamic configuration per connection if needed.
-    # The 'agentConfig' from request_data can override SDK's initial config for this call.
-    return await cai_sdk.connect_handler(background_tasks, request_data, tool_config, custom_callbacks)
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-```
-
 **Explanation:**
 
-1.  Import necessary modules, including `CaiSDK`, `WebRTCOffer`, your `tool_config`, and `custom_callbacks`.
-2.  Initialize `CaiSDK()`. You can pass a default `agent_config` dictionary here, or it can be provided per call via the `/connect` endpoint.
-3.  Define FastAPI routes for different transport types (`/ws` for WebSocket, `/api/offer` for WebRTC offers).
-4.  The `/connect` endpoint is a versatile handler that can manage different transport types based on the `request_data` payload. It can also receive an `agentConfig` in the request to dynamically configure the agent for that specific session.
-5.  Pass your `tool_config` and `custom_callbacks` instance to the relevant SDK methods (`webrtc_endpoint`, `connect_handler`).
+1. **Multi-Agent Architecture**:
+   - This configuration uses the `openai_agents` provider to create a system with three specialized agents
+   - Each agent has a specific role in the customer journey
+   - The system maintains a shared context (`ShoppingContext`) across all agents
 
-## 4. Utilizing Callbacks
+2. **Agent Configuration**:
+   - `start_agent`: Specifies that conversations begin with the welcome_agent
+   - Each agent has:
+     - **name**: The unique identifier for the agent
+     - **Instructions**: Detailed prompts that define behavior and responsibilities
+     - **Handoffs**: List of other agents this agent can transfer control to
+     - **handoff_description**: Description of when the handoff should occur
+     - **Tools**: Specific functions this agent can access
+     - **Context**: Shared data structure for maintaining state
 
-The SDK allows you to hook into various agent events using a callback system. This is useful for logging, custom event handling, or integrating with other systems.
+3. **Agent Specialization**:
+   - **welcome_agent**: Handles initial greetings and collects basic preferences
+   - **product_agent**: Manages product recommendations and cart operations
+   - **checkout_agent**: Processes payments and finalizes orders
 
-**Available Events (`AgentEvent` enum in `foundational_ai_server.custom_plugins.agent_callbacks`):**
+4. **Transport and Voice Processing**:
+   - Uses Daily's WebRTC implementation for high-quality audio
+   - Silero for VAD and Deepgram for STT (without specifying model, will use default)
+   - OpenAI's shimmer voice for TTS
 
-*   `CLIENT_CONNECTED`
-*   `CLIENT_DISCONNECTED`
-*   `FIRST_PARTICIPANT_JOINED`
-*   `PARTICIPANT_LEFT`
-*   `SESSION_TIMEOUT`
-*   `TRANSCRIPT_UPDATE`
+5. **MCP (Model Context Protocol) Configuration**:
+   - Type: `llm_orchestrator` manages the flow between agents
+   - Settings control conversation flow:
+     - `max_turns`: Limits conversation length
+     - `response_timeout`: Sets maximum wait time for responses
+     - `history_length`: Controls how much conversation history is maintained
+     - `tool_selection`: Enables and configures how tools are selected
 
-**Steps to Use Callbacks:**
+> **Note:** After creating the `agent_config.json` file, make sure to load it in your app by setting the `AGENT_CONFIG_PATH` environment variable or by loading it manually.
 
-1.  **Define Callback Functions:** Create Python functions that will handle specific events. These functions should be `async`.
-    ```python
-    # my_callbacks.py (or within your main application file)
-    from foundational_ai_server.custom_plugins.agent_callbacks import AgentEvent, AgentCallbacks
-    from loguru import logger
+## 5. Using Custom Tools With Openai Agents
 
-    async def my_transcript_handler(frame):
-        # Process transcript frames (e.g., from pipecat.frames.frames.TranscriptionFrame)
+Custom tools allow your OpenAI agent to perform specific actions and maintain state during conversations. Here's how to define and use custom tools with OpenAI agents in your application:
+
+### Creating Custom Tools
+
+To create a new tool, use the `@function_tool` decorator:
+
+```python
+from agents import function_tool, RunContextWrapper
+
+@function_tool(
+    description_override='Your tool description here.'
+)
+def your_tool_name(ctx: RunContextWrapper, param1: type = None, param2: type = None):
+    # Your tool logic here
+    return "Result message"
+
+# Don't forget to add it to tool_config
+tool_config["your_tool_name"] = your_tool_name
+```
+
+### Example Usage in Agent Configuration
+
+In your `agent_config.json`, you can reference these tools in the tools section:
+
+```json
+{
+  "agent": {
+    "tools": [
+      "update_basic_info",
+      "update_room_data",
+      "update_products",
+      "search_tool"
+    ]
+  }
+}
+```
+> Note: Ensure you import your defined tool in the main.py file and pass it to your agent definition like shown in the example [here](#4-basic-implementation-example)
+
+
+## 6.Callbacks Guide
+
+The SDK supports multiple transport methods for communication between clients and your agent. Each transport type supports specific callbacks.
+
+### 6.1 Available Callbacks and Their Parameters
+
+All callbacks are asynchronous and should be defined with `async def`. The following callbacks are available in the `AgentCallbacks` class:
+
+1. **on_client_connected(client: Dict[str, Any]) -> None**
+   - **Supported Transports**: WebSocket, WebRTC, Daily.co
+   - Triggered when a client connects to the agent
+   - `client`: Dictionary containing client connection details (format varies by transport)
+
+2. **on_client_disconnected(data: Dict[str, Any]) -> None**
+   - **Supported Transports**: WebSocket, WebRTC, Daily.co
+   - Triggered when a client disconnects
+   - `data`: Dictionary containing:
+     - `transcript`: List[Dict] - Complete conversation transcript
+     - `metrics`: Dict - Call metrics and statistics including duration, latency, etc.
+
+3. **on_first_participant_joined(participant: Dict[str, Any]) -> None**
+   - **Supported Transport**: Daily.co only
+   - Triggered when the first participant joins a Daily.co room
+   - `participant`: Dictionary containing participant details (Daily.co participant object)
+
+4. **on_participant_left(participant: Dict[str, Any], reason: str) -> None**
+   - **Supported Transport**: Daily.co only
+   - Triggered when a participant leaves a Daily.co room
+   - `participant`: Dictionary containing participant details
+   - `reason`: String describing why the participant left
+
+5. **on_transcript_update(frame: Any) -> None**
+   - **Supported Transports**: WebSocket, WebRTC, Daily.co
+   - Triggered when there's an update to the conversation transcript
+   - `frame`: Object containing:
+     - `messages`: List[Dict] - Message objects with:
+       - `role`: str - 'user' or 'assistant'
+       - `content`: str - Message content
+       - `timestamp`: str - ISO 8601 timestamp
+
+6. **on_session_timeout() -> None**
+   - **Status**: Defined but not implemented
+   - Note: This event is defined in the `AgentEvent` enum but is not currently used in the agent implementation
+
+### 6.2 Notes
+
+- All callbacks are optional.
+- Callbacks are called asynchronously, so they should be defined with `async def`.
+- The `data` parameter in `on_client_disconnected` contains both the transcript and call metrics.
+- For Daily.co transport, `on_first_participant_joined` is called only for the first participant.
+- The `on_participant_left` callback is only available for Daily.co transport.
+
+
+### 6.3 Implementing Custom Callbacks
+
+Create a custom callbacks class by extending `AgentCallbacks`:
+
+```python
+from foundational_ai_server.agent_configure.utils.callbacks import AgentCallbacks
+
+class MyCallbacks(AgentCallbacks):
+    async def on_client_connected(self, client):
+        print(f"Client connected: {client}")
+    
+    async def on_transcript_update(self, frame):
+        # Process new transcript data
         for message in frame.messages:
-            logger.info(f"Live Transcript ({message.role}): {message.content}")
+            print(f"Transcript: {message.role}: {message.content}")
+            
+    async def on_client_disconnected(self, data):
+        transcript = data.get("transcript", [])
+        metrics = data.get("metrics", {})
+        print(f"Client disconnected. Transcript length: {len(transcript)}")
+        
+    async def on_first_participant_joined(self, participant):
+        print(f"First participant joined: {participant}")
+        
+    async def on_participant_left(self, participant, reason):
+        print(f"Participant left: {participant}, reason: {reason}")
+        print(f"Participant left: {participant}, reason: {reason}")
+```
 
-    async def my_client_disconnected_handler(data: dict):
-        logger.warning(f"Client disconnected. Session ID: {data.get('session_id')}")
-        if data.get('metrics'):
-            logger.info(f"Call Metrics: {data['metrics']}")
-        # Perform cleanup or logging
 
-    # ... define other handlers as needed
+## 7. Context In-Depth
+
+Context allows your agent to maintain state, remember information across conversational turns, and tailor its responses. It's a crucial component for building more sophisticated and personalized interactions. This section provides a detailed look into how context is managed within the Foundational AI Server SDK.
+
+**7.1. Configuration (in JSON files like `agent_config.json`):**
+
+*   Context is typically specified within your agent's configuration file (e.g., `my_agent_config.json` or the default `agent_config.json`).
+*   It's defined using a string name that refers to a predefined context structure. For example:
+    ```json
+    // In your agent_config.json
+    "agent_config": {
+      "start_agent": "your_start_agent_name",
+      "context": "MyCustomContextName", // Global context for the agent setup
+      // ... other agent_config settings
+    }
     ```
+*   If you're using a multi-agent setup, context can also be specified for individual sub-agents.
 
-2.  **Register Callbacks:** Create an instance of `AgentCallbacks` and register your handler functions.
-    You can modify the existing `custom_callbacks` instance found in `foundational_ai_server/agent_configure/utils/callbacks.py` or create a new one.
+**7.2. Explanation :**
 
-    *Modifying existing `custom_callbacks` (in `foundational_ai_server/agent_configure/utils/callbacks.py`):*
+*   The string names used in the JSON configuration (e.g., `"MyCustomContextName"`) should be mapped to a Python class that define the actual structure of the context.
+*   These classes are usually Pydantic `BaseModel`s. You can define your own custom context structures by creating new classes and importing it in your server endpoint 
     ```python
-    from foundational_ai_server.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
-    # Import your custom handlers
-    # from .my_app_specific_handlers import my_transcript_handler, my_client_disconnected_handler
+    # Example in foundational_ai_server/agent_configure/utils/context.py
+    from pydantic import BaseModel
+    from typing import Optional, List, Dict, Any # Ensure necessary imports
 
-    custom_callbacks = AgentCallbacks() # Instantiates with default (pass-through) handlers
-
-    # Example: Override default transcript handler
-    # async def custom_on_transcript_update(frame):
-    # print(f"Custom Transcript: {frame}")
-    # custom_callbacks.register_callback(AgentEvent.TRANSCRIPT_UPDATE, custom_on_transcript_update)
-
-    # If your handlers are defined elsewhere:
-    # custom_callbacks.register_callback(AgentEvent.TRANSCRIPT_UPDATE, my_transcript_handler)
-    # custom_callbacks.register_callback(AgentEvent.CLIENT_DISCONNECTED, my_client_disconnected_handler)
+    class MyCustomContextName(BaseModel):
+        user_id: Optional[str] = None
+        session_data: Dict[str, Any] = {}
+        conversation_history: List[Dict] = []
+        # ... other fields relevant to your application
+    
+    # ... ensure it's added to the 'contexts' dictionary
+    # This dictionary is typically located in the same file (context.py)
+    contexts = {
+        "MyCustomContextName": MyCustomContextName,
+        # ... other predefined contexts like MagicalNestContext
+    }
     ```
+> Note ensure you import your defined context in the main.py file and pass it to your agent definition like shown in the example [here](#3-basic-implementation-example)
 
-    *Creating a new `AgentCallbacks` instance in your application:*
-    ```python
-    # In your main_app.py
-    from foundational_ai_server.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
-    # Import your handlers
-    # from .my_callbacks import my_transcript_handler, my_client_disconnected_handler
 
-    app_callbacks = AgentCallbacks()
-    # app_callbacks.register_callback(AgentEvent.TRANSCRIPT_UPDATE, my_transcript_handler)
-    # app_callbacks.register_callback(AgentEvent.CLIENT_DISCONNECTED, my_client_disconnected_handler)
-    ```
+## 8. Advanced Topics
 
-3.  **Pass to SDK:** When calling SDK methods like `webrtc_endpoint` or `connect_handler` in your FastAPI endpoints, pass your `AgentCallbacks` instance.
-    ```python
-    # In your main_app.py, inside an endpoint function:
-    # If using a new instance:
-    # return await cai_sdk.connect_handler(background_tasks, request_data, tool_config, app_callbacks)
-    # If using the modified custom_callbacks from the SDK files:
-    from foundational_ai_server.agent_configure.utils.callbacks import custom_callbacks
-    return await cai_sdk.connect_handler(background_tasks, request_data, tool_config, custom_callbacks)
-    ```
+### 8.1 Advanced Tool Definitions
 
-This setup allows you to react to key events in the agent's lifecycle and processing pipeline.
+Tools can perform complex operations and integrate with external systems:
 
-## Further Exploration
+```python
+from foundational_ai_server.agent_configure.utils.tool import function_tool
+import requests
 
-*   **Multi-Agent Scenarios:** Explore the `llm.agent_config.agents` section in the JSON configuration for setting up multiple interacting agents with handoffs.
-*   **Advanced Tools:** Tools can access shared context via `ctx.context` for more stateful operations.
-*   **Custom Pipeline Stages:** While not covered here, the Pipecat framework (which this SDK builds upon) allows for creating custom pipeline stages if needed.
+@function_tool
+def search_knowledge_base(query: str, max_results: int = 5) -> Dict[str, any]:
+    """Search the knowledge base for information related to the query."""
+    # Call an external API
+    response = requests.get(
+        "https://your-api.example.com/search",
+        params={"q": query, "limit": max_results}
+    )
+    
+    # Process and return the results
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return {"error": f"Search failed with status {response.status_code}"}
+```
 
-We hope this guide helps you get started with the Foundational AI Server SDK! If you have any questions or encounter issues, please refer to the source code or raise an issue on the GitHub repository.
+### 8.2 Creating Server Endpoints
+
+Integrate `CaiSDK` into your FastAPI application with custom endpoints:
+
+```python
+from fastapi import FastAPI, WebSocket, BackgroundTasks
+from foundational_ai_server.lib import CaiSDK, TransportType
+
+app = FastAPI()
+cai_sdk = CaiSDK()
+
+# WebSocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await cai_sdk.websocket_endpoint(websocket)
+
+# WebRTC endpoint
+@app.post("/webrtc")
+async def webrtc_endpoint(request_data: dict, background_tasks: BackgroundTasks):
+    return await cai_sdk.webrtc_endpoint(
+        background_tasks=background_tasks,
+        request_data=request_data
+    )
+
+# Custom connect endpoint with additional logic
+@app.post("/connect")
+async def connect_endpoint(request_data: dict, background_tasks: BackgroundTasks):
+    # Add custom pre-processing here
+    user_id = request_data.get("user_id")
+    
+    # Initialize context with user data
+    context = MyCustomContext(user_id=user_id)
+    
+    # Set up custom callbacks
+    callbacks = MyCallbacks()
+    
+    # Register tools specific to this user
+    tool_config["get_user_data"] = lambda: get_user_data(user_id)
+    
+    return await cai_sdk.connect_handler(
+        background_tasks=background_tasks,
+        request_data=request_data,
+        tool_config=tool_config,
+        app_callbacks=callbacks,
+        context=context
+    )
+```
+
+## 10. Project Structure
+
+A typical project using the Foundational AI Server SDK follows this structure, as shown in the examples directory:
+
+```
+my-app/
+├── main.py                    # Main FastAPI application with WebSocket and HTTP endpoints
+├── agent_configure/           # Agent configuration and utilities
+│   ├── config/                # Agent configuration files
+│   │   ├── agent_config.json    # Main agent configuration
+│   │   ├── basic_agent.json     # Basic agent configuration
+│   │   ├── config1.json         # Additional configuration 1
+│   │   ├── config2.json         # Additional configuration 2
+│   │   └── config_with_keys.json # Configuration with API keys
+│   └── utils/                 # Utility modules
+│       ├── __init__.py
+│       ├── callbacks.py        # Custom callback implementations
+│       ├── context.py          # Context management
+│       └── tool.py            # Tool configurations and utilities
+├── .env                       # Environment variables
+└── requirements.txt           # Python dependencies
+```
+
+This structure provides a clean separation of concerns, making it easy to maintain and extend your AI agent implementation. The configuration files allow for different agent behaviors, and the utils directory contains reusable components for callbacks, context management, and tools.
+
+## 11. Running the Example
+
+To run the basic example from Section 3:
+
+1. Create a virtual environment and install the SDK:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install "git+ssh://git@github.com/think41/foundational-ai-server.git#egg=foundational_ai_server"
+   ```
+
+2. Create a `.env` file with your API keys (see Section 2.1).
+
+3. Create an `agent_config.json` file (see Section 5) and set its path in `.env`.
+
+4. Create a `main.py` file with the example code from Section 3.
+
+5. Run the FastAPI server:
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+6. Your server will be available at `http://localhost:8000`.
+
+
+---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+---
+
 
 A robust Python framework for building AI-powered voice applications using the Pipecat framework. This package provides essential tools and integrations for creating sophisticated voice-based conversational AI applications with ease.
 
