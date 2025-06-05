@@ -184,7 +184,7 @@ Callbacks enable integration with your application logic [Jump to Callbacks](#3-
 
 #### 4. Context
 
-Context is the mechanism that allows your agent to maintain state, remember information across conversational turns, and personalize interactions. It's key for building more sophisticated and stateful conversational experiences. Context is typically defined as a data structure (often a Pydantic model) and configured in your agent's JSON settings. This allows the agent to store and retrieve relevant information throughout a session.
+Context is the mechanism that allows your LLM to maintain state, remember information across conversational turns, and personalize interactions. It's key for building more sophisticated and stateful conversational experiences. Context is typically defined as a data structure (often a Pydantic model) and configured in your agent's JSON settings. This allows the LLM to store and retrieve relevant information throughout a session.
 
 For a detailed guide on how context is configured, defined in Python, and utilized during agent operations, see [Context In-Depth](#7-context-in-depth) section below.
 
