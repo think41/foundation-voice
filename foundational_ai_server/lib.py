@@ -19,7 +19,7 @@ class CaiSDK:
                 TransportType.WEBSOCKET,
                 connection=websocket,
                 session_id=session_id,
-                callbacks=agent.get("callbacks", {}),
+                callbacks=agent.get("callbacks", None),
                 tool_dict=agent.get("tool_dict", {}),
                 contexts=agent.get("contexts", {}),
                 config=agent.get("config", {}),
@@ -41,9 +41,9 @@ class CaiSDK:
                     "session_id": answer["pc_id"],
                     "connection": connection,
                     "config": agent["config"],
-                    "contexts": agent["contexts"],
-                    "tool_dict": agent["tool_dict"],
-                    "callbacks": agent["callbacks"],
+                    "contexts": agent.get("contexts", {}),
+                    "tool_dict": agent.get("tool_dict", {}),
+                    "callbacks": agent.get("callbacks", None),
                 }
             }
             return response
@@ -57,9 +57,9 @@ class CaiSDK:
                 "session_id": answer["pc_id"],
                 "connection": connection,
                 "config": agent["config"],
-                "contexts": agent["contexts"],
-                "tool_dict": agent["tool_dict"],
-                "callbacks": agent["callbacks"],
+                "contexts": agent.get("contexts", {}),
+                "tool_dict": agent.get("tool_dict", {}),
+                "callbacks": agent.get("callbacks", None),
             }
         }
         return response
@@ -106,9 +106,9 @@ class CaiSDK:
                                 "session_id": answer["pc_id"],
                                 "config": agent["config"],
                                 "connection": connection,
-                                "contexts": agent["contexts"],
-                                "tool_dict": agent["tool_dict"],
-                                "callbacks": agent["callbacks"],
+                                "contexts": agent.get("contexts", {}),
+                                "tool_dict": agent.get("tool_dict", {}),
+                                "callbacks": agent.get("callbacks", None),
                             }
                         }
                     
@@ -120,9 +120,9 @@ class CaiSDK:
                             "transport_type": transport_type,
                             "connection": connection,
                             "config": agent["config"],
-                            "contexts": agent["contexts"],
-                            "tool_dict": agent["tool_dict"],
-                            "callbacks": agent["callbacks"],
+                            "contexts": agent.get("contexts", {}),
+                            "tool_dict": agent.get("tool_dict", {}),
+                            "callbacks": agent.get("callbacks", None),
                         }
                     }
                 else:
@@ -147,9 +147,9 @@ class CaiSDK:
                             "room_url": url,
                             "token": token,
                             "config": agent["config"],
-                            "contexts": agent["contexts"],
-                            "tool_dict": agent["tool_dict"],
-                            "callbacks": agent["callbacks"],
+                            "contexts": agent.get("contexts", {}),
+                            "tool_dict": agent.get("tool_dict", {}),
+                            "callbacks": agent.get("callbacks", None),
                         }
                     }
                 

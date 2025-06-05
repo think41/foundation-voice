@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import List
 from dataclasses import dataclass
 
 from pipecat.services.llm_service import LLMService
 from pipecat.frames.frames import (
     Frame,
+    TextFrame,
     LLMTextFrame,
     LLMFullResponseStartFrame,
     LLMFullResponseEndFrame,
@@ -39,12 +40,17 @@ from foundational_ai_server.custom_plugins.processors.aggregators.agent_context 
 class AgentUserContextAggregator(LLMUserContextAggregator):
     def add_message(self, message: ChatCompletionMessageParam):
         self._context.add_message(message)
+    
+    def get_messages(self) -> List[ChatCompletionMessageParam]:
+        return self._context.get_messages()
 
 
 class AgentAssistantContextAggregator(LLMAssistantContextAggregator):
     def add_message(self, message: ChatCompletionMessageParam):
         self._context.add_message(message)
-
+    
+    def get_messages(self) -> List[ChatCompletionMessageParam]:
+        return self._context.get_messages()
 
 @dataclass
 class AgentContextAggregatorPair:
@@ -83,9 +89,14 @@ class OpenAIAgentPlugin(LLMService):
     ):
         super().__init__(**kwargs)
         
+        self._agent_config = agent_config
         self._rtvi = data.get("rtvi")
         self._triage = data.get("triage", True)
-        self._create_agents(agent_config, data.get("contexts"), data.get("tools"))
+        
+        self._create_agents(agent_config, self._get_context(agent_config, data.get("contexts")), data.get("tools"))
+
+    def _get_context(self, agent_config, contexts):
+        return contexts.get(agent_config.get("context"))
 
     def _create_agents(self, config, context, tools):
         if not config:
@@ -155,8 +166,7 @@ class OpenAIAgentPlugin(LLMService):
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         # Handle EndFrame specially to avoid serialization issues
         if isinstance(frame, EndFrame):
-            await self.push_frame(TextFrame("Session ended"))
-            return
+            await self.stop(frame)
 
         await super().process_frame(frame, direction)
 
@@ -168,6 +178,9 @@ class OpenAIAgentPlugin(LLMService):
             context = frame.context
         elif isinstance(frame, LLMMessagesFrame):
             context = AgentChatContext.from_messages(frame.messages)
+            if context.agent is None:
+                context.agent = self._agent_config.get("start_agent")
+                
 
         if context is not None:
             await self.push_frame(LLMFullResponseStartFrame())

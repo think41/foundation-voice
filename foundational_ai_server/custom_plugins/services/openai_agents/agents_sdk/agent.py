@@ -188,4 +188,4 @@ class AgentFactory:
         
 
     def get_agent(self, name: str):
-        return self.agents.get(name)
+        return self.agents.get(name, (None, None))
