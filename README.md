@@ -52,63 +52,71 @@ Refer to the specific provider's documentation for how to obtain API keys.
 Here's a minimal example of implementing agent callbacks and tool configuration with a `/connect` endpoint in `main.py`:
 
 ```python
-# main.py
 import uvicorn
-from fastapi import FastAPI, BackgroundTasks, Request
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
-
+from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from foundational_ai_server.utils.transport.connection_manager import WebRTCOffer
 from foundational_ai_server.lib import CaiSDK
-from foundational_ai_server.agent_configure.utils.callbacks import AgentCallbacks
-from foundational_ai_server.agent_configure.utils.tool import tool_config
+from agent_configure.utils.context import contexts
+from agent_configure.utils.tool import tool_config
+from agent_configure.utils.callbacks import custom_callbacks
+from foundational_ai_server.utils.config_loader import ConfigLoader
+from dotenv import load_dotenv
+import os
 
-# 1. Create a custom context model
-class MyContext(BaseModel):
-    user_id: Optional[str] = None
-    conversation_history: list = []
+load_dotenv()
 
-# 2. Define your tool functions
-def get_weather(location: str) -> str:
-    """Get the current weather for a location."""
-    # Replace with actual weather API call
-    return f"The weather in {location} is sunny."
-
-# 3. Create custom callbacks
-class MyCallbacks(AgentCallbacks):
-    async def on_agent_start(self, context: Dict[str, Any]):
-        print(f"Agent started with context: {context}")
-
-    async def on_agent_end(self, context: Dict[str, Any]):
-        print(f"Agent ended with context: {context}")
-
-    async def on_tool_call(self, tool_name: str, tool_args: Dict[str, Any]):
-        print(f"Tool called: {tool_name} with args: {tool_args}")
-
-# 4. Initialize FastAPI and SDK
-app = FastAPI()
+# Initialize the CAI SDK
 cai_sdk = CaiSDK()
 
-# 5. Create /connect endpoint
-@app.post("/connect")
-async def connect_endpoint(
-    request_data: dict, 
-    background_tasks: BackgroundTasks
-):
-    # Initialize callbacks and tools
-    callbacks = MyCallbacks()
-    tool_config["get_weather"] = get_weather
+config_path = os.getenv("CONFIG_PATH")
+agent_config = ConfigLoader.load_config(config_path)
 
-    # Handle the connection
-    return await cai_sdk.connect_handler(
-        background_tasks=background_tasks,
-        request_data=request_data,
-        tool_config=tool_config,
-        app_callbacks=callbacks,
-    )
+defined_agent = {
+    "agent": {
+        "config": agent_config, 
+        "contexts": contexts,
+        "tool_dict": tool_config,
+        "callbacks": custom_callbacks,
+    },
+}
 
-# 6. Run the application
+# Create FastAPI app
+app = FastAPI(
+    title="WebRTC Endpoint",
+    description="Basic WebRTC endpoint implementation",
+    version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/api/offer")
+async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
+    """
+    Handle WebRTC offer and return answer
+    """
+    agent = defined_agents.get("agent")
+    # Process the WebRTC offer and get response
+    response = await cai_sdk.webrtc_endpoint(offer, agent)
+    
+    # Handle background tasks if any
+    if "background_task_args" in response:
+        task_args = response.pop("background_task_args")
+        func = task_args.pop("func")
+        background_tasks.add_task(func, **task_args)
+
+    return response["answer"]
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
 ```
 
 ### 3.1 Example Explanation
