@@ -721,64 +721,6 @@ my-app/
 
 This structure provides a clean separation of concerns, making it easy to maintain and extend your AI agent implementation. The configuration files allow for different agent behaviors, and the utils directory contains reusable components for callbacks, context management, and tools.
 
-## 11. Running the Example
-
-To run the basic example from Section 3:
-
-1. Create a virtual environment and install the SDK:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install "git+https://github.com/think41/foundation-voice.git#egg=foundation_voice"
-   ```
-
-2. Create a `.env` file with your API keys (see Section 2.1).
-
-3. Create an `agent_config.json` file (see Section 5) and set its path in `.env`.
-
-4. Create a `main.py` file with the example code from Section 3.
-
-5. Run the FastAPI server:
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-6. Your server will be available at `http://localhost:8000`.
-
-
-
-```
-{{ ... }}
-**7.2. Explanation :**
-
-*   The string names used in the JSON configuration (e.g., `"MyCustomContextName"`) should be mapped to a Python class that define the actual structure of the context.
-*   These classes are usually Pydantic `BaseModel`s. You can define your own custom context structures by creating new classes and importing it in your server endpoint 
-    ```python
-    # Example in foundation-voice/agent_configure/utils/context.py
-    from pydantic import BaseModel
-    from typing import Optional, List, Dict, Any # Ensure necessary imports
-
-    class MyCustomContextName(BaseModel):
-        user_id: Optional[str] = None
-
-## 🏗️ Project Structure (of the Foundation Voice SDK itself)
-
-```
-foundation-voice/             # Root directory of the SDK project/repository
-├── foundation_voice/         # The main Python package
-│   ├── __init__.py
-│   ├── agent/                  # Core agent logic
-│   ├── custom_plugins/         # Extensible plugins (services, processors, frames)
-│   ├── lib.py                  # Main SDK classes/functions
-│   ├── models.py               # Pydantic models
-│   └── utils/                  # Utility modules
-├── examples/                   # Example implementations using the SDK
-├── tests/                      # Test suite for the SDK
-├── .env.example               # Example environment variables for contributors/testers
-├── pyproject.toml             # Project configuration (for building the SDK)
-└── README.md                  # This file
-```
-
 ## 🛠️ Configuration
 
 1. Update the `.env` file with your API keys and configuration:
