@@ -3,15 +3,15 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "foundational_ai_server"
+name = "foundation_voice"
 version = "0.1.0"
 authors = [
     { name="Aniket-think41" }
 ]
-description = "Core package for Open Source CAI Pipecat - Foundational AI Server"
+description = "Core package for Open Source CAI Pipecat - foundation voice"
 readme = "README.md"
 requires-python = ">=3.8"
-keywords = ["ai", "pipecat", "open-source", "foundational-ai-server"]
+keywords = ["ai", "pipecat", "open-source", "foundation-voice"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -41,14 +41,14 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/think41/foundational-ai-server" # Please update if this is not the correct repository URL
+"Homepage" = "https://github.com/think41/foundation-voice.git" # Please update if this is not the correct repository URL
 
 [project.scripts]
-"foundational-ai-server-cli" = "main:main"
+"foundation-voice-cli" = "foundation_voice.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["foundational_ai_server*"]
+include = ["foundation_voice*"]
 exclude = ["examples*"]
 # MANIFEST.in will be used due to include_package_data=True being default or set by setup.py
 

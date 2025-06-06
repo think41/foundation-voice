@@ -25,7 +25,7 @@ from ..utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObs
 from ..utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 import uuid
 import json
-from foundational_ai_server.utils.idle_processor.user_idle_processor import IdleProcessor
+from foundation_voice.utils.idle_processor.user_idle_processor import IdleProcessor
 
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
