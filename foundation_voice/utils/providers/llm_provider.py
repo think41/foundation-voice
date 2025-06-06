@@ -8,7 +8,6 @@ from typing import Dict, Any
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.services.openai.llm import OpenAILLMService
 
-from foundation_voice.custom_plugins.services.openai_agents.llm import OpenAIAgentPlugin
 from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext
 
 
