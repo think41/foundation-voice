@@ -10,6 +10,8 @@ from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.openai.tts import OpenAITTSService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 
+from foundational_ai_server.custom_plugins.services.smallest.tts import SmallestTTSService
+
 
 def create_tts_service(tts_config: Dict[str, Any]) -> Any:
     """
@@ -25,7 +27,7 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
 
     def _raise_missing_tts_api_key():
         raise ValueError(
-            "Missing API key for TTS provider. Please set 'api_key' in the config or the CARTESIA_API_KEY or OPENAI_API_KEY environment variable."
+            "Missing API key for TTS provider. Please set 'api_key' in the config or in the environment variable."
         )
 
     # Dictionary mapping providers to their service creation functions
@@ -47,6 +49,11 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
             or os.getenv("DEEPGRAM_API_KEY")
             or _raise_missing_tts_api_key(),
         ),
+        "smallestai": lambda: SmallestTTSService(
+            api_key=tts_config.get("api_key")
+            or os.getenv("SMALLESTAI_API_KEY")
+            or _raise_missing_tts_api_key()
+        )
     }
 
     # Get the provider function or default to cartesia
