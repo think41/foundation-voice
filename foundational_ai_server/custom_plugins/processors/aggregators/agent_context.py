@@ -24,7 +24,7 @@ class AgentChatContext:
     
     @staticmethod
     def upgrade_to_agent(obj: OpenAILLMContext):
-        if isinstance(obj, OpenAILLMContext) and not isinstance(obj):
+        if isinstance(obj, OpenAILLMContext) and not isinstance(obj, AgentChatContext):
             logger.debug(f"Upgrading OpenAILLMContext to AgentChatContext: {obj}")
             obj.__class__ = AgentChatContext
             obj._restructure_from_openai_messages()
