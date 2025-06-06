@@ -25,7 +25,7 @@ from ..utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObs
 from ..utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 import uuid
 import json
-from foundational_ai_server.utils.idle_processor.user_idle_processor import UserIdleProcessor
+from foundational_ai_server.utils.idle_processor.user_idle_processor import IdleProcessor
 
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
@@ -124,10 +124,7 @@ async def create_agent_pipeline(
 
     transcript = TranscriptProcessor()
 
-    idle_processor = UserIdleProcessor(
-        tries=1, 
-        timeout=5
-    )
+    user_idle_processor = IdleProcessor(context_aggregator)
 
     transcript_handler = TranscriptHandler(
         transport=transport,
@@ -142,7 +139,7 @@ async def create_agent_pipeline(
         [
             transport.input(),
             stt,
-            idle_processor,
+            user_idle_processor(),
             transcript.user(),
             context_aggregator.user(),
             llm,
@@ -203,6 +200,7 @@ async def create_agent_pipeline(
         observers=task_observers,
     )
 
+    user_idle_processor.set_task(task)
 
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):

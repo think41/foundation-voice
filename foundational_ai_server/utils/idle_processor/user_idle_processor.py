@@ -1,42 +1,45 @@
-from pipecat.frames.frames import LLMMessagesFrame, EndFrame
-from pipecat.processors.user_idle_processor import (
-    UserIdleProcessor as _OriginalUserIdleProcessor, 
-    UserIdleProcessor)
+from typing import Any, Optional
+
+from pipecat.frames.frames import LLMMessagesFrame, TTSSpeakFrame
+from pipecat.processors.user_idle_processor import UserIdleProcessor
 
 
-class UserIdleProcessor(_OriginalUserIdleProcessor):
+class IdleProcessor():
     def __init__(
         self, 
-        *, 
-        tries: int = 3,
-        timeout: float = 10, 
-        **kwargs
+        context_aggregator: Any,
+        tries: Optional[int] = 1,
+        timeout: Optional[int] = 10
     ):
-        super().__init__(callback=self._handle_user_idle, timeout=timeout, **kwargs)
         self.tries = tries
+        self.context_aggregator = context_aggregator
+        self.user_idle = UserIdleProcessor(callback=self.handle_user_idle, timeout=timeout)
 
+    def set_task(self, task):
+        self.task = task
 
-    async def _handle_user_idle(self, processor: UserIdleProcessor, retry_count: int):
+    async def handle_user_idle(self, user_idle: UserIdleProcessor, retry_count: int):
         if retry_count < self.tries:
-            message = [
+            self.context_aggregator.user().add_messages([
                 {
                     "role": "system",
                     "content": "The user has been quiet. Politely and briefly ask if they're still there."
                 }
-            ]
-            await self.push_frame(LLMMessagesFrame(message))
+            ])
+            await user_idle.push_frame(LLMMessagesFrame(self.context_aggregator.user().get_messages()))
             return True
-
         elif retry_count == self.tries:
-            message = [
+            self.context_aggregator.user().add_messages([
                 {
                     "role": "system",
-                    "content": "The user has been quiet for too long. Inform them you'll end the call and they can reconnect later."
+                    "content": "The user has been quiet for too long. Politely and briefly inform them that you'll end the call and they can connect back whenever they're free."
                 }
-            ]
-            await self.push_frame(LLMMessagesFrame(message))
+            ])
+            await user_idle.push_frame(LLMMessagesFrame(self.context_aggregator.user().get_messages()))
             return True
-
         else:
-            await self.push_frame(EndFrame())
+            await self.task.stop_when_done() 
             return False
+
+    def __call__(self):
+        return self.user_idle
