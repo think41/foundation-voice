@@ -10,7 +10,7 @@ from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.openai.tts import OpenAITTSService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 
-from foundational_ai_server.custom_plugins.services.smallest.tts import SmallestTTSService
+from foundation_voice.custom_plugins.services.smallest.tts import SmallestTTSService
 
 
 def create_tts_service(tts_config: Dict[str, Any]) -> Any:
