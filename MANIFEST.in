@@ -1,17 +1,14 @@
 include README.md
 include requirements.txt
 include pyproject.toml
-# include LICENSE  # You can uncomment this if you add a LICENSE file later
 
-# Include all files from the package directory initially
-graft foundational_ai_server
+# Include all package directories
+recursive-include foundational_ai_server *
 
-# Exclude specific file types globally
-global-exclude *.c       # Exclude all C source files (Cython intermediate)
-global-exclude *.o       # Exclude compiled object files
-global-exclude *.pyc     # Exclude Python bytecode files
-global-exclude __pycache__ # Exclude pycache directories
-global-exclude *~        # Exclude backup files
+# Global exclude patterns
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *~.py
 
 global-exclude .env
 
