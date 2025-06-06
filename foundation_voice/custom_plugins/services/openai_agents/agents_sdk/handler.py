@@ -11,8 +11,8 @@ from agents import (
 
 from openai.types.responses import ResponseTextDeltaEvent
 
-from foundational_ai_server.custom_plugins.services.openai_agents.agents_sdk.agent import AgentFactory
-from foundational_ai_server.custom_plugins.services.openai_agents.agents_sdk.utils.chunks import *
+from foundation_voice.custom_plugins.services.openai_agents.agents_sdk.agent import AgentFactory
+from foundation_voice.custom_plugins.services.openai_agents.agents_sdk.utils.chunks import *
 
 class AgentHandler:
     def __init__(
