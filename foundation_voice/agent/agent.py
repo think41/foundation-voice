@@ -124,7 +124,10 @@ async def create_agent_pipeline(
 
     transcript = TranscriptProcessor()
 
-    user_idle_processor = IdleProcessor(context_aggregator)
+    idle_processor = UserIdleProcessor(
+        tries=2, 
+        timeout=10
+    )
 
     transcript_handler = TranscriptHandler(
         transport=transport,
@@ -139,7 +142,7 @@ async def create_agent_pipeline(
         [
             transport.input(),
             stt,
-            user_idle_processor(),
+            idle_processor,
             transcript.user(),
             context_aggregator.user(),
             llm,
@@ -199,8 +202,6 @@ async def create_agent_pipeline(
         ),
         observers=task_observers,
     )
-
-    user_idle_processor.set_task(task)
 
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):
