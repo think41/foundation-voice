@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from loguru import logger
 from pipecat.frames.frames import TranscriptionMessage, TranscriptionUpdateFrame
 
@@ -10,7 +10,7 @@ class TranscriptHandler:
         transport,
         session_id: uuid.UUID,
         transport_type: Optional[str] = "smallwebrtc",
-        connection: Optional[Any] = None,
+        connection: Optional = None,
     ):
         self._session_id = session_id
         self._transport = transport
