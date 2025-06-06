@@ -3,7 +3,7 @@ include requirements.txt
 include pyproject.toml
 
 # Include all package directories
-recursive-include foundational_ai_server *
+recursive-include foundation_voice *
 
 # Global exclude patterns
 global-exclude __pycache__

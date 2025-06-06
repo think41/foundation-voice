@@ -1,8 +1,8 @@
-# Foundational AI Server SDK
+# Foundation Voice SDK
 
 ## 1. Introduction
 
-Welcome to the Foundational AI Server SDK! This SDK provides the core functionalities for building voice-based conversational AI applications using the Pipecat framework. It allows you to configure and run sophisticated AI agents capable of:
+Welcome to the Foundation Voice SDK! This SDK provides the core functionalities for building voice-based conversational AI applications using the Pipecat framework. It allows you to configure and run sophisticated AI agents capable of:
 
 - Voice Activity Detection (VAD)
 - Speech-to-Text (STT) conversion
@@ -21,10 +21,10 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install the SDK
-pip install "git+ssh://git@github.com/think41/foundational-ai-server.git#egg=foundational_ai_server"
+pip install "git+ssh://git@github.com/think41/foundation-voice.git#egg=foundation_voice"
 ```
 
-This command will install the `foundational_ai_server` package and all its dependencies as listed in `pyproject.toml`.
+This command will install the `foundation_voice` package and all its dependencies as listed in `pyproject.toml`.
 
 ### 2.1 Environment Variables
 
@@ -58,12 +58,12 @@ Here's a minimal example of implementing agent callbacks and tool configuration 
 import uvicorn
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from foundational_ai_server.utils.transport.connection_manager import WebRTCOffer
-from foundational_ai_server.lib import CaiSDK
+from foundation_voice.utils.transport.connection_manager import WebRTCOffer
+from foundation_voice.lib import CaiSDK
 from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
-from foundational_ai_server.utils.config_loader import ConfigLoader
+from foundation_voice.utils.config_loader import ConfigLoader
 from dotenv import load_dotenv
 import os
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
 ### 3.2 Core Concepts
 
-The Foundational AI Server SDK is built around several key concepts that work together to create a flexible and powerful conversational AI system:
+The Foundation Voice SDK is built around several key concepts that work together to create a flexible and powerful conversational AI system:
 
 #### 1. Agent Configuration
 
@@ -561,7 +561,7 @@ All callbacks are asynchronous and should be defined with `async def`. The follo
 Create a custom callbacks class by extending `AgentCallbacks`:
 
 ```python
-from foundational_ai_server.agent_configure.utils.callbacks import AgentCallbacks
+from foundation_voice.agent_configure.utils.callbacks import AgentCallbacks
 
 class MyCallbacks(AgentCallbacks):
     async def on_client_connected(self, client):
@@ -588,7 +588,7 @@ class MyCallbacks(AgentCallbacks):
 
 ## 7. Context In-Depth
 
-Context allows your agent to maintain state, remember information across conversational turns, and tailor its responses. It's a crucial component for building more sophisticated and personalized interactions. This section provides a detailed look into how context is managed within the Foundational AI Server SDK.
+Context allows your agent to maintain state, remember information across conversational turns, and tailor its responses. It's a crucial component for building more sophisticated and personalized interactions. This section provides a detailed look into how context is managed within the Foundation Voice SDK.
 
 **7.1. Configuration (in JSON files like `agent_config.json`):**
 
@@ -609,7 +609,7 @@ Context allows your agent to maintain state, remember information across convers
 *   The string names used in the JSON configuration (e.g., `"MyCustomContextName"`) should be mapped to a Python class that define the actual structure of the context.
 *   These classes are usually Pydantic `BaseModel`s. You can define your own custom context structures by creating new classes and importing it in your server endpoint 
     ```python
-    # Example in foundational_ai_server/agent_configure/utils/context.py
+    # Example in foundation-voice/agent_configure/utils/context.py
     from pydantic import BaseModel
     from typing import Optional, List, Dict, Any # Ensure necessary imports
 
@@ -636,7 +636,7 @@ Context allows your agent to maintain state, remember information across convers
 Tools can perform complex operations and integrate with external systems:
 
 ```python
-from foundational_ai_server.agent_configure.utils.tool import function_tool
+from foundation_voice.agent_configure.utils.tool import function_tool
 import requests
 
 @function_tool
@@ -661,7 +661,7 @@ Integrate `CaiSDK` into your FastAPI application with custom endpoints:
 
 ```python
 from fastapi import FastAPI, WebSocket, BackgroundTasks
-from foundational_ai_server.lib import CaiSDK, TransportType
+from foundation_voice.lib import CaiSDK, TransportType
 
 app = FastAPI()
 cai_sdk = CaiSDK()
@@ -705,118 +705,21 @@ async def connect_endpoint(request_data: dict, background_tasks: BackgroundTasks
 
 ## 10. Project Structure
 
-A typical project using the Foundational AI Server SDK follows this structure, as shown in the examples directory:
+A typical project using the Foundation Voice SDK follows this structure, as shown in the examples directory:
 
 ```
 my-app/
 ├── main.py                    # Main FastAPI application with WebSocket and HTTP endpoints
-├── agent_configure/           # Agent configuration and utilities
-│   ├── config/                # Agent configuration files
-│   │   ├── agent_config.json    # Main agent configuration
-│   │   ├── basic_agent.json     # Basic agent configuration
-│   │   ├── config1.json         # Additional configuration 1
-│   │   ├── config2.json         # Additional configuration 2
-│   │   └── config_with_keys.json # Configuration with API keys
-│   └── utils/                 # Utility modules
-│       ├── __init__.py
-│       ├── callbacks.py        # Custom callback implementations
-│       ├── context.py          # Context management
-│       └── tool.py            # Tool configurations and utilities
+├── main.py                    # Your application's entry point
+├── agent_config.json          # Example agent configuration for your app
+├── app_callbacks.py           # Your application's custom callbacks
+├── app_context.py             # Your application's custom context definitions
+├── app_tools.py               # Your application's custom tools
 ├── .env                       # Environment variables
-└── requirements.txt           # Python dependencies
+└── requirements.txt           # Python dependencies (will include foundation_voice)
 ```
 
 This structure provides a clean separation of concerns, making it easy to maintain and extend your AI agent implementation. The configuration files allow for different agent behaviors, and the utils directory contains reusable components for callbacks, context management, and tools.
-
-## 11. Running the Example
-
-To run the basic example from Section 3:
-
-1. Create a virtual environment and install the SDK:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install "git+ssh://git@github.com/think41/foundational-ai-server.git#egg=foundational_ai_server"
-   ```
-
-2. Create a `.env` file with your API keys (see Section 2.1).
-
-3. Create an `agent_config.json` file (see Section 5) and set its path in `.env`.
-
-4. Create a `main.py` file with the example code from Section 3.
-
-5. Run the FastAPI server:
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-6. Your server will be available at `http://localhost:8000`.
-
-
----
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-
----
-
-
-A robust Python framework for building AI-powered voice applications using the Pipecat framework. This package provides essential tools and integrations for creating sophisticated voice-based conversational AI applications with ease.
-
-## ✨ Features
-
-- 🎙️ Voice interaction capabilities
-- 🤖 AI-powered conversation management
-- 🛠️ Extensible plugin architecture
-- 🔌 Multiple AI provider integrations (OpenAI, Deepgram, etc.)
-- 🚀 FastAPI-based web server
-- 📊 Real-time analytics and monitoring
-- 🔄 WebRTC support for real-time communication
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.8 or higher
-- Git
-- pip (Python package manager)
-
-### Installation
-
-You can install the package directly from GitHub using pip:
-
-```bash
-# Using HTTPS
-pip install git+https://github.com/think41/foundational-ai-server.git
-
-# Or using SSH (if you have SSH keys set up)
-pip install git+ssh://git@github.com/think41/foundational-ai-server.git
-```
-
-Or add it to your `requirements.txt`:
-
-```
-git+https://github.com/think41/foundational-ai-server.git#egg=foundational_ai_server
-```
-
-## 🏗️ Project Structure
-
-```
-foundational-ai-server/
-├── foundational_ai_server/     # Main package
-│   ├── agent/                  # Agent implementation
-│   ├── agent_configure/        # Agent configuration
-│   ├── custom_plugins/         # Custom plugins
-│   │   ├── frames/            # Frame definitions
-│   │   ├── processors/        # Data processors
-│   │   └── services/          # Service integrations
-│   └── utils/                  # Utility functions
-├── examples/                   # Example implementations
-├── tests/                      # Test suite
-├── .env.example               # Example environment variables
-├── pyproject.toml             # Project configuration
-└── README.md                  # This file
-```
 
 ## 🛠️ Configuration
 

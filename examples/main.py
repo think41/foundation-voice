@@ -4,13 +4,13 @@ from dotenv import load_dotenv
 import uvicorn
 from fastapi import FastAPI, WebSocket, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
-from foundational_ai_server.utils.transport.session_manager import session_manager
-from foundational_ai_server.utils.transport.connection_manager import WebRTCOffer
+from foundation_voice.utils.transport.session_manager import session_manager
+from foundation_voice.utils.transport.connection_manager import WebRTCOffer
 import logging
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from foundational_ai_server.lib import CaiSDK
-from foundational_ai_server.utils.config_loader import ConfigLoader
+from foundation_voice.lib import CaiSDK
+from foundation_voice.utils.config_loader import ConfigLoader
 
 from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
