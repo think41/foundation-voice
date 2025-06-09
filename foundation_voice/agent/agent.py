@@ -25,7 +25,8 @@ from ..utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObs
 from ..utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 import uuid
 import json
-from foundation_voice.utils.idle_processor.user_idle_processor import UserIdleProcessor     
+from foundation_voice.utils.idle_processor.user_idle_processor import UserIdleProcessor
+from foundation_voice.utils.function_adapter import FunctionFactory
 
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
@@ -83,12 +84,17 @@ async def create_agent_pipeline(
         bot_name=bot_name,
     )
 
+    tools = FunctionFactory(
+        provider=agent_config.get("llm", {}).get("provider", "openai"),
+        functions=tool_dict,
+    ).built_tools
+
     try:
         logger.debug("Creating LLM service from configuration")
         args = {
             "rtvi": rtvi,
             "contexts": contexts,
-            "tools": tool_dict,
+            "tools": tools,
         }
         llm = create_llm_service(
             agent_config.get("llm", {}),
@@ -115,7 +121,11 @@ async def create_agent_pipeline(
     context = None
     try:
         logger.debug("Creating context")
-        context = create_llm_context(agent_config, contexts.get(agent_config.get("agent_name")))
+        context = create_llm_context(
+            agent_config, 
+            contexts.get(agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}),
+            tools
+        )
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise

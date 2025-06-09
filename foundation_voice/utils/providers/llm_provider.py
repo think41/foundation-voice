@@ -3,13 +3,20 @@ Large Language Model (LLM) provider module.
 """
 
 import os
+
 from loguru import logger
 from typing import Dict, Any
-from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
-from pipecat.services.openai.llm import OpenAILLMService
 
-from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext
+from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
+from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+
 from foundation_voice.custom_plugins.services.openai_agents.llm import OpenAIAgentPlugin
+from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext
+
+
+DEFAULT_PROMPT = "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way."
+DEFAULT_INITIAL_GREETING = "Hello. How can I help you today?"
 
 
 def create_llm_service(
@@ -51,27 +58,43 @@ def create_llm_service(
     }
 
     provider_func = llm_providers.get(llm_provider, llm_providers["openai"])
+
+    llm = provider_func()
+
+    tools = llm_config.get("tools", None)
+    if tools is not None and llm_provider == "openai":
+        
+        for key, value in data.get("tools", {}).items():
+            if key in tools:
+                llm.register_function(key, value["function"])
+
     logger.debug(f"Creating LLM service with provider: {llm_provider}")
-    return provider_func()
+    return llm
 
 
-def create_llm_context(agent_config: Dict[str, Any], context):
+def create_llm_context(
+    agent_config: Dict[str, Any], 
+    context=None, 
+    tools={}
+):
     """
     Create an LLM context based on configuration.
 
     Args:
         agent_config: Dictionary containing agent configuration
+        context: RunContextWrapper object for OpenAI Agents SDK
+        tools: Tools object
 
     Returns:
         LLM context instance
     """
     prompt = agent_config.get(
         "prompt",
-        "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way.",
+        DEFAULT_PROMPT,
     )
     initial_greeting = agent_config.get(
         "initial_greeting",
-        "Hello. How can I help you today?",
+        DEFAULT_INITIAL_GREETING,
     )
 
     messages = [
@@ -82,10 +105,31 @@ def create_llm_context(agent_config: Dict[str, Any], context):
     ]
 
     llm_provider = agent_config["llm"]["provider"]
+    
+    req_tools = agent_config.get("llm", {}).get("tools", None)
 
-    if llm_provider == "openai":
-        logger.debug("Creating OpenAI LLM context")
-        return OpenAILLMContext(messages=messages, tools=[])
+    if req_tools is not None and llm_provider == "openai":
+        try:
+            schemas = []
+            for key, value in tools.items():
+                if "schema" not in value:
+                    logger.warning(f"Skipping tool without 'schema': {value}")
+                    continue
+
+                if key in req_tools:
+                    schemas.append(value["schema"])
+
+            if not schemas:
+                raise ValueError("No valid schemas found in tools for OpenAI LLM context")
+
+            tools_schema = ToolsSchema(schemas)
+
+            logger.debug("Creating OpenAI LLM context")
+            return OpenAILLMContext(messages=messages, tools=tools_schema)
+
+        except Exception as e:
+            raise RuntimeError("Failed to create OpenAI LLM context") from e
+
 
     elif llm_provider == "openai_agents":
         logger.debug("Creating OpenAI Agent LLM context")

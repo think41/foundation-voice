@@ -13,9 +13,6 @@ def placeholder(ctx: RunContextWrapper, args):
     return 'Placeholder'
 """
 
-@function_tool(
-    description_override="Function called whenever an info about the child is received."
-)
 def update_basic_info(
     ctx: RunContextWrapper[MagicalNestContext],
     name: str = None,
@@ -36,9 +33,6 @@ def update_basic_info(
     return f"Basic information updated: {name}, {age}, {gender}, {room_type}"
 
 
-@function_tool(
-    description_override="Function called whenever an info about the room is received."
-)
 def update_room_data(
     ctx: RunContextWrapper[MagicalNestContext],
     colors: str = None,
@@ -58,9 +52,6 @@ def update_room_data(
     return f"Room data updated: {colors}, {activities}, {themes}, {constraints}"
 
 
-@function_tool(
-    description_override="Function called whenever an info about the products is received."
-)
 def update_products(ctx: RunContextWrapper[MagicalNestContext], products: str = None):
     if products is not None:
         ctx.context.products = products
@@ -68,8 +59,7 @@ def update_products(ctx: RunContextWrapper[MagicalNestContext], products: str = 
     return f"Products updated: {products}"
 
 
-@function_tool
-def search_tool(ctx: RunContextWrapper, query: str):
+def search_tool(query: str):
     return f"Searching for {query}"
 
 
