@@ -105,7 +105,7 @@ async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks)
     """
     Handle WebRTC offer and return answer
     """
-    agent = defined_agents.get("agent")
+    agent = defined_agent.get("agent")
     # Process the WebRTC offer and get response
     response = await cai_sdk.webrtc_endpoint(offer, agent)
     
