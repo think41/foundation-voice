@@ -71,20 +71,27 @@ class AgentCallbacks:
 
     async def _default_client_disconnected(self, data: Dict[str, Any]):
         """Default implementation for client disconnected event"""
+        # Also contains metadata. metadata = data["metadata"]
         print(f"Client disconnected. Transcript: {data.get('transcript', [])}")
         if data.get('metrics'):
             print(f"Call metrics: {data['metrics']}")
 
-    async def _default_first_participant_joined(self, participant: Dict[str, Any]):
+    async def _default_first_participant_joined(self, data: Dict[str, Any]):
         """Default implementation for first participant joined event"""
-        print(f"Participant joined: {participant}")
+        print(f"Participant joined: {data.get('participant')}")
 
-    async def _default_participant_left(self, participant: Dict[str, Any], reason: str):
+    async def _default_participant_left(self, data: Dict[str, Any]):
+        # reason = data.get("reason")
+        # metadata = data.get("metadata")
+        
         """Default implementation for participant left event"""
-        print(f"Participant left: {participant}")
+        print(f"Participant left: {data.get('participant')}")
 
-    async def _default_transcript_update(self, frame, metadata):
+    async def _default_transcript_update(self, data):
         """Default implementation for transcript update event"""
+        frame = data.get("frame")
+        # metadata = data.get("metadata")
+
         for message in frame.messages:
             print(f"TRANSCRIPT: [{message.timestamp}] {message.role}: {message.content}")
 
