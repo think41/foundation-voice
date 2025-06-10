@@ -41,6 +41,7 @@ async def create_agent_pipeline(
     callbacks: Optional[AgentCallbacks] = None,
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
 ):
     """
     Creates and returns the agent pipeline with the specified transport.
@@ -206,7 +207,7 @@ async def create_agent_pipeline(
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
-        await callback(frame)
+        await callback(frame, metadata)
         await transcript_handler.on_transcript_update(frame)
 
     if transport_type == TransportType.DAILY:

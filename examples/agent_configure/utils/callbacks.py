@@ -19,7 +19,7 @@ async def on_first_participant_joined_callback(participant: Dict[str, Any]):
     print(f"Participant joined: {participant}")
     
 
-async def on_transcript_update_callback(data: Dict[str, Any]):
+async def on_transcript_update_callback(data: Dict[str, Any], metadata):
     """
     Callback function for when a participant leaves.
     Override this function in your config to customize the behavior.

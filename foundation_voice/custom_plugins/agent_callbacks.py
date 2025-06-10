@@ -83,7 +83,7 @@ class AgentCallbacks:
         """Default implementation for participant left event"""
         print(f"Participant left: {participant}")
 
-    async def _default_transcript_update(self, frame):
+    async def _default_transcript_update(self, frame, metadata):
         """Default implementation for transcript update event"""
         for message in frame.messages:
             print(f"TRANSCRIPT: [{message.timestamp}] {message.role}: {message.content}")
