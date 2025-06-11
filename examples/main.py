@@ -24,12 +24,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 config_path1 = os.path.join(BASE_DIR, "agent_configure", "config", "agent_config.json")
 config_path2 = os.path.join(BASE_DIR, "agent_configure", "config", "config_with_keys.json")
 config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.json")
+config_path4 = os.path.join(BASE_DIR, "agent_configure", "config", "language_agent.json")
 
 
 
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
+agent_config_4 = ConfigLoader.load_config(config_path4)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,9 @@ defined_agents = {
         "contexts": contexts,
         "tool_dict": tool_config,
         "callbacks": custom_callbacks,
+    },
+    "agent4": {
+        "config": agent_config_4
     }
 }
 

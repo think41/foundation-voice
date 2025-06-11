@@ -1,0 +1,67 @@
+{
+    "agent": {
+      "title": "Voice Assistant with Available API Keys",
+      "initial_greeting": "",
+      "prompt": "You're a hindi language speaker. You can answer in hindi language.",
+      "transport": {
+        "type": "small-webrtc"
+      },
+      "vad": {
+        "provider": "silerio"
+      },
+      "stt": {
+        "provider": "deepgram",
+        "language": "hi"
+      },
+      "llm": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "tts": {
+        "provider": "smallestai",
+        "voice_id": "ananya"
+      },
+      "mcp": { 
+        "type": "llm_orchestrator",
+        "config": {
+          "max_turns": 5,
+          "response_timeout": 10,
+          "history_length": 5,
+          "enable_tool_selection": true,
+          "tool_selection_strategy": "highest_confidence"
+        }
+      }
+    },
+    "pipeline": {
+      "name": "llm_agent_pipeline",
+      "stages": [
+        {
+          "type": "input",
+          "config": {}
+        },
+        {
+          "type": "vad",
+          "config": {}
+        },
+        {
+          "type": "stt",
+          "config": {}
+        },
+        {
+          "type": "llm",
+          "config": {
+            "use_tools": false
+          }
+        },
+        {
+          "type": "tts",
+          "config": {}
+        },
+        {
+          "type": "output",
+          "config": {}
+        }
+      ]
+    }
+  }
+  

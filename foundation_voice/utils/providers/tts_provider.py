@@ -52,7 +52,9 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
         "smallestai": lambda: SmallestTTSService(
             api_key=tts_config.get("api_key")
             or os.getenv("SMALLESTAI_API_KEY")
-            or _raise_missing_tts_api_key()
+            or _raise_missing_tts_api_key(),
+            model="lightning-v2",
+            voice_id=tts_config.get("voice_id", None),
         )
     }
 
