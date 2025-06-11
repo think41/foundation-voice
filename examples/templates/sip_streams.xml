@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <Stream url="WSS_URL_PLACEHOLDER" />
+    </Connect>
+    <Pause length="40"/>
+</Response>

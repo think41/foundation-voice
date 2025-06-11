@@ -43,6 +43,7 @@ async def create_agent_pipeline(
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    **kwargs,
 ):
     """
     Creates and returns the agent pipeline with the specified transport.
@@ -83,6 +84,7 @@ async def create_agent_pipeline(
         room_url=room_url,
         token=token,
         bot_name=bot_name,
+        **kwargs,
     )
 
     tools = FunctionFactory(
@@ -107,14 +109,14 @@ async def create_agent_pipeline(
 
     try:
         logger.debug("Creating STT service from configuration")
-        stt = create_stt_service(agent_config.get("stt", {}))
+        stt = create_stt_service(agent_config.get("stt", {}), transport_type.value)
     except Exception as e:
         logger.error(f"Failed to create STT service: {e}")
         raise
 
     try:
         logger.debug("Creating TTS service from configuration")
-        tts = create_tts_service(agent_config.get("tts", {}))
+        tts = create_tts_service(agent_config.get("tts", {}), transport_type.value)
     except Exception as e:
         logger.error(f"Failed to create TTS service: {e}")
         raise
@@ -200,13 +202,24 @@ async def create_agent_pipeline(
         call_metrics_observer,
         FunctionObserver(llm=llm, rtvi=rtvi)
     ]
+    
+    # Configure sample rates based on transport type
+    # Twilio SIP requires 8kHz, other transports can use higher rates
+    if transport_type == TransportType.SIP:
+        audio_in_sample_rate = 8000   # Twilio requires 8kHz
+        audio_out_sample_rate = 8000  # Twilio requires 8kHz
+        logger.info("Using Twilio SIP sample rates: 8kHz in/out")
+    else:
+        audio_in_sample_rate = 16000   # Higher quality for WebRTC/WebSocket
+        audio_out_sample_rate = 24000  # Higher quality for WebRTC/WebSocket
+        logger.info(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
         
-    # Create pipeline task with observers
+    # Create pipeline task with transport-appropriate sample rates
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
-            audio_in_sample_rate=16000,
-            audio_out_sample_rate=24000,
+            audio_in_sample_rate=audio_in_sample_rate,
+            audio_out_sample_rate=audio_out_sample_rate,
             allow_interruptions=True,
             enable_metrics=True,
             enable_usage_metrics=True,

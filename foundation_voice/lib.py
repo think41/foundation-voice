@@ -1,5 +1,6 @@
 from fastapi import WebSocket
 from typing import Optional, Callable
+from loguru import logger
 from .agent.run import run_agent
 from .utils.transport.connection_manager import WebRTCOffer, connection_manager
 from .utils.transport.session_manager import session_manager
@@ -12,22 +13,27 @@ class CaiSDK:
         self.agent_func = agent_func or run_agent
         self.agent_config = agent_config or {}
     
-    async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None):
-        await websocket.accept()
+    async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None, **kwargs):
         try:
+            transport_type = kwargs.pop("transport_type", TransportType.WEBSOCKET)
+            logger.info(f"CaiSDK: Starting agent with transport type: {transport_type.value}")
+            logger.info(f"CaiSDK: Agent config keys: {list(agent.keys())}")
+            logger.info(f"CaiSDK: Additional kwargs keys: {list(kwargs.keys())}")
+            
             await self.agent_func(
-                TransportType.WEBSOCKET,
+                transport_type,
                 connection=websocket,
                 session_id=session_id,
                 callbacks=agent.get("callbacks", None),
                 tool_dict=agent.get("tool_dict", {}),
                 contexts=agent.get("contexts", {}),
                 config=agent.get("config", {}),
+                **kwargs,
             )
         except Exception as e:
+            logger.error(f"CaiSDK: Error in websocket_endpoint_with_agent: {e}")
             import traceback
             traceback.print_exc()
-            await websocket.close()
 
     
     async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):

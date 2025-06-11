@@ -13,17 +13,23 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from foundation_voice.custom_plugins.services.smallest.tts import SmallestTTSService
 
 
-def create_tts_service(tts_config: Dict[str, Any]) -> Any:
+def create_tts_service(tts_config: Dict[str, Any], transport_type: str = None) -> Any:
     """
     Create a TTS service based on configuration.
 
     Args:
         tts_config: Dictionary containing TTS configuration
+        transport_type: Type of transport (used to select optimal TTS service)
 
     Returns:
         TTS service instance
     """
     tts_provider = tts_config.get("provider", "cartesia")
+    
+    # For SIP transport (Twilio), use Deepgram TTS which handles 8kHz better than OpenAI
+    if transport_type == "sip" and tts_provider == "openai":
+        logger.debug("SIP transport detected: switching from OpenAI TTS to Deepgram TTS for better 8kHz compatibility")
+        tts_provider = "deepgram"
 
     def _raise_missing_tts_api_key():
         raise ValueError(
@@ -60,5 +66,5 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
 
     # Get the provider function or default to cartesia
     provider_func = tts_providers.get(tts_provider, tts_providers["cartesia"])
-    logger.debug(f"Creating TTS service with provider: {tts_provider}")
+    logger.debug(f"Creating TTS service with provider: {tts_provider} (transport_type: {transport_type})")
     return provider_func()
