@@ -82,7 +82,6 @@ def main():
         collection_name=CHROMA_COLLECTION_NAME,
         persist_directory=CHROMA_PERSIST_DIRECTORY
     )
-    vector_store.persist() # Ensure data is written to disk
 
     print("--- Document Ingestion Complete ---")
     print(f"Vector database stored in: '{CHROMA_PERSIST_DIRECTORY}'")
