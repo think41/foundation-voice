@@ -1,6 +1,9 @@
 import os
 import argparse
+import json
+
 from dotenv import load_dotenv
+from typing import Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -95,12 +98,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str = Query(None)
 
 
 @app.post("/api/offer")
-async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
+async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks, metadata: Optional[str] = Query(None)):
     agent_name = offer.agent_name or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
 
+    parsed_metadata = {}
+
+    if metadata:
+        try:
+            parsed_metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            print("Failed to decode metadata JSON")
     # Get both answer and connection_data
-    response = await cai_sdk.webrtc_endpoint(offer, agent)
+    response = await cai_sdk.webrtc_endpoint(offer, agent, metadata=parsed_metadata)
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
