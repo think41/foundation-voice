@@ -196,7 +196,7 @@ async def create_agent_pipeline(
         pipeline,
         params=PipelineParams(
             audio_in_sample_rate=16000,
-            audio_out_sample_rate=16000,
+            audio_out_sample_rate=24000,
             allow_interruptions=True,
             enable_metrics=True,
             enable_usage_metrics=True,
