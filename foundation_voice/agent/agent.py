@@ -225,14 +225,16 @@ async def create_agent_pipeline(
         async def on_participant_left(transport, participant, reason):
             logger.info(f"Participant left Daily room: {participant}, reason: {reason}")
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
-            data = {
-                "participant": participant,
-                "reason": reason,
-                "metadata": metadata
-            }
             end_transcript = transcript_handler.get_all_messages()            
             # Get metrics from the observer
             metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
+            data = {
+                "participant": participant,
+                "reason": reason,
+                "metadata": metadata,
+                "transcript": end_transcript,
+                "metrics": metrics
+            }
 
             await callback(data)        
             
