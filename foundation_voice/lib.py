@@ -12,16 +12,19 @@ class CaiSDK:
         self.agent_func = agent_func or run_agent
         self.agent_config = agent_config or {}
     
-    async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None):
+    async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None, session_resume: Optional[dict] = None):
         await websocket.accept()
         try:
+            contexts = agent.get("contexts", {})
+            contexts = session_manager.update_session_resume_data(contexts, session_id, session_resume)
+
             await self.agent_func(
                 TransportType.WEBSOCKET,
                 connection=websocket,
                 session_id=session_id,
                 callbacks=agent.get("callbacks", None),
                 tool_dict=agent.get("tool_dict", {}),
-                contexts=agent.get("contexts", {}),
+                contexts=contexts,
                 config=agent.get("config", {}),
             )
         except Exception as e:
@@ -30,7 +33,11 @@ class CaiSDK:
             await websocket.close()
 
     
-    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional[dict] = None):
+    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional[dict] = None, session_resume: Optional[dict] = None):
+        # Initialize contexts and handle session_resume if provided
+        contexts = agent.get("contexts", {})
+        contexts = session_manager.update_session_resume_data(contexts, offer.session_id, session_resume)
+
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
             answer, connection = await connection_manager.handle_webrtc_connection(offer)
             response = {
@@ -41,7 +48,7 @@ class CaiSDK:
                     "session_id": offer.session_id,
                     "connection": connection,
                     "config": agent["config"],
-                    "contexts": agent.get("contexts", {}),
+                    "contexts": contexts,
                     "tool_dict": agent.get("tool_dict", {}),
                     "callbacks": agent.get("callbacks", None),
                     "metadata": metadata
@@ -58,7 +65,7 @@ class CaiSDK:
                 "session_id": offer.session_id,
                 "connection": connection,
                 "config": agent["config"],
-                "contexts": agent.get("contexts", {}),
+                "contexts": contexts,
                 "tool_dict": agent.get("tool_dict", {}),
                 "callbacks": agent.get("callbacks", None),
                 "metadata": metadata
@@ -66,10 +73,14 @@ class CaiSDK:
         }
         return response
     
-    async def connect_handler(self, request: dict, agent: dict, session_id: Optional[str] = None):
+    async def connect_handler(self, request: dict, agent: dict, session_id: Optional[str] = None, session_resume: Optional[dict] = None):
         try:
             transport_type_str = request.get("transportType", "").lower()
             agent_config = request.get("agentConfig", {})
+            
+            # Initialize contexts and handle session_resume if provided
+            contexts = agent.get("contexts", {})
+            contexts = session_manager.update_session_resume_data(contexts, session_id, session_resume)
             
             # Convert string to TransportType enum
             try:
@@ -108,7 +119,7 @@ class CaiSDK:
                                 "session_id": offer.session_id,
                                 "connection": connection,
                                 "config": agent["config"],
-                                "contexts": agent.get("contexts", {}),
+                                "contexts": contexts,
                                 "tool_dict": agent.get("tool_dict", {}),
                                 "callbacks": agent.get("callbacks", None),
                             }
@@ -122,7 +133,7 @@ class CaiSDK:
                             "transport_type": transport_type,
                             "connection": connection,
                             "config": agent["config"],
-                            "contexts": agent.get("contexts", {}),
+                            "contexts": contexts,
                             "tool_dict": agent.get("tool_dict", {}),
                             "callbacks": agent.get("callbacks", None),
                         }
@@ -149,7 +160,7 @@ class CaiSDK:
                             "room_url": url,
                             "token": token,
                             "config": agent["config"],
-                            "contexts": agent.get("contexts", {}),
+                            "contexts": contexts,
                             "tool_dict": agent.get("tool_dict", {}),
                             "callbacks": agent.get("callbacks", None),
                         }
