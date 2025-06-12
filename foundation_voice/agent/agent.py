@@ -224,11 +224,6 @@ async def create_agent_pipeline(
         await callback(data)
         await transcript_handler.on_transcript_update(frame)
 
-    @transport.event_handler("on_client_closed")
-    async def on_client_closed(transport, client):
-        logger.info("Client clicked on disconnect. Ending Pipeline task")
-        await task.cancel()
-
     if transport_type == TransportType.DAILY:
         @rtvi.event_handler("on_client_ready")
         async def on_client_connected(rtvi):
@@ -328,6 +323,11 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
             await callback(client)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
+
+        @transport.event_handler("on_client_closed")
+        async def on_client_closed(transport, client):
+            logger.info("Client clicked on disconnect. Ending Pipeline task")
+            await task.cancel()
     
     # @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
     # async def on_client_disconnected(transport, client):
