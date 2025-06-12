@@ -30,7 +30,7 @@ class CaiSDK:
             await websocket.close()
 
     
-    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):
+    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional[dict] = None):
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
             answer, connection = await connection_manager.handle_webrtc_connection(offer)
             response = {
@@ -38,7 +38,7 @@ class CaiSDK:
                 "background_task_args": {
                     "func": run_agent,
                     "transport_type": TransportType.WEBRTC,
-                    "session_id": answer["pc_id"],
+                    "session_id": offer.session_id,
                     "connection": connection,
                     "config": agent["config"],
                     "contexts": agent.get("contexts", {}),
@@ -55,7 +55,7 @@ class CaiSDK:
             "background_task_args": {
                 "func": run_agent,
                 "transport_type": TransportType.WEBRTC,
-                "session_id": answer["pc_id"],
+                "session_id": offer.session_id,
                 "connection": connection,
                 "config": agent["config"],
                 "contexts": agent.get("contexts", {}),
@@ -66,7 +66,7 @@ class CaiSDK:
         }
         return response
     
-    async def connect_handler(self, request: dict, agent: dict):
+    async def connect_handler(self, request: dict, agent: dict, session_id: Optional[str] = None):
         try:
             transport_type_str = request.get("transportType", "").lower()
             agent_config = request.get("agentConfig", {})
@@ -93,21 +93,21 @@ class CaiSDK:
                     offer = WebRTCOffer(
                         sdp=request["sdp"],
                         type=request["type"],
-                        pc_id=request.get("pc_id"),
+                        session_id=request.get("session_id"),
                         restart_pc=request.get("restart_pc", False),
                         agent_name=request.get("agent_name")
                     )
                     
-                    if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
+                    if offer.session_id and session_manager.get_webrtc_session(offer.session_id):
                         answer, connection = await connection_manager.handle_webrtc_connection(offer)
                         return { 
                             "answer": answer,
                             "background_task_args": {
                                 "func": run_agent,
                                 "transport_type": transport_type,
-                                "session_id": answer["pc_id"],
-                                "config": agent["config"],
+                                "session_id": offer.session_id,
                                 "connection": connection,
+                                "config": agent["config"],
                                 "contexts": agent.get("contexts", {}),
                                 "tool_dict": agent.get("tool_dict", {}),
                                 "callbacks": agent.get("callbacks", None),
@@ -138,7 +138,7 @@ class CaiSDK:
                 async with aiohttp.ClientSession() as session:
                     url, token = await connection_manager.handle_daily_connection(session)
 
-                    session_id = str(uuid.uuid4())
+                    session_id = session_id or str(uuid.uuid4())
                     return { 
                         "room_url": url,
                         "token": token,

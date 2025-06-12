@@ -123,8 +123,9 @@ async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks,
 async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     agent_name = request.get("agent_name") or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
+    session_id = request.get("session_id")
 
-    response = await cai_sdk.connect_handler(request, agent)
+    response = await cai_sdk.connect_handler(request, agent, session_id=session_id)
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
@@ -135,7 +136,11 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
 
 @app.get("/sessions")
 async def get_sessions():
-    return {"active_sessions": len(session_manager.active_sessions)}
+    active_session_ids = list(session_manager.active_sessions.keys())
+    return {
+        "active_sessions_count": len(active_session_ids),
+        "active_session_ids": active_session_ids
+    }
 
 
 @app.get("/openapi.json", include_in_schema=False)

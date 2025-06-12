@@ -56,7 +56,7 @@ async def run_agent(
         if transport_type == TransportType.DAILY:
             await session_manager.add_session(session_id, task, daily_room_url=room_url)
         elif transport_type == TransportType.WEBRTC and isinstance(connection, SmallWebRTCConnection):
-            await session_manager.add_webrtc_session(connection.pc_id, task)
+            await session_manager.add_webrtc_session(session_id, task)
         else:
             await session_manager.add_session(session_id, task)
 
