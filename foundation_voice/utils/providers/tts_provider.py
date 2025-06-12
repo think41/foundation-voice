@@ -26,10 +26,6 @@ def create_tts_service(tts_config: Dict[str, Any], transport_type: str = None) -
     """
     tts_provider = tts_config.get("provider", "cartesia")
     
-    # For SIP transport (Twilio), use Deepgram TTS which handles 8kHz better than OpenAI
-    if transport_type == "sip" and tts_provider == "openai":
-        logger.debug("SIP transport detected: switching from OpenAI TTS to Deepgram TTS for better 8kHz compatibility")
-        tts_provider = "deepgram"
 
     def _raise_missing_tts_api_key():
         raise ValueError(

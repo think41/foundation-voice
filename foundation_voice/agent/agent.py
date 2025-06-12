@@ -204,21 +204,21 @@ async def create_agent_pipeline(
         
     # Configure sample rates based on transport type
     # Twilio SIP requires 8kHz, other transports can use higher rates
-    if transport_type == TransportType.SIP:
-        audio_in_sample_rate = 8000   # Twilio requires 8kHz
-        audio_out_sample_rate = 8000  # Twilio requires 8kHz
-        logger.debug("Using Twilio SIP sample rates: 8kHz in/out")
-    else:
-        audio_in_sample_rate = 16000   # Higher quality for WebRTC/WebSocket
-        audio_out_sample_rate = 24000  # Higher quality for WebRTC/WebSocket
-        logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
+    # if transport_type == TransportType.SIP:
+    #     audio_in_sample_rate = 8000   # Twilio requires 8kHz
+    #     audio_out_sample_rate = 8000  # Twilio requires 8kHz
+    #     logger.debug("Using Twilio SIP sample rates: 8kHz in/out")
+    # else:
+    #     audio_in_sample_rate = 16000   # Higher quality for WebRTC/WebSocket
+    #     audio_out_sample_rate = 24000  # Higher quality for WebRTC/WebSocket
+    #     logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
         
     # Create pipeline task with transport-appropriate sample rates
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
-            audio_in_sample_rate=audio_in_sample_rate,
-            audio_out_sample_rate=audio_out_sample_rate,
+            audio_in_sample_rate=config.get("pipeline", {}).get("sample_rate_in", 16000),
+            audio_out_sample_rate=config.get("pipeline", {}).get("sample_rate_out", 24000),
             allow_interruptions=True,
             enable_metrics=True,
             enable_usage_metrics=True,

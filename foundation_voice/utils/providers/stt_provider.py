@@ -25,9 +25,9 @@ def create_stt_service(stt_config: Dict[str, Any], transport_type: str = None) -
     stt_provider = stt_config.get("provider", "deepgram")
     
     # For SIP transport (Twilio), we need audio passthrough
-    audio_passthrough = transport_type == "sip"
-    if audio_passthrough:
-        logger.debug("Enabling audio passthrough for SIP transport")
+    # audio_passthrough = transport_type == "sip"
+    # if audio_passthrough:
+    #     logger.debug("Enabling audio passthrough for SIP transport")
     
     # Dictionary mapping providers to their service creation functions
     stt_providers = {
@@ -39,7 +39,7 @@ def create_stt_service(stt_config: Dict[str, Any], transport_type: str = None) -
                 model=stt_config.get("model", "nova-2-general"),
                 language=stt_config.get("language", "en-us")
             ),
-            audio_passthrough=audio_passthrough  # Enable for SIP/Twilio
+            audio_passthrough=stt_config.get("audio_passthrough", False)  # Enable for SIP/Twilio
         )
     }
 
@@ -50,5 +50,5 @@ def create_stt_service(stt_config: Dict[str, Any], transport_type: str = None) -
 
     # Get the provider function or default to deepgram
     provider_func = stt_providers.get(stt_provider, stt_providers["deepgram"])
-    logger.debug(f"Creating STT service with provider: {stt_provider}, audio_passthrough: {audio_passthrough}")
+    logger.debug(f"Creating STT service with provider: {stt_provider}")
     return provider_func()
