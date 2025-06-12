@@ -7,7 +7,9 @@ from typing import Dict, Any
 
 from loguru import logger
 from pipecat.services.deepgram.stt import DeepgramSTTService
-
+from pipecat.services.openai.stt import OpenAISTTService
+from pipecat.transcriptions.language import Language
+from deepgram import LiveOptions
 
 def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     """
@@ -22,14 +24,15 @@ def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     stt_provider = stt_config.get("provider", "deepgram")
     # Dictionary mapping providers to their service creation functions
     stt_providers = {
-        "deepgram": lambda: (
-            (lambda api_key: DeepgramSTTService(api_key=api_key))(
-                stt_config.get("api_key")
-                or os.getenv("DEEPGRAM_API_KEY")
-                or _raise_missing_stt_api_key()
+        "deepgram": lambda: DeepgramSTTService(
+            api_key=stt_config.get("api_key")
+                    or os.getenv("DEEPGRAM_API_KEY")
+                    or _raise_missing_stt_api_key(),
+            live_options=LiveOptions(
+                model=stt_config.get("model", "nova-2-general"),
+                language=stt_config.get("language", "en-us")
             )
-        ),
-        # Add other STT providers here as needed
+        )
     }
 
     def _raise_missing_stt_api_key():

@@ -1,6 +1,9 @@
 import os
 import argparse
+import json
+
 from dotenv import load_dotenv
+from typing import Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,12 +27,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 config_path1 = os.path.join(BASE_DIR, "agent_configure", "config", "agent_config.json")
 config_path2 = os.path.join(BASE_DIR, "agent_configure", "config", "config_with_keys.json")
 config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.json")
+config_path4 = os.path.join(BASE_DIR, "agent_configure", "config", "language_agent.json")
 
 
 
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
+agent_config_4 = ConfigLoader.load_config(config_path4)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +73,9 @@ defined_agents = {
         "contexts": contexts,
         "tool_dict": tool_config,
         "callbacks": custom_callbacks,
+    },
+    "agent4": {
+        "config": agent_config_4
     }
 }
 
@@ -90,12 +98,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str = Query(None)
 
 
 @app.post("/api/offer")
-async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks):
+async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks, metadata: Optional[str] = Query(None)):
     agent_name = offer.agent_name or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
 
+    parsed_metadata = {}
+
+    if metadata:
+        try:
+            parsed_metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            print("Failed to decode metadata JSON")
     # Get both answer and connection_data
-    response = await cai_sdk.webrtc_endpoint(offer, agent)
+    response = await cai_sdk.webrtc_endpoint(offer, agent, metadata=parsed_metadata)
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")

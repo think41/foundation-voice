@@ -15,7 +15,8 @@
     },
     "llm": {
       "provider": "openai",
-      "model": "gpt-4o-mini"
+      "model": "gpt-4o-mini",
+      "tools": ["update_basic_info", "search_tool"]
     },
     "tts": {
       "provider": "deepgram"

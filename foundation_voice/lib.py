@@ -30,7 +30,7 @@ class CaiSDK:
             await websocket.close()
 
     
-    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict):
+    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
             answer, connection = await connection_manager.handle_webrtc_connection(offer)
             response = {
@@ -44,6 +44,7 @@ class CaiSDK:
                     "contexts": agent.get("contexts", {}),
                     "tool_dict": agent.get("tool_dict", {}),
                     "callbacks": agent.get("callbacks", None),
+                    "metadata": metadata
                 }
             }
             return response
@@ -60,6 +61,7 @@ class CaiSDK:
                 "contexts": agent.get("contexts", {}),
                 "tool_dict": agent.get("tool_dict", {}),
                 "callbacks": agent.get("callbacks", None),
+                "metadata": metadata
             }
         }
         return response

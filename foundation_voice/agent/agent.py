@@ -25,7 +25,8 @@ from ..utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObs
 from ..utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 import uuid
 import json
-from foundation_voice.utils.idle_processor.user_idle_processor import UserIdleProcessor     
+from foundation_voice.utils.idle_processor.user_idle_processor import UserIdleProcessor
+from foundation_voice.utils.function_adapter import FunctionFactory
 
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
@@ -41,6 +42,7 @@ async def create_agent_pipeline(
     callbacks: Optional[AgentCallbacks] = None,
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
 ):
     """
     Creates and returns the agent pipeline with the specified transport.
@@ -83,12 +85,17 @@ async def create_agent_pipeline(
         bot_name=bot_name,
     )
 
+    tools = FunctionFactory(
+        provider=agent_config.get("llm", {}).get("provider", "openai"),
+        functions=tool_dict,
+    ).built_tools
+
     try:
         logger.debug("Creating LLM service from configuration")
         args = {
             "rtvi": rtvi,
             "contexts": contexts,
-            "tools": tool_dict,
+            "tools": tools,
         }
         llm = create_llm_service(
             agent_config.get("llm", {}),
@@ -115,7 +122,11 @@ async def create_agent_pipeline(
     context = None
     try:
         logger.debug("Creating context")
-        context = create_llm_context(agent_config, contexts.get(agent_config.get("agent_name")))
+        context = create_llm_context(
+            agent_config, 
+            contexts.get(agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}),
+            tools
+        )
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise
@@ -195,7 +206,7 @@ async def create_agent_pipeline(
         pipeline,
         params=PipelineParams(
             audio_in_sample_rate=16000,
-            audio_out_sample_rate=16000,
+            audio_out_sample_rate=24000,
             allow_interruptions=True,
             enable_metrics=True,
             enable_usage_metrics=True,
@@ -206,7 +217,11 @@ async def create_agent_pipeline(
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
-        await callback(frame)
+        data = {
+            "frame": frame,
+            "metadata": metadata
+        }
+        await callback(data)
         await transcript_handler.on_transcript_update(frame)
 
     if transport_type == TransportType.DAILY:
@@ -223,11 +238,15 @@ async def create_agent_pipeline(
             end_transcript = transcript_handler.get_all_messages()            
             # Get metrics from the observer
             metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
-
-            await callback({            
-                "transcript": end_transcript, 
+            data = {
+                "participant": participant,
+                "reason": reason,
+                "metadata": metadata,
+                "transcript": end_transcript,
                 "metrics": metrics
-            })        
+            }
+
+            await callback(data)        
             
             try:
                 # Only try to log metrics if the observer exists
@@ -248,10 +267,13 @@ async def create_agent_pipeline(
             # Get metrics from the observer
             metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
 
-            await callback({            
+            data = {
                 "transcript": end_transcript, 
-                "metrics": metrics
-            })        
+                "metrics": metrics,
+                "metadata": metadata
+            }
+
+            await callback(data)        
             
             try:
                 # Only try to log metrics if the observer exists
@@ -273,10 +295,13 @@ async def create_agent_pipeline(
             # Get metrics from the observer
             metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
 
-            await callback({            
+            data = {
                 "transcript": end_transcript, 
-                "metrics": metrics
-            })        
+                "metrics": metrics,
+                "metadata": metadata
+            }
+
+            await callback(data)        
             
             try:
                 # Only try to log metrics if the observer exists
@@ -328,7 +353,11 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.FIRST_PARTICIPANT_JOINED.value)
         async def on_first_participant_joined(transport, participant):
             callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
-            await callback(participant)
+            data = {
+                "participant": participant,
+                "metadata": metadata
+            }
+            await callback(data)
             await transport.capture_participant_transcription(participant["id"])
 
         # @transport.event_handler(AgentEvent.PARTICIPANT_LEFT.value)
