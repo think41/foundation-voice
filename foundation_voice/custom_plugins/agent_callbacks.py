@@ -65,35 +65,40 @@ class AgentCallbacks:
         """
         return self._callbacks[event]
 
-    async def _default_client_connected(self, client: Dict[str, Any]):
+    async def _default_client_connected(self, data: Dict[str, Any]):
         """Default implementation for client connected event"""
-        pass
+        client = data.get("client")
+        session_id = data.get("session_id")
+        print(f"Client connected with session ID: {session_id}")
 
     async def _default_client_disconnected(self, data: Dict[str, Any]):
         """Default implementation for client disconnected event"""
-        # Also contains metadata. metadata = data["metadata"]
-        print(f"Client disconnected. Transcript: {data.get('transcript', [])}")
+        session_id = data.get("session_id")
+        print(f"Client disconnected with session ID: {session_id}")
+        print(f"Transcript: {data.get('transcript', [])}")
         if data.get('metrics'):
             print(f"Call metrics: {data['metrics']}")
 
     async def _default_first_participant_joined(self, data: Dict[str, Any]):
         """Default implementation for first participant joined event"""
-        print(f"Participant joined: {data.get('participant')}")
+        participant = data.get('participant')
+        session_id = data.get("session_id")
+        print(f"Participant joined with session ID {session_id}: {participant}")
 
     async def _default_participant_left(self, data: Dict[str, Any]):
-        # reason = data.get("reason")
-        # metadata = data.get("metadata")
-        
         """Default implementation for participant left event"""
-        print(f"Participant left: {data.get('participant')}")
+        participant = data.get('participant')
+        session_id = data.get("session_id")
+        print(f"Participant left with session ID {session_id}: {participant}")
 
     async def _default_transcript_update(self, data):
         """Default implementation for transcript update event"""
         frame = data.get("frame")
+        session_id = data.get("session_id")
         # metadata = data.get("metadata")
 
         for message in frame.messages:
-            print(f"TRANSCRIPT: [{message.timestamp}] {message.role}: {message.content}")
+            print(f"TRANSCRIPT [{session_id}] [{message.timestamp}] {message.role}: {message.content}")
 
     def has_callback(self, event: AgentEvent) -> bool:
         """

@@ -96,6 +96,7 @@ async def create_agent_pipeline(
             "rtvi": rtvi,
             "contexts": contexts,
             "tools": tools,
+            "session_id": session_id
         }
         llm = create_llm_service(
             agent_config.get("llm", {}),
@@ -219,7 +220,8 @@ async def create_agent_pipeline(
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
         data = {
             "frame": frame,
-            "metadata": metadata
+            "metadata": metadata,
+            "session_id": session_id
         }
         await callback(data)
         await transcript_handler.on_transcript_update(frame)
@@ -243,7 +245,8 @@ async def create_agent_pipeline(
                 "reason": reason,
                 "metadata": metadata,
                 "transcript": end_transcript,
-                "metrics": metrics
+                "metrics": metrics,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -270,7 +273,8 @@ async def create_agent_pipeline(
             data = {
                 "transcript": end_transcript, 
                 "metrics": metrics,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -298,7 +302,8 @@ async def create_agent_pipeline(
             data = {
                 "transcript": end_transcript, 
                 "metrics": metrics,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -321,7 +326,11 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.CLIENT_CONNECTED.value)
         async def on_client_connected(transport, client):
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
-            await callback(client)
+            data = {
+                "client": client,
+                "session_id": session_id
+            }
+            await callback(data)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
     
     # @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
@@ -355,7 +364,8 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
             data = {
                 "participant": participant,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
             await callback(data)
             await transport.capture_participant_transcription(participant["id"])

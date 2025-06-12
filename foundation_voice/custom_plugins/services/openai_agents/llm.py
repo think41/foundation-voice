@@ -92,6 +92,7 @@ class OpenAIAgentPlugin(LLMService):
         self._agent_config = agent_config
         self._rtvi = data.get("rtvi")
         self._triage = data.get("triage", True)
+        self._session_id = data.get("session_id")
         
         self._create_agents(agent_config, self._get_context(agent_config, data.get("contexts")), data.get("tools"))
 
@@ -131,7 +132,8 @@ class OpenAIAgentPlugin(LLMService):
                         agent_name=event.data.agent,
                         tool_name=event.data.tool_name,
                         input=event.data.input,
-                        call_id=event.data.call_id
+                        call_id=event.data.call_id,
+                        session_id=self._session_id
                     )
                 )
             
@@ -139,7 +141,8 @@ class OpenAIAgentPlugin(LLMService):
                 # Push tool result frame when tool call finishes with a result
                 await self.push_frame(ToolResultFrame(
                     result=event.data.tool_result,
-                    call_id=event.data.call_id
+                    call_id=event.data.call_id,
+                    session_id=self._session_id
                 ))
 
             elif event.type == "agent_updated_stream_event":
@@ -150,7 +153,8 @@ class OpenAIAgentPlugin(LLMService):
                     # Push a frame to display agent handoff
                     await self.push_frame(AgentHandoffFrame(
                         from_agent=event.data.from_agent,
-                        to_agent=event.data.to_agent
+                        to_agent=event.data.to_agent,
+                        session_id=self._session_id
                     ))
             
             elif event.type == "guardrail_triggered_event":
@@ -160,7 +164,8 @@ class OpenAIAgentPlugin(LLMService):
                 await self.push_frame(GuardrailTriggeredFrame(
                     guardrail_name=event.data.guardrail_name,
                     is_off_topic=event.data.is_off_topic,
-                    reasoning=event.data.reasoning
+                    reasoning=event.data.reasoning,
+                    session_id=self._session_id
                 ))
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
