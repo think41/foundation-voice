@@ -11,7 +11,6 @@ class ToolCallFrame(DataFrame):
     tool_name: str
     input: Dict[str, Any]
     call_id: str
-    session_id: Optional[str] = None
 
     def __str__(self):
         return f"ToolCallFrame(agent={self.agent_name}, tool={self.tool_name}, input={self.input})"
@@ -22,7 +21,6 @@ class ToolCallFrame(DataFrame):
 class ToolResultFrame(DataFrame):
     result: str
     call_id: str
-    session_id: Optional[str] = None
 
     def __str__(self):
         return f"ToolResultFrame(result={self.result})"
@@ -33,7 +31,6 @@ class ToolResultFrame(DataFrame):
 class AgentHandoffFrame(DataFrame):
     from_agent: str
     to_agent: str
-    session_id: Optional[str] = None
 
     def __str__(self):
         return f"AgentHandoffFrame(from_agent={self.from_agent}, to_agent={self.to_agent})"
@@ -44,7 +41,6 @@ class GuardrailTriggeredFrame(DataFrame):
     guardrail_name: str
     is_off_topic: bool
     reasoning: str
-    session_id: Optional[str] = None
 
     def __str__(self):
         return f"GuardrailTriggeredFrame(guardrail_name={self.guardrail_name}, is_off_topic={self.is_off_topic}, reasoning={self.reasoning})"
