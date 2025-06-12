@@ -44,33 +44,25 @@ class CaiSDK:
             raise
 
     async def _auto_detect_transport(self, websocket: WebSocket) -> tuple[TransportType, Optional[dict]]:
-        """
-        Internal method to auto-detect transport type.
-        Users don't need to understand this logic.
-        """
-        # Get connection info
+        """Auto-detect transport type with simplified logic"""
         query_params = dict(websocket.query_params)
+        
+        # 1. Check for explicit transport type
+        explicit_transport = query_params.get("transport_type", "").lower()
+        if explicit_transport in ["websocket", "webrtc", "daily"]:
+            return TransportType(explicit_transport), None
+        
+        # 2. Try SIP detection (simple pattern-based approach)
         client_ip = websocket.client.host if websocket.client else "unknown"
         headers = dict(websocket.headers) if hasattr(websocket, 'headers') else {}
         
-        # Check if transport is explicitly specified
-        explicit_transport = query_params.get("transport_type", "").lower()
-        if explicit_transport in ["websocket", "webrtc", "daily"]:
-            try:
-                return TransportType(explicit_transport), None
-            except ValueError:
-                pass
-        
-        # Check if this is a SIP connection
         if SIPDetector.detect_sip_connection(client_ip, headers, query_params):
-            # Handle SIP handshake
             sip_params = await SIPDetector.handle_sip_handshake(websocket)
             if sip_params:
                 return TransportType.SIP, sip_params
-            else:
-                logger.warning("SIP connection detected but handshake failed, falling back to WebSocket")
+            logger.debug("SIP detection failed, falling back to WebSocket")
         
-        # Default to WebSocket
+        # 3. Default to WebSocket
         return TransportType.WEBSOCKET, None
     
     async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):
