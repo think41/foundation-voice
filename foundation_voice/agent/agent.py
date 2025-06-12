@@ -174,7 +174,6 @@ async def create_agent_pipeline(
         run_immediately = arguments.get("run_immediately")
         context_aggregator.user().add_messages(messages)
         await task.queue_frames([context_aggregator.user().get_context_frame()])
-        print(f"{messages}")
         return True
 
     append_to_messages = RTVIAction(
@@ -202,17 +201,17 @@ async def create_agent_pipeline(
         call_metrics_observer,
         FunctionObserver(llm=llm, rtvi=rtvi)
     ]
-    
+        
     # Configure sample rates based on transport type
     # Twilio SIP requires 8kHz, other transports can use higher rates
     if transport_type == TransportType.SIP:
         audio_in_sample_rate = 8000   # Twilio requires 8kHz
         audio_out_sample_rate = 8000  # Twilio requires 8kHz
-        logger.info("Using Twilio SIP sample rates: 8kHz in/out")
+        logger.debug("Using Twilio SIP sample rates: 8kHz in/out")
     else:
         audio_in_sample_rate = 16000   # Higher quality for WebRTC/WebSocket
         audio_out_sample_rate = 24000  # Higher quality for WebRTC/WebSocket
-        logger.info(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
+        logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
         
     # Create pipeline task with transport-appropriate sample rates
     task = PipelineTask(
@@ -240,13 +239,13 @@ async def create_agent_pipeline(
     if transport_type == TransportType.DAILY:
         @rtvi.event_handler("on_client_ready")
         async def on_client_connected(rtvi):
-            logger.info("Client ready")
+            logger.info("Daily client ready")
             await rtvi.set_bot_ready()
             await task.queue_frames([context_aggregator.user().get_context_frame()])
 
         @transport.event_handler(AgentEvent.PARTICIPANT_LEFT.value)
         async def on_participant_left(transport, participant, reason):
-            logger.info(f"Participant left Daily room: {participant}, reason: {reason}")
+            logger.info(f"Participant left Daily room")
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()            
             # Get metrics from the observer
@@ -274,7 +273,7 @@ async def create_agent_pipeline(
     if transport_type == TransportType.WEBSOCKET:
         @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
         async def on_client_disconnected(transport, client):
-            logger.info("WebSocket client disconnected, cleaning up...")            
+            logger.info("WebSocket client disconnected")            
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()            
             # Get metrics from the observer
@@ -302,7 +301,7 @@ async def create_agent_pipeline(
     elif transport_type == TransportType.WEBRTC:
         @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
         async def on_webrtc_disconnected(transport, connection):
-            logger.info("WebRTC client disconnected, cleaning up...")
+            logger.info("WebRTC client disconnected")
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()            
             # Get metrics from the observer

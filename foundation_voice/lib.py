@@ -16,9 +16,7 @@ class CaiSDK:
     async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None, **kwargs):
         try:
             transport_type = kwargs.pop("transport_type", TransportType.WEBSOCKET)
-            logger.info(f"CaiSDK: Starting agent with transport type: {transport_type.value}")
-            logger.info(f"CaiSDK: Agent config keys: {list(agent.keys())}")
-            logger.info(f"CaiSDK: Additional kwargs keys: {list(kwargs.keys())}")
+            logger.debug(f"Starting agent with transport type: {transport_type.value}")
             
             await self.agent_func(
                 transport_type,
@@ -31,9 +29,8 @@ class CaiSDK:
                 **kwargs,
             )
         except Exception as e:
-            logger.error(f"CaiSDK: Error in websocket_endpoint_with_agent: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error in websocket_endpoint_with_agent: {e}")
+            raise
 
     
     async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):
