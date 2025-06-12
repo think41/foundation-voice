@@ -9,7 +9,6 @@ from fastapi import FastAPI, WebSocket, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from foundation_voice.utils.transport.session_manager import session_manager
 from foundation_voice.utils.transport.connection_manager import WebRTCOffer
-from foundation_voice.utils.transport.transport import TransportType
 import logging
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -23,12 +22,14 @@ from xml.sax.saxutils import escape
 from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
-from utils.sip_utils import SIPConfig, TwilioDetector, TwilioHandshakeManager
 
 # Load environment variables
 load_dotenv()
 
-# Initialize Twilio client
+# Initialize the SDK - it handles all complexity internally
+cai_sdk = CaiSDK()
+
+# Initialize Twilio client (optional, only needed for outbound calls)
 twilio_client = None
 if os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_AUTH_TOKEN"):
     twilio_client = TwilioClient(
@@ -36,33 +37,17 @@ if os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_AUTH_TOKEN"):
         os.getenv("TWILIO_AUTH_TOKEN")
     )
 
-# Initialize SDK
-cai_sdk = CaiSDK()
-
-# Load configurations
+# Load agent configurations (simplified)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 config_path1 = os.path.join(BASE_DIR, "agent_configure", "config", "agent_config.json")
 config_path2 = os.path.join(BASE_DIR, "agent_configure", "config", "config_with_keys.json")
 config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.json")
 config_path4 = os.path.join(BASE_DIR, "agent_configure", "config", "language_agent.json")
-sip_config_path = os.path.join(BASE_DIR, "agent_configure", "config", "sip_config.json")
 
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
 agent_config_4 = ConfigLoader.load_config(config_path4)
-
-# Load SIP configuration
-try:
-    sip_config_data = ConfigLoader.load_config(sip_config_path)
-    sip_config = SIPConfig(sip_config_data)
-    twilio_detector = TwilioDetector(sip_config)
-    handshake_manager = TwilioHandshakeManager(sip_config)
-except Exception as e:
-    logging.warning(f"Could not load SIP config, using defaults: {e}")
-    sip_config = SIPConfig({})
-    twilio_detector = TwilioDetector(sip_config)
-    handshake_manager = TwilioHandshakeManager(sip_config)
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +67,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Simple agent definitions (user-friendly)
 defined_agents = {
     "agent1": {
         "config": agent_config_1, 
@@ -119,34 +105,19 @@ async def index():
 @app.post("/api/sip")
 async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")):
     """
-    Handles incoming call webhooks from SIP providers like Twilio.
-    Returns TwiML to connect the call to a WebSocket stream.
+    Simple SIP webhook handler - complexity handled by SDK
     """
     host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    websocket_url = f"wss://{host}/ws?agent_name={agent_name}&transport_type=sip"
+    websocket_url = f"wss://{host}/ws?agent_name={agent_name}"
 
-    template_path = os.path.join(BASE_DIR, sip_config.config.get("webhook", {}).get("template_path", "templates/sip_streams.xml"))
-    
-    try:
-        with open(template_path, "r") as f:
-            twiml_template = f.read()
-    except FileNotFoundError:
-        # Fallback to default template if file not found
-        twiml_template = '''<?xml version="1.0" encoding="UTF-8"?>
+    # Simple TwiML response (no need for complex templating)
+    twiml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
-        <Stream url="WSS_URL_PLACEHOLDER" />
+        <Stream url="{escape(websocket_url)}" />
     </Connect>
-    <Pause length="PAUSE_LENGTH_PLACEHOLDER"/>
+    <Pause length="40"/>
 </Response>'''
-
-    # Get pause length from config
-    pause_length = sip_config.config.get("webhook", {}).get("pause_length", 40)
-    
-    # Escape the URL to ensure it's valid XML and replace placeholders
-    escaped_url = escape(websocket_url)
-    twiml_response = twiml_template.replace("WSS_URL_PLACEHOLDER", escaped_url)
-    twiml_response = twiml_response.replace("PAUSE_LENGTH_PLACEHOLDER", str(pause_length))
     
     return HTMLResponse(content=twiml_response, media_type="application/xml")
 
@@ -154,7 +125,7 @@ async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")
 @app.post("/api/sip/create-call")
 async def create_sip_call(request: Request, to_number: str, from_number: Optional[str] = None, agent_name: str = "agent1"):
     """
-    Creates an outbound SIP call via Twilio.
+    Create outbound SIP call via Twilio (optional feature)
     """
     if not twilio_client:
         return {"error": "Twilio client not configured. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN."}
@@ -183,71 +154,25 @@ async def create_sip_call(request: Request, to_number: str, from_number: Optiona
         return {"error": str(e)}
 
 
-async def _determine_transport_type(websocket: WebSocket) -> tuple[TransportType, Optional[str], dict]:
-    """
-    Determine the transport type and handle initial handshake if needed.
-    
-    Returns:
-        Tuple of (transport_type, first_message_data, kwargs)
-    """
-    # Extract parameters from WebSocket
-    query_params = dict(websocket.query_params)
-    client_ip = websocket.client.host if websocket.client else "unknown"
-    headers = dict(websocket.headers) if hasattr(websocket, 'headers') else {}
-    
-    # Get specified transport type or default to websocket
-    transport_type = query_params.get("transport_type", "websocket")
-    kwargs = {}
-    
-    # If no query params, try to detect Twilio connection
-    if not query_params:
-        is_likely_twilio = twilio_detector.detect_twilio_connection(client_ip, headers)
-        
-        if is_likely_twilio:
-            # Examine first message to confirm
-            is_twilio, first_message = await twilio_detector.detect_from_first_message(websocket)
-            if is_twilio:
-                transport_type = "sip"
-                # Perform handshake and get SIP parameters
-                try:
-                    sip_params = await handshake_manager.perform_handshake(websocket, first_message)
-                    kwargs["sip_params"] = sip_params
-                except Exception as e:
-                    logger.error(f"SIP handshake failed: {e}")
-                    await websocket.close(code=1011, reason=f"Handshake Error: {e}")
-                    raise
-    
-    # Convert to enum
-    try:
-        transport_enum = TransportType(transport_type)
-        if sip_config.logging.get("enable_transport_logs", True):
-            logger.info(f"Using transport: {transport_enum.value}")
-        return transport_enum, None, kwargs
-        
-    except ValueError as e:
-        logger.error(f"Invalid transport type '{transport_type}', defaulting to websocket: {e}")
-        return TransportType.WEBSOCKET, None, {}
-
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Handles incoming WebSocket connections and routes them to the appropriate agent."""
+    """
+    Super simple WebSocket endpoint - SDK handles all complexity!
+    Users just need to specify which agent to use.
+    """
     await websocket.accept()
 
     try:
-        # Determine transport type and handle handshake
-        transport_type, _, kwargs = await _determine_transport_type(websocket)
-        
-        # Get agent configuration
+        # Get agent name from query params (simple!)
         query_params = dict(websocket.query_params)
-        session_id = query_params.get("session_id")
         agent_name = query_params.get("agent_name", "agent1")
+        session_id = query_params.get("session_id")
         
-        kwargs["transport_type"] = transport_type
+        # Get the agent configuration
         agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
         
-        logger.info(f"Starting agent '{agent_name}' with transport: {transport_type.value}")
-        await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id, **kwargs)
+        # SDK handles all the complex transport detection, handshake, etc.
+        await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id)
         
     except Exception as e:
         logger.error(f"WebSocket endpoint error: {e}")

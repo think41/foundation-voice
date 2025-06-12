@@ -4,6 +4,7 @@ from loguru import logger
 from .agent.run import run_agent
 from .utils.transport.connection_manager import WebRTCOffer, connection_manager
 from .utils.transport.session_manager import session_manager
+from .utils.transport.sip_detection import SIPDetector
 import aiohttp
 from .utils.transport.transport import TransportType
 import uuid
@@ -14,9 +15,19 @@ class CaiSDK:
         self.agent_config = agent_config or {}
     
     async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None, **kwargs):
+        """
+        Main WebSocket endpoint that automatically detects transport type.
+        Users just call this - all complexity is handled internally.
+        """
         try:
-            transport_type = kwargs.pop("transport_type", TransportType.WEBSOCKET)
-            logger.debug(f"Starting agent with transport type: {transport_type.value}")
+            # Auto-detect transport type (internal SDK logic)
+            transport_type, sip_params = await self._auto_detect_transport(websocket)
+            
+            # Add SIP parameters if this is a SIP call
+            if sip_params:
+                kwargs["sip_params"] = sip_params
+            
+            logger.debug(f"Auto-detected transport: {transport_type.value}")
             
             await self.agent_func(
                 transport_type,
@@ -32,6 +43,35 @@ class CaiSDK:
             logger.error(f"Error in websocket_endpoint_with_agent: {e}")
             raise
 
+    async def _auto_detect_transport(self, websocket: WebSocket) -> tuple[TransportType, Optional[dict]]:
+        """
+        Internal method to auto-detect transport type.
+        Users don't need to understand this logic.
+        """
+        # Get connection info
+        query_params = dict(websocket.query_params)
+        client_ip = websocket.client.host if websocket.client else "unknown"
+        headers = dict(websocket.headers) if hasattr(websocket, 'headers') else {}
+        
+        # Check if transport is explicitly specified
+        explicit_transport = query_params.get("transport_type", "").lower()
+        if explicit_transport in ["websocket", "webrtc", "daily"]:
+            try:
+                return TransportType(explicit_transport), None
+            except ValueError:
+                pass
+        
+        # Check if this is a SIP connection
+        if SIPDetector.detect_sip_connection(client_ip, headers, query_params):
+            # Handle SIP handshake
+            sip_params = await SIPDetector.handle_sip_handshake(websocket)
+            if sip_params:
+                return TransportType.SIP, sip_params
+            else:
+                logger.warning("SIP connection detected but handshake failed, falling back to WebSocket")
+        
+        # Default to WebSocket
+        return TransportType.WEBSOCKET, None
     
     async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
