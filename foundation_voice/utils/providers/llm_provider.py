@@ -108,27 +108,32 @@ def create_llm_context(
     
     req_tools = agent_config.get("llm", {}).get("tools", None)
 
-    if req_tools is not None and llm_provider == "openai":
-        try:
-            schemas = []
-            for key, value in tools.items():
-                if "schema" not in value:
-                    logger.warning(f"Skipping tool without 'schema': {value}")
-                    continue
+    if llm_provider == "openai":
+        if req_tools is not None:
+            
+            try:
+                schemas = []
+                for key, value in tools.items():
+                    if "schema" not in value:
+                        logger.warning(f"Skipping tool without 'schema': {value}")
+                        continue
 
-                if key in req_tools:
-                    schemas.append(value["schema"])
+                    if key in req_tools:
+                        schemas.append(value["schema"])
 
-            if not schemas:
-                raise ValueError("No valid schemas found in tools for OpenAI LLM context")
+                if not schemas:
+                    raise ValueError("No valid schemas found in tools for OpenAI LLM context")
 
-            tools_schema = ToolsSchema(schemas)
+                tools_schema = ToolsSchema(schemas)
 
-            logger.debug("Creating OpenAI LLM context")
-            return OpenAILLMContext(messages=messages, tools=tools_schema)
+                logger.debug("Creating OpenAI LLM context")
+                return OpenAILLMContext(messages=messages, tools=tools_schema)
 
-        except Exception as e:
-            raise RuntimeError("Failed to create OpenAI LLM context") from e
+            except Exception as e:
+                raise RuntimeError("Failed to create OpenAI LLM context") from e
+
+        else:
+            return OpenAILLMContext(messages=messages)
 
 
     elif llm_provider == "openai_agents":
