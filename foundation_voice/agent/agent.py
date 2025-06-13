@@ -299,6 +299,11 @@ async def create_agent_pipeline(
                 await cleanup(transport_type, connection, room_url, session_id, task)
             
     elif transport_type == TransportType.WEBRTC:
+        @transport.event_handler("on_client_closed")
+        async def on_client_closed(transport, client):
+            logger.info("Client clicked on disconnect. Ending Pipeline task")
+            await task.cancel()
+
         @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
         async def on_webrtc_disconnected(transport, connection):
             logger.info("WebRTC client disconnected")
