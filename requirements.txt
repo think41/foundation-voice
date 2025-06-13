@@ -17,6 +17,14 @@ pipecat-ai-small-webrtc-prebuilt==0.5.0
 av>=14.0.0
 websockets>=13.0.1
 
+# LangChain related dependencies
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langchain-community>=0.0.30
+langchain-chroma>=0.2.4
+chromadb>=1.0.0
+
+# Other dependencies
 openai-agents==0.0.11
 pydantic-ai[logfire]==0.0.51
 smallestai==3.1.0

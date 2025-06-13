@@ -27,7 +27,7 @@ class AgentHandler:
     def _setup(self, context, tools):
         self.agents = AgentFactory(self._config, context, tools)
 
-    async def run_streamed(self, agent_name, messages, context=None):
+    async def run_streamed(self, agent_name, messages, context=None, hooks=None):
         agent, guardrails = self.agents.get_agent(agent_name)
         if not agent:
             raise ValueError(f"Agent {agent_name} not found")
@@ -38,7 +38,7 @@ class AgentHandler:
 
         async def stream_agent():
             try:
-                async for chunk in Runner.run_streamed(agent, messages, context=context).stream_events():
+                async for chunk in Runner.run_streamed(agent, messages, context=context, hooks=hooks).stream_events():
                     if cancel_event.is_set():
                         break
                     if chunk.type == "raw_response_event" and isinstance(chunk.data, ResponseTextDeltaEvent):

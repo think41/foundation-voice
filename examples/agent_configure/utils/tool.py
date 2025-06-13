@@ -1,5 +1,8 @@
 from agents import function_tool, RunContextWrapper
 from .context import MagicalNestContext
+from foundation_voice.utils.vector_db import similarity_search
+from typing import List, Dict, Any, Optional
+
 
 """
 Define your agent tools here
@@ -63,9 +66,43 @@ def search_tool(query: str):
     return f"Searching for {query}"
 
 
+
+# VectorDB is now managed by the VectorDBManager singleton
+# The manager handles initialization and provides access to the vector DB and embedding function
+
+def retrieve_from_knowledge_base(query: str) -> str:
+    """
+    Retrieves relevant information from the knowledge base based on the user's query.
+    The LLM will use this information to answer the user.
+    for specific information to answer user questions about products, policies, or company details. Use this tool when you need to find factual information not readily available in the conversation history.
+    """
+    print(f"[RAG Tool] Received query: '{query}'")
+    
+    try:
+        # Use the singleton VectorDBManager to get relevant documents
+        results = similarity_search(query, k=3)
+        
+        if not results:
+            print("[RAG Tool] No relevant documents found.")
+            return "No relevant information found in the knowledge base for this query."
+        
+        # Format the retrieved documents into a string context for the LLM
+        context_str = "Based on the knowledge base, here's some relevant information:\n"
+        for i, doc in enumerate(results):
+            context_str += f"Context {i+1}: {doc.page_content if hasattr(doc, 'page_content') else doc}\n\n"
+        
+        print(f"[RAG Tool] Returning context:\n{context_str[:500]}...")  # Log a snippet
+        return context_str.strip()
+    
+    except Exception as e:
+        print(f"[RAG Tool] Error during retrieval: {e}")
+        return f"An error occurred while trying to access the knowledge base: {str(e)}"
+
+# ... (at the end of the file, update tool_config)
 tool_config = {
     "update_basic_info": update_basic_info,
     "update_room_data": update_room_data,
     "update_products": update_products,
-    "search_tool": search_tool
+    "search_tool": search_tool,
+    "retrieve_from_knowledge_base": retrieve_from_knowledge_base # Add your new tool
 }

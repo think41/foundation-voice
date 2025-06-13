@@ -34,7 +34,9 @@ from foundation_voice.custom_plugins.frames.frames import (
     GuardrailTriggeredFrame,
 )
 from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext, AgentChatContextFrame
+from foundation_voice.custom_plugins.services.openai_agents.agents_sdk import BufferRunHooks
 
+from loguru import logger
 
 # Aggregators for user and assistant context
 class AgentUserContextAggregator(LLMUserContextAggregator):
@@ -108,10 +110,20 @@ class OpenAIAgentPlugin(LLMService):
         Processes the context and emits events based on the agent's response.
         Returns a streaming response
         """
+        async def _pre_tool_cb(_ctx, _agent, tool):
+            logger.info(
+                "Tool call starting: {} (agent={})",
+                getattr(tool, "name", str(tool)),
+                getattr(_agent, "name", str(_agent)),
+            )
+            # Send a pre-emptive notice back to the user
+            await self.push_frame(TTSSpeakFrame("Let me look that up…"))
+
         async for event in self._client.run_streamed(
-            context.agent, 
-            context.messages, 
-            context.context
+            context.agent,
+            context.messages,
+            context.context,
+            hooks=BufferRunHooks(on_tool_start=_pre_tool_cb),
         ):
 
             if event.type == "error_event":
