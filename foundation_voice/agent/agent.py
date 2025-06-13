@@ -109,14 +109,14 @@ async def create_agent_pipeline(
 
     try:
         logger.debug("Creating STT service from configuration")
-        stt = create_stt_service(agent_config.get("stt", {}), transport_type.value)
+        stt = create_stt_service(agent_config.get("stt", {}))
     except Exception as e:
         logger.error(f"Failed to create STT service: {e}")
         raise
 
     try:
         logger.debug("Creating TTS service from configuration")
-        tts = create_tts_service(agent_config.get("tts", {}), transport_type.value)
+        tts = create_tts_service(agent_config.get("tts", {}))
     except Exception as e:
         logger.error(f"Failed to create TTS service: {e}")
         raise
