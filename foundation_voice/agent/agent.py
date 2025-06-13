@@ -124,10 +124,10 @@ async def create_agent_pipeline(
 
     transcript = TranscriptProcessor()
 
-    idle_processor = UserIdleProcessor(
-        tries=2, 
-        timeout=10
-    )
+    # idle_processor = UserIdleProcessor(
+    #     tries=2, 
+    #     timeout=10
+    # )
 
     transcript_handler = TranscriptHandler(
         transport=transport,
