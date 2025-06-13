@@ -43,6 +43,7 @@ async def create_agent_pipeline(
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    **kwargs,
 ):
     """
     Creates and returns the agent pipeline with the specified transport.
@@ -83,6 +84,7 @@ async def create_agent_pipeline(
         room_url=room_url,
         token=token,
         bot_name=bot_name,
+        **kwargs,
     )
 
     tools = FunctionFactory(
@@ -172,7 +174,6 @@ async def create_agent_pipeline(
         run_immediately = arguments.get("run_immediately")
         context_aggregator.user().add_messages(messages)
         await task.queue_frames([context_aggregator.user().get_context_frame()])
-        print(f"{messages}")
         return True
 
     append_to_messages = RTVIAction(
@@ -201,12 +202,23 @@ async def create_agent_pipeline(
         FunctionObserver(llm=llm, rtvi=rtvi)
     ]
         
-    # Create pipeline task with observers
+    # Configure sample rates based on transport type
+    # Twilio SIP requires 8kHz, other transports can use higher rates
+    # if transport_type == TransportType.SIP:
+    #     audio_in_sample_rate = 8000   # Twilio requires 8kHz
+    #     audio_out_sample_rate = 8000  # Twilio requires 8kHz
+    #     logger.debug("Using Twilio SIP sample rates: 8kHz in/out")
+    # else:
+    #     audio_in_sample_rate = 16000   # Higher quality for WebRTC/WebSocket
+    #     audio_out_sample_rate = 24000  # Higher quality for WebRTC/WebSocket
+    #     logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
+        
+    # Create pipeline task with transport-appropriate sample rates
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
-            audio_in_sample_rate=16000,
-            audio_out_sample_rate=24000,
+            audio_in_sample_rate=config.get("pipeline", {}).get("sample_rate_in", 16000),
+            audio_out_sample_rate=config.get("pipeline", {}).get("sample_rate_out", 24000),
             allow_interruptions=True,
             enable_metrics=True,
             enable_usage_metrics=True,
@@ -227,13 +239,14 @@ async def create_agent_pipeline(
     if transport_type == TransportType.DAILY:
         @rtvi.event_handler("on_client_ready")
         async def on_client_connected(rtvi):
-            logger.info("Client ready")
+            logger.info("Daily client ready")
             await rtvi.set_bot_ready()
             await task.queue_frames([context_aggregator.user().get_context_frame()])
 
+
         @transport.event_handler(AgentEvent.PARTICIPANT_LEFT.value)
         async def on_participant_left(transport, participant, reason):
-            logger.info(f"Participant left Daily room: {participant}, reason: {reason}")
+            logger.info(f"Participant left Daily room")
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()            
             # Get metrics from the observer
@@ -258,10 +271,22 @@ async def create_agent_pipeline(
                 from .cleanup import cleanup
                 await cleanup(transport_type, connection, room_url, session_id, task)
 
-    if transport_type == TransportType.WEBSOCKET:
+
+        @transport.event_handler(AgentEvent.FIRST_PARTICIPANT_JOINED.value)
+        async def on_first_participant_joined(transport, participant):
+            callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
+            data = {
+                "participant": participant,
+                "metadata": metadata
+            }
+            await callback(data)
+            await transport.capture_participant_transcription(participant["id"])
+
+
+    if transport_type != TransportType.DAILY:
         @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
         async def on_client_disconnected(transport, client):
-            logger.info("WebSocket client disconnected, cleaning up...")            
+            logger.info("WebSocket client disconnected")            
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()            
             # Get metrics from the observer
@@ -285,123 +310,18 @@ async def create_agent_pipeline(
                 # Always ensure the task is cancelled                
                 from .cleanup import cleanup
                 await cleanup(transport_type, connection, room_url, session_id, task)
-            
-    elif transport_type == TransportType.WEBRTC:
-        @transport.event_handler("on_client_closed")
-        async def on_client_closed(transport, client):
-            logger.info("Client clicked on disconnect. Ending Pipeline task")
-            await task.cancel()
 
-        @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
-        async def on_webrtc_disconnected(transport, connection):
-            logger.info("WebRTC client disconnected, cleaning up...")
-            callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
-            end_transcript = transcript_handler.get_all_messages()            
-            # Get metrics from the observer
-            metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
-
-            data = {
-                "transcript": end_transcript, 
-                "metrics": metrics,
-                "metadata": metadata
-            }
-
-            await callback(data)        
-            
-            try:
-                # Only try to log metrics if the observer exists
-                if call_metrics_observer:
-                    await call_metrics_observer._log_summary()
-            except Exception as e:
-                logger.error(f"Error generating metrics summary: {e}")
-            finally:
-                from .cleanup import cleanup
-                try:
-                    await cleanup(transport_type, connection, room_url, session_id, task)
-                except Exception as e:
-                    logger.error(f"Error during WebRTC disconnection cleanup: {e}")
-                    raise
-                
-    if transport_type != TransportType.DAILY:
         @transport.event_handler(AgentEvent.CLIENT_CONNECTED.value)
         async def on_client_connected(transport, client):
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
             await callback(client)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
-    
-    # @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
-    # async def on_client_disconnected(transport, client):
-    #     logger.info("Generating call metrics summary...")
-    #     callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
-    #     end_transcript = transcript_handler.get_all_messages()
-        
-    #     # Get metrics from the observer
-    #     metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
-
-    #     await callback({            
-    #         "transcript": end_transcript, 
-    #         "metrics": metrics
-    #     })        
-        
-    #     try:
-    #         # Only try to log metrics if the observer exists
-    #         if call_metrics_observer:
-    #             await call_metrics_observer._log_summary()
-    #     except Exception as e:
-    #         logger.error(f"Error generating metrics summary: {e}")
-    #     finally:
-    #         # Always ensure the task is cancelled
-    #         await task.cancel()
-
-    if transport_type == TransportType.DAILY:
-        # Create and store observers
-        @transport.event_handler(AgentEvent.FIRST_PARTICIPANT_JOINED.value)
-        async def on_first_participant_joined(transport, participant):
-            callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
-            data = {
-                "participant": participant,
-                "metadata": metadata
-            }
-            await callback(data)
-            await transport.capture_participant_transcription(participant["id"])
-
-        # @transport.event_handler(AgentEvent.PARTICIPANT_LEFT.value)
-        # async def on_participant_left(transport, participant, reason):
-        #     callback = callbacks.get_callback(AgentEvent.PARTICIPANT_LEFT)
-        #     end_transcript = transcript_handler.get_all_messages();
-        #     metrics = call_metrics_observer.get_metrics_summary();
-        #     logger.info(f"end_transcript participant left: {end_transcript}, metrics: {metrics}")
-
-        #     await callback({"transcript": end_transcript, "metrics": metrics});
-        #     logger.info("Generating call metrics summary...")
             
-        #     try:
-        #         # Directly call the metrics observer we stored
-        #         if call_metrics_observer:
-        #             await call_metrics_observer._log_summary()
-        #     except Exception as e:
-        #         logger.error(f"Error generating metrics summary: {e}")
-        #     finally:
-        #         # Always ensure the task is cancelled
-        #         await task.cancel()
-
-    # if transport_type == TransportType.WEBSOCKET:
-    #     @transport.event_handler(AgentEvent.SESSION_TIMEOUT.value)
-    #     async def on_session_timeout(transport, client):
-    #         logger.info("WebSocket session timeout")
-    #         try:
-    #             # Send a text frame indicating session end before closing
-    #             await task.queue_frames(
-    #                 [
-    #                     TextFrame("Session timeout - closing connection"),
-    #                     BotInterruptionFrame(),
-    #                 ]
-    #             )
-    #         except Exception as e:
-    #             logger.error(f"Error during session timeout handling: {e}")
-    #         finally:
-    #             # Ensure cleanup happens
-    #             if transport_type == TransportType.WEBSOCKET and connection:
-    #                 await connection.close()
+    if transport_type == TransportType.WEBRTC:
+        @transport.event_handler("on_client_closed")
+        async def on_client_closed(transport, client):
+            logger.info("Client clicked on disconnect. Ending Pipeline task")
+            await task.cancel()
+            
 
     return task, transport
