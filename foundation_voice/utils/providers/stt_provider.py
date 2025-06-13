@@ -11,24 +11,18 @@ from pipecat.services.openai.stt import OpenAISTTService
 from pipecat.transcriptions.language import Language
 from deepgram import LiveOptions
 
-def create_stt_service(stt_config: Dict[str, Any], transport_type: str = None) -> Any:
+def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     """
     Create an STT service based on configuration.
 
     Args:
         stt_config: Dictionary containing STT configuration
-        transport_type: Type of transport (used to configure audio passthrough)
 
     Returns:
         STT service instance
     """
     stt_provider = stt_config.get("provider", "deepgram")
-    
-    # For SIP transport (Twilio), we need audio passthrough
-    # audio_passthrough = transport_type == "sip"
-    # if audio_passthrough:
-    #     logger.debug("Enabling audio passthrough for SIP transport")
-    
+   
     # Dictionary mapping providers to their service creation functions
     stt_providers = {
         "deepgram": lambda: DeepgramSTTService(

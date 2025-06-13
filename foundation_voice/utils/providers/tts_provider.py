@@ -13,19 +13,17 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from foundation_voice.custom_plugins.services.smallest.tts import SmallestTTSService
 
 
-def create_tts_service(tts_config: Dict[str, Any], transport_type: str = None) -> Any:
+def create_tts_service(tts_config: Dict[str, Any]) -> Any:
     """
     Create a TTS service based on configuration.
 
     Args:
         tts_config: Dictionary containing TTS configuration
-        transport_type: Type of transport (used to select optimal TTS service)
 
     Returns:
         TTS service instance
     """
     tts_provider = tts_config.get("provider", "cartesia")
-    
 
     def _raise_missing_tts_api_key():
         raise ValueError(
@@ -62,5 +60,5 @@ def create_tts_service(tts_config: Dict[str, Any], transport_type: str = None) -
 
     # Get the provider function or default to cartesia
     provider_func = tts_providers.get(tts_provider, tts_providers["cartesia"])
-    logger.debug(f"Creating TTS service with provider: {tts_provider} (transport_type: {transport_type})")
+    logger.debug(f"Creating TTS service with provider: {tts_provider}")
     return provider_func()
