@@ -11,6 +11,7 @@ from pipecat.services.openai.stt import OpenAISTTService
 from pipecat.transcriptions.language import Language
 from deepgram import LiveOptions
 
+
 def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     """
     Create an STT service based on configuration.
@@ -26,12 +27,12 @@ def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     stt_providers = {
         "deepgram": lambda: DeepgramSTTService(
             api_key=stt_config.get("api_key")
-                    or os.getenv("DEEPGRAM_API_KEY")
-                    or _raise_missing_stt_api_key(),
+            or os.getenv("DEEPGRAM_API_KEY")
+            or _raise_missing_stt_api_key(),
             live_options=LiveOptions(
                 model=stt_config.get("model", "nova-2-general"),
-                language=stt_config.get("language", "en-us")
-            )
+                language=stt_config.get("language", "en-us"),
+            ),
         )
     }
 

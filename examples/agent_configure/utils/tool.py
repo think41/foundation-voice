@@ -13,6 +13,7 @@ def placeholder(ctx: RunContextWrapper, args):
     return 'Placeholder'
 """
 
+
 def update_basic_info(
     ctx: RunContextWrapper[MagicalNestContext],
     name: str = None,
@@ -67,5 +68,5 @@ tool_config = {
     "update_basic_info": update_basic_info,
     "update_room_data": update_room_data,
     "update_products": update_products,
-    "search_tool": search_tool
+    "search_tool": search_tool,
 }

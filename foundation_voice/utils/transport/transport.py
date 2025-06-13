@@ -15,11 +15,14 @@ from pipecat.serializers.protobuf import ProtobufFrameSerializer
 
 logger = logging.getLogger(__name__)
 
+
 class TransportType(Enum):
     """Enum defining all supported transport types"""
+
     WEBSOCKET = "websocket"
     WEBRTC = "webrtc"
     DAILY = "daily"
+
 
 class TransportFactory:
     @staticmethod

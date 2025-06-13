@@ -6,7 +6,7 @@ from pipecat.frames.frames import TranscriptionMessage, TranscriptionUpdateFrame
 
 class TranscriptHandler:
     def __init__(
-        self, 
+        self,
         transport,
         session_id: uuid.UUID,
         transport_type: Optional[str] = "smallwebrtc",
@@ -18,7 +18,7 @@ class TranscriptHandler:
         self._connection = connection
         self.messages: List[TranscriptionMessage] = []
         self._saved_messages: List[Dict] = []  # Store saved messages in memory
-        
+
     def get_all_messages(self) -> List[Dict]:
         """
         Get all saved messages in chronological order.
@@ -40,10 +40,11 @@ class TranscriptHandler:
         for msg in frame.messages:
             self.messages.append(msg)
             # Store message in saved_messages with required format
-            self._saved_messages.append({
-                "type": "transcript_update",
-                "role": msg.role,
-                "content": msg.content,
-                "timestamp": msg.timestamp
-            })
-            
+            self._saved_messages.append(
+                {
+                    "type": "transcript_update",
+                    "role": msg.role,
+                    "content": msg.content,
+                    "timestamp": msg.timestamp,
+                }
+            )

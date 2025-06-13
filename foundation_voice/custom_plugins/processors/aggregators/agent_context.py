@@ -7,6 +7,7 @@ from openai.types.chat import ChatCompletionMessageParam
 from pipecat.frames.frames import Frame
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 
+
 class AgentChatContext:
     """
     An agent chat context to keep track of the agent and the messages
@@ -21,7 +22,7 @@ class AgentChatContext:
         self._agent = agent
         self._messages = messages if messages is not None else []
         self._context = context
-    
+
     @staticmethod
     def upgrade_to_agent(obj: OpenAILLMContext):
         if isinstance(obj, OpenAILLMContext) and not isinstance(obj):
