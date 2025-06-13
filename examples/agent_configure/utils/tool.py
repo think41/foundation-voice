@@ -70,13 +70,11 @@ def search_tool(query: str):
 # VectorDB is now managed by the VectorDBManager singleton
 # The manager handles initialization and provides access to the vector DB and embedding function
 
-@function_tool(
-    description_override="Searches the internal knowledge base for specific information to answer user questions about products, policies, or company details. Use this tool when you need to find factual information not readily available in the conversation history."
-)
 def retrieve_from_knowledge_base(query: str) -> str:
     """
     Retrieves relevant information from the knowledge base based on the user's query.
     The LLM will use this information to answer the user.
+    for specific information to answer user questions about products, policies, or company details. Use this tool when you need to find factual information not readily available in the conversation history.
     """
     print(f"[RAG Tool] Received query: '{query}'")
     
