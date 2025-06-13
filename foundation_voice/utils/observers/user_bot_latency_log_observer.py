@@ -7,7 +7,7 @@ from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
-    Frame
+    Frame,
 )
 from pipecat.observers.base_observer import BaseObserver
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
@@ -43,14 +43,18 @@ class UserBotLatencyLogObserver(BaseObserver):
         # Reset state when user starts speaking
         if isinstance(frame, UserStartedSpeakingFrame):
             self._user_stopped_time = None
-        
+
         # When user stops speaking, note the time
         elif isinstance(frame, UserStoppedSpeakingFrame):
             self._user_stopped_time = time.time()
-        
+
         # When bot starts speaking, log the time since user stopped speaking
-        elif (isinstance(frame, BotStartedSpeakingFrame) and 
-              self._user_stopped_time is not None):
+        elif (
+            isinstance(frame, BotStartedSpeakingFrame)
+            and self._user_stopped_time is not None
+        ):
             response_time = time.time() - self._user_stopped_time
-            logger.debug(f"⏱️ BOT RESPONSE TIME (user stopped to bot speaking): {response_time:.3f}s")
+            logger.debug(
+                f"⏱️ BOT RESPONSE TIME (user stopped to bot speaking): {response_time:.3f}s"
+            )
             self._user_stopped_time = None

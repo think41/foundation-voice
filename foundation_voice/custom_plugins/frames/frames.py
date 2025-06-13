@@ -33,9 +33,11 @@ class AgentHandoffFrame(DataFrame):
     to_agent: str
 
     def __str__(self):
-        return f"AgentHandoffFrame(from_agent={self.from_agent}, to_agent={self.to_agent})"
-        
-    
+        return (
+            f"AgentHandoffFrame(from_agent={self.from_agent}, to_agent={self.to_agent})"
+        )
+
+
 @dataclass
 class GuardrailTriggeredFrame(DataFrame):
     guardrail_name: str
@@ -44,4 +46,3 @@ class GuardrailTriggeredFrame(DataFrame):
 
     def __str__(self):
         return f"GuardrailTriggeredFrame(guardrail_name={self.guardrail_name}, is_off_topic={self.is_off_topic}, reasoning={self.reasoning})"
-        

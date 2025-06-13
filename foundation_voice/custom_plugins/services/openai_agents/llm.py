@@ -11,7 +11,7 @@ from pipecat.frames.frames import (
     LLMMessagesFrame,
     EndFrame,
     ErrorFrame,
-    TTSSpeakFrame 
+    TTSSpeakFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.processors.aggregators.llm_response import (
@@ -26,21 +26,26 @@ from pipecat.processors.aggregators.openai_llm_context import (
 
 from openai.types.chat import ChatCompletionMessageParam
 
-from foundation_voice.custom_plugins.services.openai_agents.agents_sdk.handler import AgentHandler
+from foundation_voice.custom_plugins.services.openai_agents.agents_sdk.handler import (
+    AgentHandler,
+)
 from foundation_voice.custom_plugins.frames.frames import (
     ToolCallFrame,
     ToolResultFrame,
     AgentHandoffFrame,
     GuardrailTriggeredFrame,
 )
-from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext, AgentChatContextFrame
+from foundation_voice.custom_plugins.processors.aggregators.agent_context import (
+    AgentChatContext,
+    AgentChatContextFrame,
+)
 
 
 # Aggregators for user and assistant context
 class AgentUserContextAggregator(LLMUserContextAggregator):
     def add_message(self, message: ChatCompletionMessageParam):
         self._context.add_message(message)
-    
+
     def get_messages(self) -> List[ChatCompletionMessageParam]:
         return self._context.get_messages()
 
@@ -48,9 +53,10 @@ class AgentUserContextAggregator(LLMUserContextAggregator):
 class AgentAssistantContextAggregator(LLMAssistantContextAggregator):
     def add_message(self, message: ChatCompletionMessageParam):
         self._context.add_message(message)
-    
+
     def get_messages(self) -> List[ChatCompletionMessageParam]:
         return self._context.get_messages()
+
 
 @dataclass
 class AgentContextAggregatorPair:
@@ -70,17 +76,18 @@ class AgentContextAggregatorPair:
 
 class OpenAIAgentPlugin(LLMService):
     """
-    
-    Custom agent plugin for OpenAI-Agents-SDK. 
+
+    Custom agent plugin for OpenAI-Agents-SDK.
     Extends the LLMService class provided by pipecat.
 
-    Args: 
+    Args:
         agent_config: AgentConfig :- Configuration for the agent
         tools: dict | None :- userdefined tools for the agent
         rtvi: Optional[RTVIProcessor] :- RTVI processor for the agent
         **kwargs: :- Additional keyword arguments
 
     """
+
     def __init__(
         self,
         agent_config,
@@ -88,12 +95,16 @@ class OpenAIAgentPlugin(LLMService):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        
+
         self._agent_config = agent_config
         self._rtvi = data.get("rtvi")
         self._triage = data.get("triage", True)
-        
-        self._create_agents(agent_config, self._get_context(agent_config, data.get("contexts")), data.get("tools"))
+
+        self._create_agents(
+            agent_config,
+            self._get_context(agent_config, data.get("contexts")),
+            data.get("tools"),
+        )
 
     def _get_context(self, agent_config, contexts):
         return contexts.get(agent_config.get("context"))
@@ -109,16 +120,11 @@ class OpenAIAgentPlugin(LLMService):
         Returns a streaming response
         """
         async for event in self._client.run_streamed(
-            context.agent, 
-            context.messages, 
-            context.context
+            context.agent, context.messages, context.context
         ):
-
             if event.type == "error_event":
                 # Push error frame when an error occurs when agent is running
-                await self.push_frame(
-                    ErrorFrame(event.data.text)
-                )
+                await self.push_frame(ErrorFrame(event.data.text))
 
             elif event.type == "raw_response_event":
                 # Streaming response chunks. Push text frame for each chunk
@@ -131,16 +137,17 @@ class OpenAIAgentPlugin(LLMService):
                         agent_name=event.data.agent,
                         tool_name=event.data.tool_name,
                         input=event.data.input,
-                        call_id=event.data.call_id
+                        call_id=event.data.call_id,
                     )
                 )
-            
+
             elif event.type == "tool_call_output_item":
                 # Push tool result frame when tool call finishes with a result
-                await self.push_frame(ToolResultFrame(
-                    result=event.data.tool_result,
-                    call_id=event.data.call_id
-                ))
+                await self.push_frame(
+                    ToolResultFrame(
+                        result=event.data.tool_result, call_id=event.data.call_id
+                    )
+                )
 
             elif event.type == "agent_updated_stream_event":
                 if event.data.from_agent != event.data.to_agent:
@@ -148,20 +155,24 @@ class OpenAIAgentPlugin(LLMService):
                         context.agent = event.data.to_agent
 
                     # Push a frame to display agent handoff
-                    await self.push_frame(AgentHandoffFrame(
-                        from_agent=event.data.from_agent,
-                        to_agent=event.data.to_agent
-                    ))
-            
+                    await self.push_frame(
+                        AgentHandoffFrame(
+                            from_agent=event.data.from_agent,
+                            to_agent=event.data.to_agent,
+                        )
+                    )
+
             elif event.type == "guardrail_triggered_event":
-                await self.push_frame(TTSSpeakFrame(
-                    "I am sorry, but I am not able to assist with that."
-                ))
-                await self.push_frame(GuardrailTriggeredFrame(
-                    guardrail_name=event.data.guardrail_name,
-                    is_off_topic=event.data.is_off_topic,
-                    reasoning=event.data.reasoning
-                ))
+                await self.push_frame(
+                    TTSSpeakFrame("I am sorry, but I am not able to assist with that.")
+                )
+                await self.push_frame(
+                    GuardrailTriggeredFrame(
+                        guardrail_name=event.data.guardrail_name,
+                        is_off_topic=event.data.is_off_topic,
+                        reasoning=event.data.reasoning,
+                    )
+                )
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         # Handle EndFrame specially to avoid serialization issues
@@ -180,7 +191,6 @@ class OpenAIAgentPlugin(LLMService):
             context = AgentChatContext.from_messages(frame.messages)
             if context.agent is None:
                 context.agent = self._agent_config.get("start_agent")
-                
 
         if context is not None:
             await self.push_frame(LLMFullResponseStartFrame())

@@ -17,15 +17,17 @@ from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 
 
-
 cai_sdk = CaiSDK()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 config_path1 = os.path.join(BASE_DIR, "agent_configure", "config", "agent_config.json")
-config_path2 = os.path.join(BASE_DIR, "agent_configure", "config", "config_with_keys.json")
+config_path2 = os.path.join(
+    BASE_DIR, "agent_configure", "config", "config_with_keys.json"
+)
 config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.json")
-config_path4 = os.path.join(BASE_DIR, "agent_configure", "config", "language_agent.json")
-
+config_path4 = os.path.join(
+    BASE_DIR, "agent_configure", "config", "language_agent.json"
+)
 
 
 agent_config_1 = ConfigLoader.load_config(config_path1)
@@ -42,13 +44,13 @@ app = FastAPI(
     title="CAI Voice Bot API",
     description="API for voice-based conversational AI applications using the Pipecat framework",
     version="1.0.0",
-    docs_url=None,  
-    redoc_url=None,  
+    docs_url=None,
+    redoc_url=None,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,7 +58,7 @@ app.add_middleware(
 
 defined_agents = {
     "agent1": {
-        "config": agent_config_1, 
+        "config": agent_config_1,
         "contexts": contexts,
         "tool_dict": tool_config,
         "callbacks": custom_callbacks,
@@ -71,9 +73,7 @@ defined_agents = {
         "tool_dict": tool_config,
         "callbacks": custom_callbacks,
     },
-    "agent4": {
-        "config": agent_config_4
-    }
+    "agent4": {"config": agent_config_4},
 }
 
 
@@ -89,7 +89,9 @@ async def index():
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, session_id: str = Query(None), agent_name: str = Query(None)):
+async def websocket_endpoint(
+    websocket: WebSocket, session_id: str = Query(None), agent_name: str = Query(None)
+):
     agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
     await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id)
 
