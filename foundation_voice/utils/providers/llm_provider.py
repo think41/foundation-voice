@@ -12,7 +12,9 @@ from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 
 from foundation_voice.custom_plugins.services.openai_agents.llm import OpenAIAgentPlugin
-from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext
+from foundation_voice.custom_plugins.processors.aggregators.agent_context import (
+    AgentChatContext,
+)
 
 
 DEFAULT_PROMPT = "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way."
@@ -63,7 +65,6 @@ def create_llm_service(
 
     tools = llm_config.get("tools", None)
     if tools is not None and llm_provider == "openai":
-        
         for key, value in data.get("tools", {}).items():
             if key in tools:
                 llm.register_function(key, value["function"])
@@ -72,11 +73,7 @@ def create_llm_service(
     return llm
 
 
-def create_llm_context(
-    agent_config: Dict[str, Any], 
-    context=None, 
-    tools={}
-):
+def create_llm_context(agent_config: Dict[str, Any], context=None, tools={}):
     """
     Create an LLM context based on configuration.
 
@@ -105,12 +102,11 @@ def create_llm_context(
     ]
 
     llm_provider = agent_config["llm"]["provider"]
-    
+
     req_tools = agent_config.get("llm", {}).get("tools", None)
 
     if llm_provider == "openai":
         if req_tools is not None:
-            
             try:
                 schemas = []
                 for key, value in tools.items():
@@ -122,7 +118,9 @@ def create_llm_context(
                         schemas.append(value["schema"])
 
                 if not schemas:
-                    raise ValueError("No valid schemas found in tools for OpenAI LLM context")
+                    raise ValueError(
+                        "No valid schemas found in tools for OpenAI LLM context"
+                    )
 
                 tools_schema = ToolsSchema(schemas)
 
@@ -134,7 +132,6 @@ def create_llm_context(
 
         else:
             return OpenAILLMContext(messages=messages)
-
 
     elif llm_provider == "openai_agents":
         logger.debug("Creating OpenAI Agent LLM context")
