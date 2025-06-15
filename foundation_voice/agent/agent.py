@@ -198,7 +198,7 @@ async def create_agent_pipeline(
     task_observers = [
         UserBotLatencyLogObserver(),
         call_metrics_observer,
-        FunctionObserver(llm=llm, rtvi=rtvi)
+        FunctionObserver(rtvi=rtvi)
     ]
         
     # Create pipeline task with observers
