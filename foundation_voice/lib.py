@@ -15,8 +15,6 @@ class CaiSDK:
     async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None, session_resume: Optional[dict] = None):
         await websocket.accept()
         try:
-            contexts = agent.get("contexts", {})
-            contexts = session_manager.update_session_resume_data(contexts, session_id, session_resume)
 
             await self.agent_func(
                 TransportType.WEBSOCKET,
@@ -24,8 +22,9 @@ class CaiSDK:
                 session_id=session_id,
                 callbacks=agent.get("callbacks", None),
                 tool_dict=agent.get("tool_dict", {}),
-                contexts=contexts,
+                contexts=agent.get("contexts", {}),
                 config=agent.get("config", {}),
+                session_resume=session_resume
             )
         except Exception as e:
             import traceback
@@ -35,8 +34,6 @@ class CaiSDK:
     
     async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional[dict] = None, session_resume: Optional[dict] = None):
         # Initialize contexts and handle session_resume if provided
-        contexts = agent.get("contexts", {})
-        contexts = session_manager.update_session_resume_data(contexts, offer.session_id, session_resume)
 
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
             answer, connection = await connection_manager.handle_webrtc_connection(offer)
@@ -48,10 +45,11 @@ class CaiSDK:
                     "session_id": offer.session_id,
                     "connection": connection,
                     "config": agent["config"],
-                    "contexts": contexts,
+                    "contexts": agent.get("contexts", {}),
                     "tool_dict": agent.get("tool_dict", {}),
                     "callbacks": agent.get("callbacks", None),
-                    "metadata": metadata
+                    "metadata": metadata,
+                    "session_resume": session_resume
                 }
             }
             return response
@@ -65,10 +63,11 @@ class CaiSDK:
                 "session_id": offer.session_id,
                 "connection": connection,
                 "config": agent["config"],
-                "contexts": contexts,
+                "contexts": agent.get("contexts", {}),
                 "tool_dict": agent.get("tool_dict", {}),
                 "callbacks": agent.get("callbacks", None),
-                "metadata": metadata
+                "metadata": metadata,
+                "session_resume": session_resume
             }
         }
         return response
@@ -80,7 +79,7 @@ class CaiSDK:
             
             # Initialize contexts and handle session_resume if provided
             contexts = agent.get("contexts", {})
-            contexts = session_manager.update_session_resume_data(contexts, session_id, session_resume)
+            
             
             # Convert string to TransportType enum
             try:
@@ -119,7 +118,7 @@ class CaiSDK:
                                 "session_id": offer.session_id,
                                 "connection": connection,
                                 "config": agent["config"],
-                                "contexts": contexts,
+                                "contexts": agent.get("contexts", {}),
                                 "tool_dict": agent.get("tool_dict", {}),
                                 "callbacks": agent.get("callbacks", None),
                             }
@@ -133,7 +132,7 @@ class CaiSDK:
                             "transport_type": transport_type,
                             "connection": connection,
                             "config": agent["config"],
-                            "contexts": contexts,
+                            "contexts": agent.get("contexts", {}),
                             "tool_dict": agent.get("tool_dict", {}),
                             "callbacks": agent.get("callbacks", None),
                         }
@@ -160,7 +159,7 @@ class CaiSDK:
                             "room_url": url,
                             "token": token,
                             "config": agent["config"],
-                            "contexts": contexts,
+                            "contexts": agent.get("contexts", {}),
                             "tool_dict": agent.get("tool_dict", {}),
                             "callbacks": agent.get("callbacks", None),
                         }

@@ -43,6 +43,7 @@ async def create_agent_pipeline(
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    session_resume: Optional[Dict[str, Any]] = None,
 ):
     """
     Creates and returns the agent pipeline with the specified transport.
@@ -54,6 +55,7 @@ async def create_agent_pipeline(
         bot_name: Name of the bot
         session_id: Optional session ID
         callbacks: Optional instance of AgentCallbacks for custom event handling
+        session_resume: Optional session resume data containing previous conversation
     """
     if not isinstance(transport_type, TransportType):
         raise ValueError("transport_type must be a TransportType enum")
@@ -128,11 +130,22 @@ async def create_agent_pipeline(
             contexts.get(agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}),
             tools
         )
+        
+        context_aggregator = llm.create_context_aggregator(context)
+        
+        # Handle session resume data if available
+        if session_resume and "transcript" in session_resume:
+            logger.info("Restoring previous transcript from session resume data")
+            previous_messages = session_resume["transcript"]
+            if isinstance(previous_messages, list):
+                # Add previous messages to the context
+                for message in previous_messages:
+                    if isinstance(message, dict) and "role" in message and "content" in message:
+                        context_aggregator.user().add_message(message)
+                logger.info(f"Restored {len(previous_messages)} messages from previous session")
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise
-
-    context_aggregator = llm.create_context_aggregator(context)
 
     transcript = TranscriptProcessor()
 

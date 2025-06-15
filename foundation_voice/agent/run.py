@@ -22,6 +22,7 @@ async def run_agent(
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    session_resume: Optional[Dict[str, Any]] = None,
 ):
     if not session_id:
         session_id = str(uuid.uuid4())
@@ -49,7 +50,8 @@ async def run_agent(
         tool_dict=tool_dict,
         contexts=contexts,
         config=config,
-        metadata=metadata
+        metadata=metadata,
+        session_resume=session_resume
     )
 
     try:
