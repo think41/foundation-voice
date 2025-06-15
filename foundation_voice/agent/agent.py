@@ -43,6 +43,7 @@ async def create_agent_pipeline(
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    session_resume: Optional[Dict[str, Any]] = None,
 ):
     """
     Creates and returns the agent pipeline with the specified transport.
@@ -54,6 +55,7 @@ async def create_agent_pipeline(
         bot_name: Name of the bot
         session_id: Optional session ID
         callbacks: Optional instance of AgentCallbacks for custom event handling
+        session_resume: Optional session resume data containing previous conversation
     """
     if not isinstance(transport_type, TransportType):
         raise ValueError("transport_type must be a TransportType enum")
@@ -96,6 +98,7 @@ async def create_agent_pipeline(
             "rtvi": rtvi,
             "contexts": contexts,
             "tools": tools,
+            "session_id": session_id
         }
         llm = create_llm_service(
             agent_config.get("llm", {}),
@@ -127,11 +130,22 @@ async def create_agent_pipeline(
             contexts.get(agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}),
             tools
         )
+        
+        context_aggregator = llm.create_context_aggregator(context)
+        
+        # Handle session resume data if available
+        if session_resume and "transcript" in session_resume:
+            logger.info("Restoring previous transcript from session resume data")
+            previous_messages = session_resume["transcript"]
+            if isinstance(previous_messages, list):
+                # Add previous messages to the context
+                for message in previous_messages:
+                    if isinstance(message, dict) and "role" in message and "content" in message:
+                        context_aggregator.user().add_message(message)
+                logger.info(f"Restored {len(previous_messages)} messages from previous session")
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise
-
-    context_aggregator = llm.create_context_aggregator(context)
 
     transcript = TranscriptProcessor()
 
@@ -219,7 +233,8 @@ async def create_agent_pipeline(
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
         data = {
             "frame": frame,
-            "metadata": metadata
+            "metadata": metadata,
+            "session_id": session_id
         }
         await callback(data)
         await transcript_handler.on_transcript_update(frame)
@@ -243,7 +258,8 @@ async def create_agent_pipeline(
                 "reason": reason,
                 "metadata": metadata,
                 "transcript": end_transcript,
-                "metrics": metrics
+                "metrics": metrics,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -270,7 +286,8 @@ async def create_agent_pipeline(
             data = {
                 "transcript": end_transcript, 
                 "metrics": metrics,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -303,7 +320,8 @@ async def create_agent_pipeline(
             data = {
                 "transcript": end_transcript, 
                 "metrics": metrics,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -326,7 +344,11 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.CLIENT_CONNECTED.value)
         async def on_client_connected(transport, client):
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
-            await callback(client)
+            data = {
+                "client": client,
+                "session_id": session_id
+            }
+            await callback(data)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
     
     # @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
@@ -360,7 +382,8 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
             data = {
                 "participant": participant,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
             await callback(data)
             await transport.capture_participant_transcription(participant["id"])
