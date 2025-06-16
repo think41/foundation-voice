@@ -1,23 +1,26 @@
 import uuid
-from typing import Optional, Union, Dict, Any
-from fastapi import WebSocket
+
 from loguru import logger
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from fastapi import WebSocket
+from typing import Optional, Union, Dict, Any
+
 from pipecat.pipeline.runner import PipelineRunner
-from ..utils.transport.session_manager import session_manager
-from ..utils.transport.transport import TransportType
-from .agent import create_agent_pipeline
-from .cleanup import cleanup
-from .agent import AgentCallbacks
+from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+
+from foundation_voice.agent.cleanup import cleanup
+from foundation_voice.agent.agent import AgentCallbacks
+from foundation_voice.agent.agent import create_agent_pipeline
+from foundation_voice.utils.transport.transport import TransportType
+from foundation_voice.utils.transport.session_manager import session_manager
 
 async def run_agent(
     transport_type: TransportType,
     config: Dict[str, Any],
     connection: Optional[Union[WebSocket, SmallWebRTCConnection]] = None,
-    room_url: str = None,
-    token: str = None,
-    bot_name: str = "AI Assistant",
     session_id: str = None,
+    room_url: Optional[str] = None,
+    token: Optional[str] = None,
+    bot_name: Optional[str] = "AI Assistant",
     callbacks: Optional[AgentCallbacks] = None,
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,

@@ -122,7 +122,7 @@ def create_llm_context(
                         schemas.append(value["schema"])
 
                 if not schemas:
-                    raise ValueError("No valid schemas found in tools for OpenAI LLM context")
+                    logger.error("No valid schemas found in tools for OpenAI LLM context")
 
                 tools_schema = ToolsSchema(schemas)
 

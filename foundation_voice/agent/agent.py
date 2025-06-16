@@ -1,32 +1,30 @@
-import os
-from pydoc import text
 import sys
-from typing import Optional, Union, Dict, Any
-from fastapi import WebSocket
-from loguru import logger
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
-from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.runner import PipelineRunner
-from pipecat.pipeline.task import PipelineParams, PipelineTask
-from pipecat.frames.frames import BotInterruptionFrame, TextFrame
-from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIProcessor, RTVIAction, RTVIActionArgument, RTVIObserver
-from ..utils.providers.stt_provider import create_stt_service
-from ..utils.providers.tts_provider import create_tts_service
-from ..utils.providers.llm_provider import create_llm_service, create_llm_context
-from ..utils.config_loader import ConfigLoader
-from pipecat.processors.transcript_processor import TranscriptProcessor
-from ..utils.transport.transport import TransportFactory, TransportType
-from ..utils.transport.session_manager import session_manager
-from ..utils.observers.func_observer import FunctionObserver
-# from ..agent_configure.utils.context import contexts
-from ..utils.transcripts.transcript_handler import TranscriptHandler
-from ..custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
-from ..utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObserver
-from ..utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 import uuid
-import json
-from foundation_voice.utils.idle_processor.user_idle_processor import UserIdleProcessor
+
+from loguru import logger
+from fastapi import WebSocket
+from typing import Optional, Union, Dict, Any
+
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.utils.tracing.setup import setup_tracing
+from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.processors.transcript_processor import TranscriptProcessor
+from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIProcessor, RTVIAction, RTVIActionArgument
+
+from foundation_voice.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
 from foundation_voice.utils.function_adapter import FunctionFactory
+from foundation_voice.utils.transport.transport import TransportFactory, TransportType
+from foundation_voice.utils.idle_processor.user_idle_processor import UserIdleProcessor
+from foundation_voice.utils.transcripts.transcript_handler import TranscriptHandler
+from foundation_voice.utils.providers.stt_provider import create_stt_service
+from foundation_voice.utils.providers.tts_provider import create_tts_service
+from foundation_voice.utils.providers.llm_provider import create_llm_service, create_llm_context
+from foundation_voice.utils.observers.func_observer import FunctionObserver
+from foundation_voice.utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObserver
+from foundation_voice.utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
+
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
@@ -55,20 +53,23 @@ async def create_agent_pipeline(
         session_id: Optional session ID
         callbacks: Optional instance of AgentCallbacks for custom event handling
     """
-    if not isinstance(transport_type, TransportType):
-        raise ValueError("transport_type must be a TransportType enum")
-
     # Use default callbacks if none provided
     if callbacks is None:
         callbacks = AgentCallbacks()
 
+    exporter = OTLPSpanExporter(
+        endpoint="http://localhost:4317",  # Jaeger or other collector endpoint
+        insecure=True,
+    )
+
+    setup_tracing(
+        service_name="my-voice-app",
+        exporter=exporter,
+        console_export=False,  # Set to True for debug output
+    )
+
     # Set up RTVI processor for transcript and event emission
     rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
-
-    # config_path = os.getenv("CONFIG_PATH")
-    # if not config_path:
-    #     logger.error("CONFIG_PATH environment variable not set")
-    #     raise ValueError("CONFIG_PATH environment variable must be set")
 
     try:
         agent_config = config.get("agent", {})
@@ -210,6 +211,9 @@ async def create_agent_pipeline(
             allow_interruptions=True,
             enable_metrics=True,
             enable_usage_metrics=True,
+            enable_tracing=True,                                  # Enable tracing for this task
+            enable_turn_tracking=True,                            # Enable turn tracking for this task
+            conversation_id="customer-123", 
         ),
         observers=task_observers,
     )
