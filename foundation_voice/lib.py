@@ -39,7 +39,7 @@ class CaiSDK:
         }
         return {**args, **kwargs}
     
-
+    
     async def _auto_detect_transport(self, websocket: WebSocket) -> tuple[TransportType, Optional[dict]]:
         """Auto-detect transport type with simplified logic"""
         query_params = dict(websocket.query_params)
@@ -104,25 +104,6 @@ class CaiSDK:
         kwargs = {
             "metadata": metadata
         }
-        
-        # if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
-        #     answer, connection = await connection_manager.handle_webrtc_connection(offer)
-
-        #     args = self.create_args(
-        #         transport_type=TransportType.WEBRTC,
-        #         connection=connection,
-        #         session_id=answer["pc_id"],
-        #         agent=agent,
-        #         **kwargs
-        #     )
-        #     response = {
-        #         "answer": answer,
-        #         "background_task_args": {
-        #             "func": run_agent,
-        #             **args,
-        #         }
-        #     }
-        #     return response
             
         answer, connection = await connection_manager.handle_webrtc_connection(offer)
         args = self.create_args(
