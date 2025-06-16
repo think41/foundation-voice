@@ -15,9 +15,9 @@ from fastapi.openapi.utils import get_openapi
 from foundation_voice.lib import CaiSDK
 from foundation_voice.utils.config_loader import ConfigLoader
 
-from agent_configure.utils.context import contexts
-from agent_configure.utils.tool import tool_config
-from agent_configure.utils.callbacks import custom_callbacks
+from examples.agent_configure.utils.context import contexts
+from examples.agent_configure.utils.tool import tool_config
+from examples.agent_configure.utils.callbacks import custom_callbacks
 
 
 
