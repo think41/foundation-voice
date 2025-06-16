@@ -73,6 +73,7 @@
     "name": "llm_agent_pipeline",
     "sample_rate_in": 8000,
     "sample_rate_out": 8000,
+    "enable_tracing": true,
     "stages": [
       {
         "type": "input",
