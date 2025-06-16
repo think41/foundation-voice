@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 class WebRTCOffer(BaseModel):
     sdp: str
     type: str
+    session_id: Optional[str] = None
     pc_id: Optional[str] = None
     restart_pc: bool = False
     agent_name: Optional[str] = None

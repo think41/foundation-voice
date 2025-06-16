@@ -12,9 +12,10 @@ class CaiSDK:
         self.agent_func = agent_func or run_agent
         self.agent_config = agent_config or {}
     
-    async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None):
+    async def websocket_endpoint_with_agent(self, websocket: WebSocket, agent: dict, session_id: Optional[str] = None, session_resume: Optional[dict] = None):
         await websocket.accept()
         try:
+
             await self.agent_func(
                 TransportType.WEBSOCKET,
                 connection=websocket,
@@ -23,6 +24,7 @@ class CaiSDK:
                 tool_dict=agent.get("tool_dict", {}),
                 contexts=agent.get("contexts", {}),
                 config=agent.get("config", {}),
+                session_resume=session_resume
             )
         except Exception as e:
             import traceback
@@ -30,7 +32,9 @@ class CaiSDK:
             await websocket.close()
 
     
-    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):
+    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional[dict] = None, session_resume: Optional[dict] = None):
+        # Initialize contexts and handle session_resume if provided
+
         if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
             answer, connection = await connection_manager.handle_webrtc_connection(offer)
             response = {
@@ -38,13 +42,14 @@ class CaiSDK:
                 "background_task_args": {
                     "func": run_agent,
                     "transport_type": TransportType.WEBRTC,
-                    "session_id": answer["pc_id"],
+                    "session_id": offer.session_id,
                     "connection": connection,
                     "config": agent["config"],
                     "contexts": agent.get("contexts", {}),
                     "tool_dict": agent.get("tool_dict", {}),
                     "callbacks": agent.get("callbacks", None),
-                    "metadata": metadata
+                    "metadata": metadata,
+                    "session_resume": session_resume
                 }
             }
             return response
@@ -55,21 +60,26 @@ class CaiSDK:
             "background_task_args": {
                 "func": run_agent,
                 "transport_type": TransportType.WEBRTC,
-                "session_id": answer["pc_id"],
+                "session_id": offer.session_id,
                 "connection": connection,
                 "config": agent["config"],
                 "contexts": agent.get("contexts", {}),
                 "tool_dict": agent.get("tool_dict", {}),
                 "callbacks": agent.get("callbacks", None),
-                "metadata": metadata
+                "metadata": metadata,
+                "session_resume": session_resume
             }
         }
         return response
     
-    async def connect_handler(self, request: dict, agent: dict):
+    async def connect_handler(self, request: dict, agent: dict, session_id: Optional[str] = None,metadata: Optional[dict] = None, session_resume: Optional[dict] = None):
         try:
             transport_type_str = request.get("transportType", "").lower()
             agent_config = request.get("agentConfig", {})
+            
+            # Initialize contexts and handle session_resume if provided
+            contexts = agent.get("contexts", {})
+            
             
             # Convert string to TransportType enum
             try:
@@ -93,24 +103,26 @@ class CaiSDK:
                     offer = WebRTCOffer(
                         sdp=request["sdp"],
                         type=request["type"],
-                        pc_id=request.get("pc_id"),
+                        session_id=request.get("session_id"),
                         restart_pc=request.get("restart_pc", False),
                         agent_name=request.get("agent_name")
                     )
                     
-                    if offer.pc_id and session_manager.get_webrtc_session(offer.pc_id):
+                    if offer.session_id and session_manager.get_webrtc_session(offer.session_id):
                         answer, connection = await connection_manager.handle_webrtc_connection(offer)
                         return { 
                             "answer": answer,
                             "background_task_args": {
                                 "func": run_agent,
                                 "transport_type": transport_type,
-                                "session_id": answer["pc_id"],
-                                "config": agent["config"],
+                                "session_id": offer.session_id,
                                 "connection": connection,
+                                "config": agent["config"],
                                 "contexts": agent.get("contexts", {}),
                                 "tool_dict": agent.get("tool_dict", {}),
                                 "callbacks": agent.get("callbacks", None),
+                                "metadata": metadata,
+                                "session_resume": session_resume
                             }
                         }
                     
@@ -125,6 +137,8 @@ class CaiSDK:
                             "contexts": agent.get("contexts", {}),
                             "tool_dict": agent.get("tool_dict", {}),
                             "callbacks": agent.get("callbacks", None),
+                            "metadata": metadata,
+                            "session_resume": session_resume
                         }
                     }
                 else:
@@ -138,7 +152,7 @@ class CaiSDK:
                 async with aiohttp.ClientSession() as session:
                     url, token = await connection_manager.handle_daily_connection(session)
 
-                    session_id = str(uuid.uuid4())
+                    session_id = session_id or str(uuid.uuid4())
                     return { 
                         "room_url": url,
                         "token": token,
@@ -151,7 +165,9 @@ class CaiSDK:
                             "config": agent["config"],
                             "contexts": agent.get("contexts", {}),
                             "tool_dict": agent.get("tool_dict", {}),
-                            "callbacks": agent.get("callbacks", None),
+                            "callbacks": agent.get("callbacks", None),  
+                            "metadata": metadata,
+                            "session_resume": session_resume
                         }
                     }
                 
