@@ -11,6 +11,7 @@ class AgentContext(BaseModel):
 
 """
 
+
 class MagicalNestContext(BaseModel):
     name: str | None = None
     age: int | None = None
@@ -23,6 +24,4 @@ class MagicalNestContext(BaseModel):
     products: str | None = None
 
 
-contexts = {
-    "MagicalNestContext": MagicalNestContext
-}
+contexts = {"MagicalNestContext": MagicalNestContext}
