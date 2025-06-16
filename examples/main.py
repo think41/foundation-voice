@@ -33,16 +33,19 @@ cai_sdk = CaiSDK()
 twilio_client = None
 if os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_AUTH_TOKEN"):
     twilio_client = TwilioClient(
-        os.getenv("TWILIO_ACCOUNT_SID"),
-        os.getenv("TWILIO_AUTH_TOKEN")
+        os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN")
     )
 
 # Load agent configurations (simplified)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 config_path1 = os.path.join(BASE_DIR, "agent_configure", "config", "agent_config.json")
-config_path2 = os.path.join(BASE_DIR, "agent_configure", "config", "config_with_keys.json")
+config_path2 = os.path.join(
+    BASE_DIR, "agent_configure", "config", "config_with_keys.json"
+)
 config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.json")
-config_path4 = os.path.join(BASE_DIR, "agent_configure", "config", "language_agent.json")
+config_path4 = os.path.join(
+    BASE_DIR, "agent_configure", "config", "language_agent.json"
+)
 
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
@@ -55,13 +58,13 @@ app = FastAPI(
     title="CAI Voice Bot API",
     description="API for voice-based conversational AI applications using the Pipecat framework",
     version="1.0.0",
-    docs_url=None,  
-    redoc_url=None,  
+    docs_url=None,
+    redoc_url=None,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,7 +73,7 @@ app.add_middleware(
 # Simple agent definitions (user-friendly)
 defined_agents = {
     "agent1": {
-        "config": agent_config_1, 
+        "config": agent_config_1,
         "contexts": contexts,
         "tool_dict": tool_config,
         "callbacks": custom_callbacks,
@@ -85,9 +88,7 @@ defined_agents = {
         "tool_dict": tool_config,
         "callbacks": custom_callbacks,
     },
-    "agent4": {
-        "config": agent_config_4
-    }
+    "agent4": {"config": agent_config_4},
 }
 
 
@@ -111,24 +112,31 @@ async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")
     websocket_url = f"wss://{host}/ws?agent_name={agent_name}"
 
     # Simple TwiML response (no need for complex templating)
-    twiml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+    twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
         <Stream url="{escape(websocket_url)}" />
     </Connect>
     <Pause length="40"/>
-</Response>'''
-    
+</Response>"""
+
     return HTMLResponse(content=twiml_response, media_type="application/xml")
 
 
 @app.post("/api/sip/create-call")
-async def create_sip_call(request: Request, to_number: str, from_number: Optional[str] = None, agent_name: str = "agent1"):
+async def create_sip_call(
+    request: Request,
+    to_number: str,
+    from_number: Optional[str] = None,
+    agent_name: str = "agent1",
+):
     """
     Create outbound SIP call via Twilio (optional feature)
     """
     if not twilio_client:
-        return {"error": "Twilio client not configured. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN."}
+        return {
+            "error": "Twilio client not configured. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN."
+        }
 
     try:
         twilio_phone_number = from_number or os.getenv("TWILIO_PHONE_NUMBER")
@@ -139,13 +147,11 @@ async def create_sip_call(request: Request, to_number: str, from_number: Optiona
         webhook_url = f"https://{host}/api/sip?agent_name={agent_name}"
 
         call = twilio_client.calls.create(
-            to=to_number,
-            from_=twilio_phone_number,
-            url=webhook_url
+            to=to_number, from_=twilio_phone_number, url=webhook_url
         )
         logger.info(f"Created Twilio call to {to_number} with SID: {call.sid}")
         return {"status": "success", "call_sid": call.sid}
-        
+
     except TwilioRestException as e:
         logger.error(f"Twilio API error: {e}")
         return {"error": f"Twilio error: {e.msg}", "code": e.code}
@@ -167,13 +173,13 @@ async def websocket_endpoint(websocket: WebSocket):
         query_params = dict(websocket.query_params)
         agent_name = query_params.get("agent_name", "agent1")
         session_id = query_params.get("session_id")
-        
+
         # Get the agent configuration
         agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
-        
+
         # SDK handles all the complex transport detection, handshake, etc.
         await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id)
-        
+
     except Exception as e:
         logger.error(f"WebSocket endpoint error: {e}")
         if not websocket.client_state.DISCONNECTED:
@@ -181,7 +187,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 @app.post("/api/offer")
-async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks, metadata: Optional[str] = Query(None)):
+async def webrtc_endpoint(
+    offer: WebRTCOffer,
+    background_tasks: BackgroundTasks,
+    metadata: Optional[str] = Query(None),
+):
     agent_name = offer.agent_name or next(iter(defined_agents))
     agent = defined_agents.get(agent_name)
 
@@ -191,7 +201,7 @@ async def webrtc_endpoint(offer: WebRTCOffer, background_tasks: BackgroundTasks,
             parsed_metadata = json.loads(metadata)
         except json.JSONDecodeError:
             logger.warning("Failed to decode metadata JSON")
-    
+
     response = await cai_sdk.webrtc_endpoint(offer, agent, metadata=parsed_metadata)
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
@@ -211,7 +221,7 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
         background_tasks.add_task(func, **task_args)
-    
+
     return response
 
 
