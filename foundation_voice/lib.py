@@ -136,12 +136,10 @@ class CaiSDK:
             
             if transport_type == TransportType.WEBSOCKET:
                 session_id = str(uuid.uuid4())
-
                 return {
                     'session_id': session_id,
                     'websocket_url': f"/ws?session_id={session_id}&agent_name={request.get('agent_name')}"
                 }
-
                 
             elif transport_type == TransportType.WEBRTC:
                 # Check if this is a WebRTC offer
@@ -164,8 +162,13 @@ class CaiSDK:
                     }
                     
             elif transport_type == TransportType.DAILY:
+                # Create a new room if not provided
+                room_url = request.get("room_url")
+                if not room_url:
+                    room_url, _ = create_room()
+
                 async with aiohttp.ClientSession() as session:
-                    url, token = await connection_manager.handle_daily_connection(session)
+                    url, token = await connection_manager.handle_daily_connection(session, room_url)
 
                     kwargs = {
                         "room_url": url,
