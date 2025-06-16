@@ -14,8 +14,8 @@ from pipecat.metrics.metrics import (
     LLMUsageMetricsData,
     TTSUsageMetricsData,
 )
-from pipecat.observers.base_observer import BaseObserver
-from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
+from pipecat.observers.base_observer import BaseObserver, FramePushed
+from pipecat.processors.frame_processor import FrameDirection
 
 
 class CallSummaryMetricsObserver(BaseObserver):
@@ -91,11 +91,7 @@ class CallSummaryMetricsObserver(BaseObserver):
 
     async def on_push_frame(
         self,
-        src: FrameProcessor,
-        dst: FrameProcessor,
-        frame: Frame,
-        direction: FrameDirection,
-        timestamp: int,
+        metric_data: FramePushed
     ):
         """
         Process incoming frames to collect metrics.
@@ -107,8 +103,8 @@ class CallSummaryMetricsObserver(BaseObserver):
             direction: The direction of the frame (UPSTREAM or DOWNSTREAM)
             timestamp: The timestamp when the frame was processed
         """
-        if isinstance(frame, MetricsFrame):
-            for data in frame.data:
+        if isinstance(metric_data.frame, MetricsFrame):
+            for data in metric_data.frame.data:
                 if isinstance(data, TTFBMetricsData):
                     # Only log TTFB if it's a valid, non-zero value
                     if data.value > 0:
@@ -127,12 +123,12 @@ class CallSummaryMetricsObserver(BaseObserver):
                     self._total_tts_characters += data.value
         
         # Track userbot latency (time between user stops speaking and bot starts speaking)
-        if direction != FrameDirection.DOWNSTREAM:
+        if metric_data.direction != FrameDirection.DOWNSTREAM:
             return
             
-        if isinstance(frame, UserStoppedSpeakingFrame):
+        if isinstance(metric_data.frame, UserStoppedSpeakingFrame):
             self._user_stopped_time = time.time()
-        elif (isinstance(frame, BotStartedSpeakingFrame) and 
+        elif (isinstance(metric_data.frame, BotStartedSpeakingFrame) and 
               self._user_stopped_time is not None):
             latency = time.time() - self._user_stopped_time
             self._userbot_latencies.append(latency)

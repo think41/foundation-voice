@@ -23,6 +23,7 @@ from pipecat.processors.aggregators.llm_response import (
 from pipecat.processors.aggregators.openai_llm_context import (
     OpenAILLMContextFrame,
 )
+from pipecat.utils.tracing.service_decorators import traced_llm
 
 from openai.types.chat import ChatCompletionMessageParam
 
@@ -103,6 +104,7 @@ class OpenAIAgentPlugin(LLMService):
             raise ValueError("Missing agent config")
         self._client = AgentHandler(config, context, tools)
 
+    @traced_llm
     async def _process_context(self, context: AgentChatContext):
         """
         Processes the context and emits events based on the agent's response.

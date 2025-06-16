@@ -1,13 +1,11 @@
 from typing import Dict, Tuple, Optional
-import logging
+from loguru import logger
 import os
 import aiohttp
 from pydantic import BaseModel
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.transports.services.helpers.daily_rest import DailyRESTHelper
 from ..daily_helpers import get_token
-
-logger = logging.getLogger(__name__)
 
 
 class WebRTCOffer(BaseModel):
