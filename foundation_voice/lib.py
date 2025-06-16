@@ -1,10 +1,9 @@
 from fastapi import WebSocket
-from typing import Optional, Callable
-from loguru import logger
+from typing import Optional, Callable, Dict, Any
 from .agent.run import run_agent
 from .utils.transport.connection_manager import WebRTCOffer, connection_manager
 from .utils.transport.session_manager import session_manager
-from .utils.transport.sip_detection import SIPDetector
+from .utils.daily_helpers import create_room, get_token
 import aiohttp
 from .utils.transport.transport import TransportType
 import uuid
@@ -114,12 +113,10 @@ class CaiSDK:
             
             if transport_type == TransportType.WEBSOCKET:
                 session_id = str(uuid.uuid4())
-
                 return {
                     'session_id': session_id,
                     'websocket_url': f"/ws?session_id={session_id}&agent_name={request.get('agent_name')}"
                 }
-
                 
             elif transport_type == TransportType.WEBRTC:
                 # Check if this is a WebRTC offer
@@ -170,8 +167,13 @@ class CaiSDK:
                     }
                     
             elif transport_type == TransportType.DAILY:
+                # Create a new room if not provided
+                room_url = request.get("room_url")
+                if not room_url:
+                    room_url, _ = create_room()
+
                 async with aiohttp.ClientSession() as session:
-                    url, token = await connection_manager.handle_daily_connection(session)
+                    url, token = await connection_manager.handle_daily_connection(session, room_url)
 
                     session_id = str(uuid.uuid4())
                     return { 
