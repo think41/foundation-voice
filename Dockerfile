@@ -26,7 +26,7 @@ COPY . .
 ENV PYTHONPATH=/app
 
 # Expose the ports
-EXPOSE 8000
+EXPOSE 8000 
 EXPOSE 40000-40100/udp
 
 # Command to run the application
