@@ -629,9 +629,47 @@ Context allows your agent to maintain state, remember information across convers
 > Note ensure you import your defined context in the main.py file and pass it to your agent definition like shown in the example [here](#3-basic-implementation-example)
 
 
-## 8. Advanced Topics
+## 8. SIP Integration (via Webhook)
 
-### 8.1 Advanced Tool Definitions
+This SDK supports SIP integration through a webhook-based model, similar to how services like Twilio work. Instead of handling the SIP protocol directly, the application exposes endpoints that a SIP provider can call. The provider manages the SIP trunk and bridges the call to a WebSocket stream that the agent connects to.
+
+This approach is robust, scalable, and avoids the complexity of a native SIP implementation.
+
+### 8.1 Configuration for SIP
+
+To enable SIP integration (using Twilio as the provider in this example), add the following to your `.env` file:
+
+```env
+# Twilio credentials for SIP integration
+TWILIO_ACCOUNT_SID="your_twilio_account_sid"
+TWILIO_AUTH_TOKEN="your_twilio_auth_token"
+TWILIO_PHONE_NUMBER="your_twilio_phone_number"
+```
+
+You will also need a publicly accessible URL for your running application (e.g., using a service like `ngrok`).
+
+### 8.2 Handling Inbound Calls
+
+1.  **Configure Your SIP Provider:** In your Twilio phone number's configuration, set the "A CALL COMES IN" webhook to point to your server's `/api/sip` endpoint (e.g., `https://your-public-url.com/api/sip`).
+2.  **How It Works:** When a call comes in, Twilio sends a POST request to `/api/sip`. The application responds with TwiML (Twilio Markup Language) that instructs Twilio to open a WebSocket connection to the `/ws` endpoint of your agent. The agent then communicates over this stream.
+
+### 8.3 Initiating Outbound Calls
+
+You can trigger an outbound call by sending a POST request to the `/api/sip/create-call` endpoint.
+
+**Example using cURL:**
+
+```bash
+curl -X POST "http://localhost:8000/api/sip/create-call?to_number=+1234567890"
+```
+
+-   `to_number`: The E.164 formatted phone number to call.
+-   You can also optionally provide `from_number` and `agent_name` as query parameters. If `from_number` is not provided, it will use the `TWILIO_PHONE_NUMBER` from your `.env` file.
+
+
+## 9. Advanced Topics
+
+### 9.1 Advanced Tool Definitions
 
 Tools can perform complex operations and integrate with external systems:
 
@@ -655,7 +693,7 @@ def search_knowledge_base(query: str, max_results: int = 5) -> Dict[str, any]:
         return {"error": f"Search failed with status {response.status_code}"}
 ```
 
-### 8.2 Creating Server Endpoints
+### 9.2 Creating Server Endpoints
 
 Integrate `CaiSDK` into your FastAPI application with custom endpoints:
 
@@ -747,5 +785,3 @@ uvicorn main:app --reload
 ```
 
 3. Open your browser and navigate to `http://localhost:8000`
-
-

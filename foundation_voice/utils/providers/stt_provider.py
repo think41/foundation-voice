@@ -22,6 +22,7 @@ def create_stt_service(stt_config: Dict[str, Any]) -> Any:
         STT service instance
     """
     stt_provider = stt_config.get("provider", "deepgram")
+   
     # Dictionary mapping providers to their service creation functions
     stt_providers = {
         "deepgram": lambda: DeepgramSTTService(
@@ -31,7 +32,8 @@ def create_stt_service(stt_config: Dict[str, Any]) -> Any:
             live_options=LiveOptions(
                 model=stt_config.get("model", "nova-2-general"),
                 language=stt_config.get("language", "en-us")
-            )
+            ),
+            audio_passthrough=stt_config.get("audio_passthrough", False)  # Enable for SIP/Twilio
         )
     }
 

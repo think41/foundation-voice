@@ -10,7 +10,8 @@
       "provider": "silerio"
     },
     "stt": {
-      "provider": "deepgram"
+      "provider": "deepgram",
+      "audio_passthrough": true
     },
     "llm": {
       "provider": "openai_agents",
@@ -55,8 +56,7 @@
       }
     },
     "tts": {
-      "provider": "openai",
-      "voice": "alloy"
+      "provider": "deepgram"
     },
     "mcp": { 
       "type": "llm_orchestrator",
@@ -71,6 +71,8 @@
   },
   "pipeline": {
     "name": "llm_agent_pipeline",
+    "sample_rate_in": 8000,
+    "sample_rate_out": 8000,
     "stages": [
       {
         "type": "input",
