@@ -135,7 +135,7 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     agent = defined_agents.get(agent_name)
     session_id = request.get("session_id")
 
-    response = await cai_sdk.connect_handler(request, agent, session_id=session_id)
+    response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")

@@ -72,7 +72,7 @@ class CaiSDK:
         }
         return response
     
-    async def connect_handler(self, request: dict, agent: dict, session_id: Optional[str] = None, session_resume: Optional[dict] = None):
+    async def connect_handler(self, request: dict, agent: dict, session_id: Optional[str] = None,metadata: Optional[dict] = None, session_resume: Optional[dict] = None):
         try:
             transport_type_str = request.get("transportType", "").lower()
             agent_config = request.get("agentConfig", {})
@@ -121,6 +121,8 @@ class CaiSDK:
                                 "contexts": agent.get("contexts", {}),
                                 "tool_dict": agent.get("tool_dict", {}),
                                 "callbacks": agent.get("callbacks", None),
+                                "metadata": metadata,
+                                "session_resume": session_resume
                             }
                         }
                     
@@ -135,6 +137,8 @@ class CaiSDK:
                             "contexts": agent.get("contexts", {}),
                             "tool_dict": agent.get("tool_dict", {}),
                             "callbacks": agent.get("callbacks", None),
+                            "metadata": metadata,
+                            "session_resume": session_resume
                         }
                     }
                 else:
@@ -161,7 +165,9 @@ class CaiSDK:
                             "config": agent["config"],
                             "contexts": agent.get("contexts", {}),
                             "tool_dict": agent.get("tool_dict", {}),
-                            "callbacks": agent.get("callbacks", None),
+                            "callbacks": agent.get("callbacks", None),  
+                            "metadata": metadata,
+                            "session_resume": session_resume
                         }
                     }
                 
