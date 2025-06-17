@@ -113,7 +113,7 @@ class FunctionFactory:
                 tools[name] = FunctionAdapter(func).to_tool_schema()
             return tools
         
-        elif self.provider == "openai":
+        elif self.provider in ["openai", "cerebras"]:
             functions_dt = {}
             for name, func in self.functions.items():
                 function = FunctionAdapter(func).to_function_schema()

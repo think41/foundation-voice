@@ -29,10 +29,12 @@ class SmallestTTSService(TTSService):
         sample_rate: Optional[int] = 24000,
         voice_id: Optional[str] = None,
         model: Optional[str] = "lightning-v2",
+        speed: Optional[float] = 1.0,
         **kwargs
     ):
         super().__init__(sample_rate=sample_rate, **kwargs)
         self._sample_rate = sample_rate
+        self._speed = speed
         self._api_key = api_key
         self._voice_id = voice_id
         self._model = model
@@ -70,7 +72,8 @@ class SmallestTTSService(TTSService):
 
             async with AsyncWavesClient(
                 api_key=self._api_key,
-                voice_id=self._voice_id
+                voice_id=self._voice_id,
+                speed=self._speed
             ) as tts_client:
                 audio_stream = await tts_client.synthesize(text=text, stream=True)
                 async for audio_chunk in audio_stream:

@@ -58,16 +58,17 @@ async def create_agent_pipeline(
     if callbacks is None:
         callbacks = AgentCallbacks()
 
-    exporter = OTLPSpanExporter(
-        endpoint="http://localhost:4317",  # Jaeger or other collector endpoint
-        insecure=True,
-    )
+    if config.get("pipeline", {}).get("enable_tracing"):
+        exporter = OTLPSpanExporter(
+            endpoint="http://localhost:4317",  # Jaeger or other collector endpoint
+            insecure=True,
+        )
 
-    setup_tracing(
-        service_name="my-voice-app",
-        exporter=exporter,
-        console_export=False,  # Set to True for debug output
-    )
+        setup_tracing(
+            service_name="my-voice-app",
+            exporter=exporter,
+            console_export=False,  # Set to True for debug output
+        )
 
     # Set up RTVI processor for transcript and event emission
     rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
@@ -223,8 +224,8 @@ async def create_agent_pipeline(
             allow_interruptions=True,
             enable_metrics=True,
             enable_usage_metrics=True,
-            enable_tracing=True,                                  # Enable tracing for this task
-            enable_turn_tracking=True,                            # Enable turn tracking for this task
+            enable_tracing=config.get("pipeline", {}).get("enable_tracing", False), # Enable tracing for this task
+            enable_turn_tracking=True,                                              # Enable turn tracking for this task
             conversation_id="customer-123", 
         ),
         observers=task_observers,

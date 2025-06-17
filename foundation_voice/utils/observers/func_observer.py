@@ -17,20 +17,20 @@ class FunctionObserver(RTVIObserver):
 
     async def on_push_frame(
         self,
-        data: FramePushed
+        input_data: FramePushed
     ):
-        await super().on_push_frame(data)
-        if data.frame.id in self._frame_seen:
+        await super().on_push_frame(input_data)
+        if input_data.frame.id in self._frame_seen:
             return
-        self._frame_seen.add(data.frame.id)
+        self._frame_seen.add(input_data.frame.id)
 
         mark_as_seen = True
 
-        if isinstance(data.frame, FunctionCallInProgressFrame):
+        if isinstance(input_data.frame, FunctionCallInProgressFrame):
             data = {
-                "function_name": data.frame.function_name,
-                "tool_call_id": data.frame.tool_call_id,
-                "arguments": data.frame.arguments,
+                "function_name": input_data.frame.function_name,
+                "tool_call_id": input_data.frame.tool_call_id,
+                "arguments": input_data.frame.arguments,
             }
             frame = RTVIServerMessageFrame(
                 data={
@@ -40,12 +40,12 @@ class FunctionObserver(RTVIObserver):
             )
             await self._rtvi.push_frame(frame)
         
-        elif isinstance(data.frame, FunctionCallResultFrame):
+        elif isinstance(input_data.frame, FunctionCallResultFrame):
             data = {
-                "function_name": data.frame.function_name,
-                "tool_call_id": data.frame.tool_call_id,
-                "arguments": data.frame.arguments,
-                "result": data.frame.result,
+                "function_name": input_data.frame.function_name,
+                "tool_call_id": input_data.frame.tool_call_id,
+                "arguments": input_data.frame.arguments,
+                "result": input_data.frame.result,
             }
 
             frame = RTVIServerMessageFrame(
@@ -57,11 +57,11 @@ class FunctionObserver(RTVIObserver):
 
             await self._rtvi.push_frame(frame)
 
-        elif isinstance(data.frame, ToolCallFrame):
+        elif isinstance(input_data.frame, ToolCallFrame):
             data = {
-                "function_name": data.frame.tool_name,
-                "tool_call_id": data.frame.call_id,
-                "arguments": data.frame.input,
+                "function_name": input_data.frame.tool_name,
+                "tool_call_id": input_data.frame.call_id,
+                "arguments": input_data.frame.input,
             }
             self._queue.append(data)
             frame = RTVIServerMessageFrame(
@@ -72,15 +72,15 @@ class FunctionObserver(RTVIObserver):
             )
             await self._rtvi.push_frame(frame)
 
-        elif isinstance(data.frame, ToolResultFrame):
+        elif isinstance(input_data.frame, ToolResultFrame):
             agent_tool_call = self._queue.popleft()
 
-            if agent_tool_call and (agent_tool_call["tool_call_id"] == data.frame.call_id):
+            if agent_tool_call and (agent_tool_call["tool_call_id"] == input_data.frame.call_id):
                 data = {
                     "function_name": agent_tool_call["function_name"],
                     "tool_call_id": agent_tool_call["tool_call_id"],
                     "arguments": agent_tool_call["arguments"],
-                    "result": data.frame.result
+                    "result": input_data.frame.result
                 }
                 frame = RTVIServerMessageFrame(
                     data={
@@ -90,10 +90,10 @@ class FunctionObserver(RTVIObserver):
                 )
                 await self._rtvi.push_frame(frame)
 
-        elif isinstance(data.frame, AgentHandoffFrame):
+        elif isinstance(input_data.frame, AgentHandoffFrame):
             data = {
-                "from_agent": frame.from_agent,
-                "to_agent": frame.to_agent
+                "from_agent": input_data.frame.from_agent,
+                "to_agent": input_data.frame.to_agent
             }
             frame = RTVIServerMessageFrame(
                 data={
@@ -103,10 +103,10 @@ class FunctionObserver(RTVIObserver):
             )
             await self._rtvi.push_frame(frame)
         
-        elif isinstance(data.frame, GuardrailTriggeredFrame):
+        elif isinstance(input_data.frame, GuardrailTriggeredFrame):
             data = {
-                "guardrail_name": data.frame.guardrail_name,
-                "is_off_topic": data.frame.is_off_topic,
+                "guardrail_name": input_data.frame.guardrail_name,
+                "is_off_topic": input_data.frame.is_off_topic,
             }
             frame = RTVIServerMessageFrame(
                 data={
@@ -117,6 +117,6 @@ class FunctionObserver(RTVIObserver):
             await self._rtvi.push_frame(frame)
 
         if mark_as_seen:
-            self._frame_seen.add(data.frame.id)
+            self._frame_seen.add(input_data.frame.id)
             
             
