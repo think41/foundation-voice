@@ -11,6 +11,7 @@ from pipecat.frames.frames import (
     TTSStoppedFrame
 ) 
 from pipecat.services.tts_service import TTSService
+from pipecat.utils.tracing.service_decorators import traced_tts
 
 try:
     from smallestai.waves import AsyncWavesClient
@@ -60,6 +61,7 @@ class SmallestTTSService(TTSService):
     def can_generate_metrics(self) -> bool:
         return True
 
+    @traced_tts
     async def run_tts(self, text: str) -> AsyncGenerator[Frame, None]:
         logger.debug(f"{self}: Generating TTS for text: {text}")
         try:

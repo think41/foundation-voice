@@ -184,7 +184,7 @@ class AgentFactory:
     def _create_agent(self, context: RunContextWrapper | None = None, **kwargs):
         if not kwargs['name'] or not kwargs['instructions']:
             raise ValueError("Agent name and instructions are required parameters")
-        return Agent[context](**kwargs)
+        return Agent[context](model="gpt-4o-mini", **kwargs)
         
 
     def get_agent(self, name: str):

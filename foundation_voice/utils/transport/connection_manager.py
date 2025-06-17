@@ -1,12 +1,11 @@
 from typing import Dict, Tuple, Optional
-import logging
+from loguru import logger
 import os
 import aiohttp
 from pydantic import BaseModel
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.transports.services.helpers.daily_rest import DailyRESTHelper
-
-logger = logging.getLogger(__name__)
+from ..daily_helpers import get_token
 
 
 class WebRTCOffer(BaseModel):
@@ -45,29 +44,21 @@ class ConnectionManager:
         return answer, connection
 
     async def handle_daily_connection(
-        self, session: aiohttp.ClientSession
+        self, session: aiohttp.ClientSession, room_url: Optional[str] = None
     ) -> tuple[str, str]:
         """Handle Daily.co connection setup."""
-        url = os.getenv("DAILY_SAMPLE_ROOM_URL")
-        api_key = os.getenv("DAILY_API_KEY")
+        if not room_url:
+            raise ValueError("Room URL is required for Daily.co connection")
 
-        if not url:
-            raise ValueError(
-                "No Daily room URL specified. Set DAILY_SAMPLE_ROOM_URL in your environment."
-            )
+        api_key = os.getenv("DAILY_API_KEY")
         if not api_key:
             raise ValueError(
                 "No Daily API key specified. Set DAILY_API_KEY in your environment."
             )
 
-        daily_rest_helper = DailyRESTHelper(
-            daily_api_key=api_key,
-            daily_api_url=os.getenv("DAILY_API_URL", "https://api.daily.co/v1"),
-            aiohttp_session=session,
-        )
-
-        token = await daily_rest_helper.get_token(url, expiry_time=60 * 60)
-        return url, token
+        # Get token using our helper function
+        token = get_token(room_url)
+        return room_url, token
 
 
 # Create global instance
