@@ -17,32 +17,75 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+
+# Core dependencies required for the SDK to run in any configuration
 dependencies = [
-    "fastapi",
-    "litellm",
-    "livekit_api",
-    "python-dotenv",
-    "uvicorn",
-    "alembic",
-    "sqladmin",
-    "SQLAlchemy",
-    "sqlmodel",
-    "asyncpg",
-    "ruff",
-    "deepgram-sdk",
-    "pydantic_settings",
+    "fastapi>=0.115.6",
+    "loguru>=0.7.0",
     "mcp",
-    "pipecat-ai[cartesia,daily,openai,silero,webrtc,deepgram,websocket]",
-    "pipecat-ai-small-webrtc-prebuilt",
-    "av",
-    "websockets",
-    "openai-agents",
-    "pydantic-ai[logfire]",
-    "smallestai"
+    "pipecat-ai>=0.0.65", # Core pipecat library with version
+    "pydantic-ai[logfire]>=0.0.51",
+    "python-dotenv>=1.0.1",
+    "ruff>=0.8.6",
+    "uvicorn>=0.30.6",
+    "websockets>=13.0.1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.25.0", # For OTLP gRPC tracing
 ]
 
+[project.optional-dependencies]
+# Provider-specific extras. Users can install what they need.
+# e.g., pip install .[openai,deepgram]
+
+openai = [
+    "pipecat-ai[openai]>=0.0.65",
+]
+
+openai_agents = [
+    "foundation_voice[openai]",
+    "openai-agents>=0.0.11",
+]
+
+deepgram = [
+    "deepgram-sdk",
+    "pipecat-ai[deepgram]>=0.0.65",
+]
+
+cartesia = [
+    "pipecat-ai[cartesia]>=0.0.65",
+]
+
+daily = [
+    "pipecat-ai[daily]>=0.0.65",
+]
+
+webrtc = [
+    "av>=14.0.0",
+    "pipecat-ai[webrtc]>=0.0.65",
+    "pipecat-ai-small-webrtc-prebuilt>=0.5.0",
+]
+
+smallestai = [
+    "smallestai>=3.1.0",
+]
+
+twilio = [
+    "twilio",
+]
+
+# A convenience extra to install everything, useful for development
+all = [
+    "foundation_voice[openai_agents]",
+    "foundation_voice[deepgram]",
+    "foundation_voice[cartesia]",
+    "foundation_voice[daily]",
+    "foundation_voice[webrtc]",
+    "foundation_voice[smallestai]",
+    "foundation_voice[twilio]",
+]
+
+
 [project.urls]
-"Homepage" = "https://github.com/think41/foundation-voice.git" # Please update if this is not the correct repository URL
+"Homepage" = "https://github.com/think41/foundation-voice.git"
 
 [project.scripts]
 "foundation-voice-cli" = "foundation_voice.main:main"
@@ -51,5 +94,3 @@ dependencies = [
 where = ["."]
 include = ["foundation_voice*"]
 exclude = ["examples*"]
-# MANIFEST.in will be used due to include_package_data=True being default or set by setup.py
-

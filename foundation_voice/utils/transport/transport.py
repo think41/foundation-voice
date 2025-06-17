@@ -1,18 +1,12 @@
 from typing import Optional, Union
-from fastapi import WebSocket
+from fastapi import WebSocket  # Added import
+from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection  # Added import
 from loguru import logger
 from enum import Enum
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
-from pipecat.transports.network.fastapi_websocket import (
-    FastAPIWebsocketTransport,
-    FastAPIWebsocketParams,
-)
-from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
-from pipecat.transports.services.daily import DailyTransport, DailyParams
 from pipecat.transports.base_transport import TransportParams
-from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.serializers.twilio import TwilioFrameSerializer
+from pipecat.audio.vad.silero import SileroVADAnalyzer
 import os
 
 class TransportType(Enum):
@@ -54,6 +48,22 @@ class TransportFactory:
         logger.debug(f"TransportFactory: Additional kwargs: {list(kwargs.keys())}")
 
         if transport_type == TransportType.WEBSOCKET:
+            try:
+                from fastapi import WebSocket
+                from pipecat.transports.network.fastapi_websocket import (
+                    FastAPIWebsocketTransport,
+                    FastAPIWebsocketParams,
+                )
+            except ImportError as e:
+                logger.error(
+                    "The 'fastapi' package, required for WebSocket transport, was not found. "
+                    "To use this transport, please install the SDK with the 'fastapi' extra: "
+                    "pip install foundation-voice[fastapi]"
+                )
+                # Re-raise with a clear message and original exception context
+                raise ImportError(
+                    "WebSocket transport dependencies not found. Install with: pip install foundation-voice[fastapi]"
+                ) from e
             logger.debug("TransportFactory: Creating standard WebSocket transport")
             if not isinstance(connection, WebSocket):
                 raise ValueError(
@@ -73,6 +83,19 @@ class TransportFactory:
             )
 
         elif transport_type == TransportType.WEBRTC:
+            try:
+                from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+                from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
+            except ImportError as e:
+                logger.error(
+                    "The 'small_webrtc' package, required for WebRTC transport, was not found. "
+                    "To use this transport, please install the SDK with the 'small_webrtc' extra: "
+                    "pip install foundation-voice[small_webrtc]"
+                )
+                # Re-raise with a clear message and original exception context
+                raise ImportError(
+                    "WebRTC transport dependencies not found. Install with: pip install foundation-voice[small_webrtc]"
+                ) from e
             logger.debug("TransportFactory: Creating WebRTC transport")
             if not isinstance(connection, SmallWebRTCConnection):
                 raise ValueError("WebRTC connection required for webrtc transport")
@@ -88,6 +111,19 @@ class TransportFactory:
 
         elif transport_type == TransportType.DAILY:
             logger.debug("TransportFactory: Creating Daily transport")
+            try:
+                from pipecat.transports.services.daily import DailyTransport, DailyParams
+            except ImportError as e:
+                logger.error(
+                    "The 'daily' package, required for Daily transport, was not found. "
+                    "To use this transport, please install the SDK with the 'daily' extra: "
+                    "pip install foundation-voice[daily]"
+                )
+                # Re-raise with a clear message and original exception context
+                raise ImportError(
+                    "Daily transport dependencies not found. Install with: pip install foundation-voice[daily]"
+                ) from e
+
             if not room_url or not token:
                 raise ValueError("room_url and token required for daily transport")
             logger.debug(

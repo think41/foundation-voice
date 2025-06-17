@@ -1,5 +1,24 @@
-from agents import function_tool, RunContextWrapper
+from typing import Any
 from .context import MagicalNestContext
+
+
+AGENTS_AVAILABLE = False
+function_tool = None
+RunContextWrapper = None
+
+try:
+    from agents import function_tool as ft, RunContextWrapper as RCW
+    function_tool = ft
+    RunContextWrapper = RCW
+    AGENTS_AVAILABLE = True
+except ImportError:
+    print("INFO: 'agents' package not found. Tools specifically requiring 'agents.function_tool' or 'RunContextWrapper' for 'openai_agents' provider might not work as expected. "
+          "To use 'openai_agents' provider features, install with: pip install foundation-voice[openai_agents]")
+    # Fallback for type hints if RunContextWrapper is not available
+    RunContextWrapper_hint = "RunContextWrapper[MagicalNestContext]" 
+else:
+    # If import is successful, use the real type for hints
+    RunContextWrapper_hint = RunContextWrapper[MagicalNestContext]
 
 """
 Define your agent tools here
@@ -15,7 +34,7 @@ def placeholder(ctx: RunContextWrapper, args):
 
 
 def update_basic_info(
-    ctx: RunContextWrapper[MagicalNestContext],
+    ctx: RunContextWrapper_hint,
     name: str = None,
     age: str = None,
     gender: str = None,
@@ -35,7 +54,7 @@ def update_basic_info(
 
 
 def update_room_data(
-    ctx: RunContextWrapper[MagicalNestContext],
+    ctx: RunContextWrapper_hint,
     colors: str = None,
     activities: str = None,
     themes: str = None,
@@ -53,7 +72,7 @@ def update_room_data(
     return f"Room data updated: {colors}, {activities}, {themes}, {constraints}"
 
 
-def update_products(ctx: RunContextWrapper[MagicalNestContext], products: str = None):
+def update_products(ctx: RunContextWrapper_hint, products: str = None):
     if products is not None:
         ctx.context.products = products
 

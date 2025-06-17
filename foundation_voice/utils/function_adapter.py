@@ -2,7 +2,10 @@ import inspect
 from loguru import logger
 
 from typing import Callable, Dict, get_type_hints, Union
-from agents import function_tool
+try:
+    from agents import function_tool
+except ImportError:
+    function_tool = None
 
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 
@@ -16,6 +19,11 @@ class FunctionAdapter:
         self.annotations = get_type_hints(func)
 
     def to_tool_schema(self):
+        if function_tool is None:
+            raise RuntimeError(
+                "The 'agents' package is not installed, but it's required to use 'to_tool_schema'. "
+                "Please install it, for example, with 'pip install foundation-voice[openai_agents]' or your specific extras."
+            )
         return function_tool(name_override=self.name, description_override=self.description)(self.func)
 
     def to_function_schema(self):
