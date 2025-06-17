@@ -14,12 +14,14 @@
       "model": "nova-2"
     },
     "llm": {
-      "provider": "openai",
-      "model": "gpt-4o-mini",
+      "provider": "cerebras",
+      "model": "llama-3.3-70b",
       "tools": ["update_basic_info", "search_tool"]
     },
     "tts": {
-      "provider": "deepgram"
+      "provider": "smallestai",
+      "voice_id": "emily",
+      "speed": "1.0"
     },
     "mcp": { 
       "type": "llm_orchestrator",
@@ -34,6 +36,7 @@
   },
   "pipeline": {
     "name": "llm_agent_pipeline",
+    "enable_tracing": true,
     "stages": [
       {
         "type": "input",

@@ -7,7 +7,9 @@ import os
 from loguru import logger
 from typing import Dict, Any
 
+from pipecat.services.groq.llm import GroqLLMService
 from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.services.cerebras.llm import CerebrasLLMService
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 
@@ -54,6 +56,18 @@ def create_llm_service(
             or _raise_missing_llm_api_key(),
             agent_config=llm_config.get("agent_config"),
             data=data,
+        ),
+        "cerebras": lambda: CerebrasLLMService(
+            api_key=llm_config.get("api_key")
+            or os.getenv("CEREBRAS_API_KEY")
+            or _raise_missing_llm_api_key(),
+            model=llm_config.get("model", "llama3.1-8b"),
+        ),
+        "groq": lambda: GroqLLMService(
+            api_key=llm_config.get("api_key")
+            or os.getenv("GROQ_API_KEY")
+            or _raise_missing_llm_api_key(),
+            model=llm_config.get("model", "llama3.1-8b"),
         ),
     }
 
@@ -108,7 +122,7 @@ def create_llm_context(
     
     req_tools = agent_config.get("llm", {}).get("tools", None)
 
-    if llm_provider == "openai":
+    if llm_provider in ["openai", "cerebras"]:
         if req_tools is not None:
             
             try:
