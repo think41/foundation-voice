@@ -256,12 +256,7 @@ async def create_agent_pipeline(
         ),
         observers=task_observers,
     )
-
-    metadata_without_transcript = {}
-    if metadata:
-        metadata_without_transcript = metadata.copy()
-        metadata_without_transcript.pop("transcript", None)
-
+    
     metadata_without_transcript = {}
     if metadata:
         metadata_without_transcript = metadata.copy()
