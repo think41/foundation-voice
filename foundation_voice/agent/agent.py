@@ -142,7 +142,7 @@ async def create_agent_pipeline(
                 context_aggregator.assistant().add_messages([
                     {
                         "role": "assistant",
-                        "content": f'The call sid is /"{call_sid}/", in case you want use it'
+                        "content": f'The call sid is "{call_sid}", in case you want use it'
                     }
                 ])
         else:
