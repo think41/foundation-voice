@@ -134,10 +134,12 @@ async def create_agent_pipeline(
         
         context_aggregator = llm.create_context_aggregator(context)
 
+
         if kwargs.get("sip_params"):
             if kwargs.get("sip_params").get("call_sid"):
                 call_sid = kwargs.get("sip_params").get("call_sid")
                 logger.debug(f"call_sid: {call_sid}")
+                context_aggregator.assistant().add_messages([
                 context_aggregator.assistant().add_messages([
                     {
                         "role": "assistant",
