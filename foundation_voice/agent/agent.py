@@ -264,8 +264,16 @@ async def create_agent_pipeline(
             metadata_without_transcript = metadata.copy()
             metadata_without_transcript.pop("transcript", None)  
             
+        
+        metadata_without_transcript = {}
+        if metadata:
+            metadata_without_transcript = metadata.copy()
+            metadata_without_transcript.pop("transcript", None)  
+            
         data = {
             "frame": frame,
+            "metadata": metadata_without_transcript,
+            "session_id": session_id
             "metadata": metadata_without_transcript,
             "session_id": session_id
         }
@@ -294,6 +302,8 @@ async def create_agent_pipeline(
                 "transcript": end_transcript,
                 "metrics": metrics,
                 "session_id": session_id
+                "metrics": metrics,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -316,6 +326,8 @@ async def create_agent_pipeline(
                 "participant": participant,
                 "metadata": metadata,
                 "session_id": session_id
+                "metadata": metadata,
+                "session_id": session_id
             }
             await callback(data)
             await transport.capture_participant_transcription(participant["id"])
@@ -333,6 +345,8 @@ async def create_agent_pipeline(
             data = {
                 "transcript": end_transcript, 
                 "metrics": metrics,
+                "metadata": metadata,
+                "session_id": session_id
                 "metadata": metadata,
                 "session_id": session_id
             }
@@ -353,6 +367,12 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.CLIENT_CONNECTED.value)
         async def on_client_connected(transport, client):
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
+            data = {
+                "client": client,
+                "metadata": metadata,
+                "session_id": session_id
+            }
+            await callback(data)
             data = {
                 "client": client,
                 "metadata": metadata,
