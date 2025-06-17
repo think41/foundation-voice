@@ -100,7 +100,6 @@ async def create_agent_pipeline(
             "rtvi": rtvi,
             "contexts": contexts,
             "tools": tools,
-            "session_id": session_id
         }
         llm = create_llm_service(
             agent_config.get("llm", {}),
@@ -134,7 +133,19 @@ async def create_agent_pipeline(
         )
         
         context_aggregator = llm.create_context_aggregator(context)
-        
+        if kwargs.get("sip_params"):
+            if kwargs.get("sip_params").get("call_sid"):
+                call_sid = kwargs.get("sip_params").get("call_sid")
+                logger.debug(f"call_sid: {call_sid}")
+                context_aggregator.user().add_messages([
+                    {
+                        "role": "user",
+                        "content": f"The call sid is ${call_sid}, in case you want use it"
+                    }
+                ])
+        else:
+            call_sid = None
+
         # Handle session resume data if available
         if metadata and "transcript" in metadata:
             logger.info("Restoring previous transcript from session resume data")
@@ -246,9 +257,15 @@ async def create_agent_pipeline(
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
+        
+        metadata_without_transcript = {}
+        if metadata:
+            metadata_without_transcript = metadata.copy()
+            metadata_without_transcript.pop("transcript", None)  
+            
         data = {
             "frame": frame,
-            "metadata": metadata,
+            "metadata": metadata_without_transcript,
             "session_id": session_id
         }
         await callback(data)
