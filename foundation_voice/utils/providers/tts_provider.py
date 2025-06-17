@@ -2,78 +2,57 @@
 Text-to-Speech (TTS) provider module.
 """
 
+import os
 from typing import Dict, Any
 
 from loguru import logger
-from foundation_voice.utils.api_utils import get_api_key
+from foundation_voice.utils.api_utils import _raise_missing_api_key
+from foundation_voice.utils.provider_utils import import_provider_service
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def _create_cartesia_tts_service(tts_config: Dict[str, Any]) -> Any:
-    try:
-        from pipecat.services.cartesia.tts import CartesiaTTSService
-    except ImportError as e:
-        logger.error(
-            "Cartesia TTS dependencies not found. "
-            "To use Cartesia TTS, please install with: pip install foundation-voice[cartesia]"
-        )
-        raise ImportError(
-            "Cartesia TTS dependencies not found. Install with: pip install foundation-voice[cartesia]"
-        ) from e
-    api_key = _get_api_key("api_key", "CARTESIA_API_KEY", "Cartesia", tts_config)
+    CartesiaTTSService = import_provider_service(
+        "pipecat.services.cartesia.tts", "CartesiaTTSService", "cartesia"
+    )
+    api_key = os.getenv("CARTESIA_API_KEY") or _raise_missing_api_key("Cartesia", "CARTESIA_API_KEY")
     return CartesiaTTSService(
         api_key=api_key,
         voice_id=tts_config.get("voice", "71a7ad14-091c-4e8e-a314-022ece01c121"),
     )
 
 def _create_openai_tts_service(tts_config: Dict[str, Any]) -> Any:
-    try:
-        from pipecat.services.openai.tts import OpenAITTSService
-    except ImportError as e:
-        logger.error(
-            "OpenAI TTS dependencies not found. "
-            "To use OpenAI TTS, please install with: pip install foundation_voice[openai]"
-        )
-        raise ImportError(
-            "OpenAI TTS dependencies not found. Install with: pip install foundation_voice[openai]"
-        ) from e
-    api_key = get_api_key("openai", tts_config)
+    OpenAITTSService = import_provider_service(
+        "pipecat.services.openai.tts", "OpenAITTSService", "openai"
+    )
+    api_key = os.getenv("OPENAI_API_KEY") or _raise_missing_api_key("OpenAI TTS", "OPENAI_API_KEY")
     return OpenAITTSService(
         api_key=api_key,
         voice=tts_config.get("voice", "alloy"),
     )
 
 def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
-    try:
-        from pipecat.services.deepgram.tts import DeepgramTTSService
-    except ImportError as e:
-        logger.error(
-            "Deepgram TTS dependencies not found. "
-            "To use Deepgram TTS, please install with: pip install foundation_voice[deepgram]"
-        )
-        raise ImportError(
-            "Deepgram TTS dependencies not found. Install with: pip install foundation_voice[deepgram]"
-        ) from e
-    api_key = get_api_key("deepgram", tts_config)
+    DeepgramTTSService = import_provider_service(
+        "pipecat.services.deepgram.tts", "DeepgramTTSService", "deepgram"
+    )
+    api_key = os.getenv("DEEPGRAM_API_KEY") or _raise_missing_api_key("Deepgram TTS", "DEEPGRAM_API_KEY")
     return DeepgramTTSService(
         api_key=api_key,
         # model=tts_config.get("model", "aura-asteria-en") # Example if model is configurable
     )
 
 def _create_smallestai_tts_service(tts_config: Dict[str, Any]) -> Any:
-    try:
-        from foundation_voice.custom_plugins.services.smallest.tts import SmallestTTSService
-    except ImportError as e: # This might catch issues if SmallestTTSService itself has uninstalled deps
-        logger.error(
-            "SmallestAI TTS (or its dependencies) not found. "
-            "To use SmallestAI TTS, ensure it's correctly installed, potentially with: pip install foundation-voice[smallestai]"
-        )
-        raise ImportError(
-            "SmallestAI TTS (or its dependencies) not found. Install with: pip install foundation-voice[smallestai]"
-        ) from e
-    api_key = get_api_key("smallest_ai", tts_config)
+    SmallestTTSService = import_provider_service(
+        "pipecat.services.smallest_ai.tts", "SmallestTTSService", "smallestai"
+    )
+    api_key = os.getenv("SMALLEST_AI_API_KEY") or _raise_missing_api_key("SmallestAI TTS", "SMALLEST_AI_API_KEY")
     return SmallestTTSService(
         api_key=api_key,
         model=tts_config.get("model","lightning-v2"), # Retain original default
         voice_id=tts_config.get("voice_id", None),
+        speed=float(tts_config.get("speed", 1.0)),
     )
 
 def create_tts_service(tts_config: Dict[str, Any]) -> Any:

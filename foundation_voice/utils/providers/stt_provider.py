@@ -2,29 +2,26 @@
 Speech-to-Text (STT) provider module.
 """
 
+import os
 from typing import Dict, Any
 
 from loguru import logger
 
-from foundation_voice.utils.api_utils import get_api_key
+from foundation_voice.utils.api_utils import _raise_missing_api_key
+from foundation_voice.utils.provider_utils import import_provider_service
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def _create_deepgram_service(stt_config: Dict[str, Any]) -> Any:
     """Create a Deepgram STT service."""
-    try:
-        from pipecat.services.deepgram.stt import DeepgramSTTService
-        from deepgram import LiveOptions
-    except ImportError as e:
-        logger.error(
-            "Deepgram STT dependencies not found. "
-            "To use Deepgram STT, please install with: pip install foundation-voice[deepgram]"
-        )
-        raise ImportError(
-            "Deepgram STT dependencies not found. "
-            "Install with: pip install foundation-voice[deepgram]"
-        ) from e
+    DeepgramSTTService = import_provider_service(
+        "pipecat.services.deepgram.stt", "DeepgramSTTService", "deepgram"
+    )
+    from deepgram import LiveOptions
         
     return DeepgramSTTService(
-        api_key=get_api_key("deepgram", stt_config),
+        api_key=os.getenv("DEEPGRAM_API_KEY") or _raise_missing_api_key("Deepgram STT", "DEEPGRAM_API_KEY"),
         live_options=LiveOptions(
             model=stt_config.get("model", "nova-2-general"),
             language=stt_config.get("language", "en-us")
@@ -34,20 +31,12 @@ def _create_deepgram_service(stt_config: Dict[str, Any]) -> Any:
 
 def _create_openai_service(stt_config: Dict[str, Any]) -> Any:
     """Create an OpenAI STT service."""
-    try:
-        from pipecat.services.openai.stt import OpenAISTTService
-    except ImportError as e:
-        logger.error(
-            "OpenAI STT dependencies not found. "
-            "To use OpenAI STT, please install with: pip install foundation-voice[openai]"
-        )
-        raise ImportError(
-            "OpenAI STT dependencies not found. "
-            "Install with: pip install foundation-voice[openai]"
-        ) from e
+    OpenAISTTService = import_provider_service(
+        "pipecat.services.openai.stt", "OpenAISTTService", "openai"
+    )
         
     return OpenAISTTService(
-        api_key=get_api_key("openai", stt_config),
+        api_key=os.getenv("OPENAI_API_KEY") or _raise_missing_api_key("OpenAI STT", "OPENAI_API_KEY"),
         model=stt_config.get("model", "whisper-1"),
         language=stt_config.get("language")
     )
