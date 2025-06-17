@@ -135,6 +135,7 @@ async def create_agent_pipeline(
         context_aggregator = llm.create_context_aggregator(context)
 
 
+
         if kwargs.get("sip_params"):
             if kwargs.get("sip_params").get("call_sid"):
                 call_sid = kwargs.get("sip_params").get("call_sid")
@@ -142,7 +143,7 @@ async def create_agent_pipeline(
                 context_aggregator.assistant().add_messages([
                     {
                         "role": "assistant",
-                        "content": f'The call sid is /"{call_sid}/", in case you want use it'
+                        "content": f'The call sid is "{call_sid}", in case you want use it'
                     }
                 ])
         else:
@@ -255,7 +256,7 @@ async def create_agent_pipeline(
         ),
         observers=task_observers,
     )
-
+    
     metadata_without_transcript = {}
     if metadata:
         metadata_without_transcript = metadata.copy()
@@ -264,6 +265,7 @@ async def create_agent_pipeline(
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
+              
               
         data = {
             "frame": frame,
