@@ -55,6 +55,7 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
             or _raise_missing_tts_api_key(),
             model="lightning-v2",
             voice_id=tts_config.get("voice_id", None),
+            speed=float(tts_config.get("speed", 1.0)),
         )
     }
 
