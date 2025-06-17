@@ -135,6 +135,7 @@ async def create_agent_pipeline(
         context_aggregator = llm.create_context_aggregator(context)
 
 
+
         if kwargs.get("sip_params"):
             if kwargs.get("sip_params").get("call_sid"):
                 call_sid = kwargs.get("sip_params").get("call_sid")
@@ -261,9 +262,15 @@ async def create_agent_pipeline(
         metadata_without_transcript = metadata.copy()
         metadata_without_transcript.pop("transcript", None)
 
+    metadata_without_transcript = {}
+    if metadata:
+        metadata_without_transcript = metadata.copy()
+        metadata_without_transcript.pop("transcript", None)
+
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
+              
               
         data = {
             "frame": frame,
