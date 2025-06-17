@@ -140,7 +140,6 @@ async def create_agent_pipeline(
                 call_sid = kwargs.get("sip_params").get("call_sid")
                 logger.debug(f"call_sid: {call_sid}")
                 context_aggregator.assistant().add_messages([
-                context_aggregator.assistant().add_messages([
                     {
                         "role": "assistant",
                         "content": f'The call sid is /"{call_sid}/", in case you want use it'
