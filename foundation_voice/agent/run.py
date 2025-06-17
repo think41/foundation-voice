@@ -25,7 +25,6 @@ async def run_agent(
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    session_resume: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):
     if not session_id:
@@ -55,7 +54,6 @@ async def run_agent(
         contexts=contexts,
         config=config,
         metadata=metadata,
-        session_resume=session_resume,
         **kwargs,
     )
 

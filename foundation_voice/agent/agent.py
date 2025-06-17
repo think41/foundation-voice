@@ -41,7 +41,6 @@ async def create_agent_pipeline(
     tool_dict: Dict[str, Any] = None,
     contexts: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    session_resume: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):
     """
@@ -54,7 +53,6 @@ async def create_agent_pipeline(
         bot_name: Name of the bot
         session_id: Optional session ID
         callbacks: Optional instance of AgentCallbacks for custom event handling
-        session_resume: Optional session resume data containing previous conversation
     """
     # Use default callbacks if none provided
     if callbacks is None:
@@ -137,9 +135,9 @@ async def create_agent_pipeline(
         context_aggregator = llm.create_context_aggregator(context)
         
         # Handle session resume data if available
-        if session_resume and "transcript" in session_resume:
+        if metadata and "transcript" in metadata:
             logger.info("Restoring previous transcript from session resume data")
-            previous_messages = session_resume["transcript"]
+            previous_messages = metadata["transcript"]
             if isinstance(previous_messages, list):
                 # Add previous messages to the context
                 for message in previous_messages:
@@ -297,7 +295,8 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
             data = {
                 "participant": participant,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
             await callback(data)
             await transport.capture_participant_transcription(participant["id"])
@@ -337,6 +336,7 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
             data = {
                 "client": client,
+                "metadata": metadata,
                 "session_id": session_id
             }
             await callback(data)
