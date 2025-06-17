@@ -131,11 +131,34 @@ async def create_agent_pipeline(
             contexts.get(agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}),
             tools
         )
+        
+        context_aggregator = llm.create_context_aggregator(context)
+        if kwargs.get("sip_params"):
+            if kwargs.get("sip_params").get("call_sid"):
+                call_sid = kwargs.get("sip_params").get("call_sid")
+                logger.debug(f"call_sid: {call_sid}")
+                context_aggregator.user().add_messages([
+                    {
+                        "role": "user",
+                        "content": f"The call sid is ${call_sid}, in case you want use it"
+                    }
+                ])
+        else:
+            call_sid = None
+
+        # Handle session resume data if available
+        if metadata and "transcript" in metadata:
+            logger.info("Restoring previous transcript from session resume data")
+            previous_messages = metadata["transcript"]
+            if isinstance(previous_messages, list):
+                # Add previous messages to the context
+                for message in previous_messages:
+                    if isinstance(message, dict) and "role" in message and "content" in message:
+                        context_aggregator.user().add_message(message)
+                logger.info(f"Restored {len(previous_messages)} messages from previous session")
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise
-
-    context_aggregator = llm.create_context_aggregator(context)
 
     transcript = TranscriptProcessor()
 
@@ -234,9 +257,16 @@ async def create_agent_pipeline(
     @transcript.event_handler(AgentEvent.TRANSCRIPT_UPDATE.value)
     async def handle_transcript_update(processor, frame):
         callback = callbacks.get_callback(AgentEvent.TRANSCRIPT_UPDATE)
+        
+        metadata_without_transcript = {}
+        if metadata:
+            metadata_without_transcript = metadata.copy()
+            metadata_without_transcript.pop("transcript", None)  
+            
         data = {
             "frame": frame,
-            "metadata": metadata
+            "metadata": metadata_without_transcript,
+            "session_id": session_id
         }
         await callback(data)
         await transcript_handler.on_transcript_update(frame)
@@ -261,7 +291,8 @@ async def create_agent_pipeline(
                 "reason": reason,
                 "metadata": metadata,
                 "transcript": end_transcript,
-                "metrics": metrics
+                "metrics": metrics,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -282,7 +313,8 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
             data = {
                 "participant": participant,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
             await callback(data)
             await transport.capture_participant_transcription(participant["id"])
@@ -300,7 +332,8 @@ async def create_agent_pipeline(
             data = {
                 "transcript": end_transcript, 
                 "metrics": metrics,
-                "metadata": metadata
+                "metadata": metadata,
+                "session_id": session_id
             }
 
             await callback(data)        
@@ -319,7 +352,12 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.CLIENT_CONNECTED.value)
         async def on_client_connected(transport, client):
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
-            await callback(client)
+            data = {
+                "client": client,
+                "metadata": metadata,
+                "session_id": session_id
+            }
+            await callback(data)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
             
     if transport_type == TransportType.WEBRTC:
