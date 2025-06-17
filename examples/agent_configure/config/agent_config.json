@@ -21,6 +21,7 @@
         "start_agent": "introduction_agent",
         "context": "MagicalNestContext",
         "logfire_trace": true,
+        "model": "gpt-4o-mini",
         "agents": {
           "introduction_agent": {
             "name": "introduction_agent",
@@ -56,7 +57,9 @@
       }
     },
     "tts": {
-      "provider": "deepgram"
+      "provider": "smallestai",
+      "voice_id": "emily",
+      "speed": "1.0"
     },
     "mcp": { 
       "type": "llm_orchestrator",
