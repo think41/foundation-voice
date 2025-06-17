@@ -40,19 +40,35 @@ def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
     api_key = os.getenv("DEEPGRAM_API_KEY") or _raise_missing_api_key("Deepgram TTS", "DEEPGRAM_API_KEY")
     return DeepgramTTSService(
         api_key=api_key,
-        # model=tts_config.get("model", "aura-asteria-en") # Example if model is configurable
+        model=tts_config.get("model", "aura-asteria-en"),
+        encoding=tts_config.get("encoding", "linear16"),
+        container=tts_config.get("container", "none"),
+        sample_rate=tts_config.get("sample_rate", 24000),
+        chunk_size=tts_config.get("chunk_size", 1024),
     )
 
 def _create_smallestai_tts_service(tts_config: Dict[str, Any]) -> Any:
     SmallestTTSService = import_provider_service(
-        "pipecat.services.smallest_ai.tts", "SmallestTTSService", "smallestai"
+        "foundation_voice.custom_plugins.services.smallest.tts", "SmallestTTSService", "smallestai"
     )
-    api_key = os.getenv("SMALLEST_AI_API_KEY") or _raise_missing_api_key("SmallestAI TTS", "SMALLEST_AI_API_KEY")
+    api_key = os.getenv("SMALLESTAI_API_KEY") or _raise_missing_api_key("SmallestAI TTS", "SMALLEST_AI_API_KEY")
     return SmallestTTSService(
         api_key=api_key,
         model=tts_config.get("model","lightning-v2"), # Retain original default
         voice_id=tts_config.get("voice_id", None),
         speed=float(tts_config.get("speed", 1.0)),
+    )
+
+
+def _create_elevenlabs_tts_service(tts_config: Dict[str, Any]) -> Any:
+    ElevenLabsTTSService = import_provider_service(
+        "pipecat.services.elevenlabs.tts", "ElevenLabsTTSService", "elevenlabs"
+    )
+    api_key = os.getenv("ELEVENLABS_API_KEY") or _raise_missing_api_key("ElevenLabs TTS", "ELEVENLABS_API_KEY")
+    return ElevenLabsTTSService(
+        api_key=api_key,
+        voice_id=tts_config.get("voice_id", "YOUR_DEFAULT_ELEVENLABS_VOICE_ID"),  # Recommended: Configure this in your agent_config.json
+        model=tts_config.get("model", "eleven_turbo_v2"),
     )
 
 def create_tts_service(tts_config: Dict[str, Any]) -> Any:
@@ -73,6 +89,7 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
         "openai": _create_openai_tts_service,
         "deepgram": _create_deepgram_tts_service,
         "smallestai": _create_smallestai_tts_service,
+        "elevenlabs": _create_elevenlabs_tts_service,
     }
 
     # Get the factory function for the selected provider

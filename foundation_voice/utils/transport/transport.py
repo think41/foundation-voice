@@ -1,12 +1,12 @@
-from typing import Optional, Union
-from fastapi import WebSocket  # Added import
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection  # Added import
+from typing import Optional, Union, Dict, Any
+from fastapi import WebSocket
+from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from loguru import logger
 from enum import Enum
 from pipecat.transports.base_transport import TransportParams
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.serializers.twilio import TwilioFrameSerializer
-from pipecat.audio.vad.silero import SileroVADAnalyzer
+from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 import os
 
 class TransportType(Enum):
@@ -34,7 +34,7 @@ class TransportFactory:
             room_url: URL for Daily.co room
             token: Authentication token
             bot_name: Name of the bot
-            **kwargs: Additional parameters for specific transports (e.g., sip_params)
+            **kwargs: Additional parameters for specific transports (e.g., sip_params, vad_config)
         Returns:
             Transport instance
         Raises:
@@ -46,6 +46,9 @@ class TransportFactory:
         logger.debug(f"TransportFactory: Creating transport type: {transport_type.value}")
         logger.debug(f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}")
         logger.debug(f"TransportFactory: Additional kwargs: {list(kwargs.keys())}")
+
+        vad_config = kwargs.get("vad_config", {})
+        vad_analyzer = create_vad_analyzer(vad_config)
 
         if transport_type == TransportType.WEBSOCKET:
             try:
@@ -77,7 +80,7 @@ class TransportFactory:
                     audio_in_enabled=True,
                     audio_out_enabled=True,
                     add_wav_header=True,
-                    vad_analyzer=SileroVADAnalyzer(),
+                    vad_analyzer=vad_analyzer,
                     session_timeout=60 * 3,  # 3 minutes
                 ),
             )
@@ -105,7 +108,7 @@ class TransportFactory:
                 params=TransportParams(
                     audio_in_enabled=True,
                     audio_out_enabled=True,
-                    vad_analyzer=SileroVADAnalyzer(),
+                    vad_analyzer=vad_analyzer,
                 ),
             )
 
@@ -138,7 +141,7 @@ class TransportFactory:
                     audio_out_enabled=True,
                     transcription_enabled=True,
                     vad_enabled=True,
-                    vad_analyzer=SileroVADAnalyzer(),
+                    vad_analyzer=vad_analyzer,
                 ),
             )
 
@@ -173,7 +176,7 @@ class TransportFactory:
                     audio_out_enabled=True,
                     add_wav_header=False,  # Twilio doesn't need WAV headers
                     vad_enabled=True,
-                    vad_analyzer=SileroVADAnalyzer(),
+                    vad_analyzer=vad_analyzer,
                     vad_audio_passthrough=True,  # Important for Twilio
                     serializer=serializer,
                     # No session_timeout for SIP - Twilio manages the session

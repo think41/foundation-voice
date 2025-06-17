@@ -94,7 +94,7 @@ def create_llm_service(
     # Register tools if applicable
     # Based on function_adapter.py and create_llm_context, both openai and cerebras might support tools.
     configured_tools = llm_config.get("tools")
-    if configured_tools and llm_provider in ["openai", "cerebras"]:
+    if configured_tools and llm_provider in ["openai", "cerebras", "groq"]:
         if hasattr(llm, "register_function"):
             user_defined_tools = data.get("tools", {})
             for tool_name, tool_details in user_defined_tools.items():
@@ -150,7 +150,7 @@ def create_llm_context(
     
     req_tools = agent_config.get("llm", {}).get("tools", None)
 
-    if llm_provider in ["openai", "cerebras"]:
+    if llm_provider in ["openai", "cerebras", "groq"]:
         if req_tools is not None:
             
             try:

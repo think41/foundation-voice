@@ -23,7 +23,8 @@ dependencies = [
     "fastapi>=0.115.6",
     "loguru>=0.7.0",
     "mcp",
-    "pipecat-ai>=0.0.65", # Core pipecat library with version
+    "pipecat-ai>=0.0.71", # Core pipecat library with version
+    "pipecat-ai[silero]>=0.0.71", # Core pipecat library with version
     "pydantic-ai[logfire]>=0.0.51",
     "python-dotenv>=1.0.1",
     "ruff>=0.8.6",
@@ -37,7 +38,7 @@ dependencies = [
 # e.g., pip install .[openai,deepgram]
 
 openai = [
-    "pipecat-ai[openai]>=0.0.65",
+    "pipecat-ai[openai]>=0.0.71",
 ]
 
 openai_agents = [
@@ -47,20 +48,20 @@ openai_agents = [
 
 deepgram = [
     "deepgram-sdk",
-    "pipecat-ai[deepgram]>=0.0.65",
+    "pipecat-ai[deepgram]>=0.0.71",
 ]
 
 cartesia = [
-    "pipecat-ai[cartesia]>=0.0.65",
+    "pipecat-ai[cartesia]>=0.0.71",
 ]
 
 daily = [
-    "pipecat-ai[daily]>=0.0.65",
+    "pipecat-ai[daily]>=0.0.71",
 ]
 
 webrtc = [
     "av>=14.0.0",
-    "pipecat-ai[webrtc]>=0.0.65",
+    "pipecat-ai[webrtc]>=0.0.71",
     "pipecat-ai-small-webrtc-prebuilt>=0.5.0",
 ]
 
@@ -72,6 +73,14 @@ twilio = [
     "twilio",
 ]
 
+groq = [
+    "pipecat-ai[groq]>=0.0.71",
+]
+
+elevenlabs = [
+    "pipecat-ai[elevenlabs]>=0.0.71",
+]
+
 # A convenience extra to install everything, useful for development
 all = [
     "foundation_voice[openai_agents]",
@@ -81,6 +90,8 @@ all = [
     "foundation_voice[webrtc]",
     "foundation_voice[smallestai]",
     "foundation_voice[twilio]",
+    "foundation_voice[groq]",
+    "foundation_voice[elevenlabs]",
 ]
 
 
