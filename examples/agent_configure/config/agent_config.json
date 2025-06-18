@@ -29,6 +29,7 @@
             "handoff_description": "When the conversation starts or needs to return to introduction",
             "handoffs": ["demographics_agent"],
             "tools": ["update_basic_info"],
+            "input_guardrails": ["off_topic_guardrail"],
             "context": "MagicalNestContext"
           },
           "demographics_agent": {
@@ -37,6 +38,7 @@
             "handoff_description": "When basic information is collected and it's time to gather preferences",
             "handoffs": ["introduction_agent", "product_selection_agent", "faq_agent"],
             "tools": ["update_room_data"],
+            "input_guardrails": ["off_topic_guardrail"],
             "context": "MagicalNestContext"
           },
           "product_selection_agent": {
@@ -45,6 +47,7 @@
             "handoff_description": "When preferences are collected and it's time to suggest products",
             "handoffs": ["introduction_agent", "demographics_agent", "faq_agent"],
             "tools": ["update_products"],
+            "input_guardrails": ["off_topic_guardrail"],
             "context": "MagicalNestContext"
           },
           "faq_agent": {
@@ -53,13 +56,17 @@
             "handoff_description": "When the user has questions about Magical Nest's services, process, or operations",
             "handoffs": ["introduction_agent", "demographics_agent", "product_selection_agent"]
           }
+        },
+        "guardrails": {
+          "off_topic_guardrail": {
+              "name": "off_topic_guardrail",
+              "instructions": "If the user talks about space, consider it off-topic."
+          }
         }
       }
     },
     "tts": {
-      "provider": "smallestai",
-      "voice_id": "emily",
-      "speed": "1.0"
+      "provider": "deepgram"
     },
     "mcp": { 
       "type": "llm_orchestrator",
@@ -74,8 +81,8 @@
   },
   "pipeline": {
     "name": "llm_agent_pipeline",
-    "sample_rate_in": 8000,
-    "sample_rate_out": 8000,
+    "sample_rate_in": 16000,
+    "sample_rate_out": 24000,
     "enable_tracing": true,
     "stages": [
       {
