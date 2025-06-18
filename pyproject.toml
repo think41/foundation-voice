@@ -37,53 +37,30 @@ dependencies = [
 # Provider-specific extras. Users can install what they need.
 # e.g., pip install .[openai,deepgram]
 
-openai = [
-    "pipecat-ai[openai]>=0.0.71",
-]
+openai = ["pipecat-ai[openai]>=0.0.71"]
 
-openai_agents = [
-    "foundation_voice[openai]",
-    "openai-agents>=0.0.11",
-]
+openai-agents = ["openai-agents>=0.0.12"]
 
-deepgram = [
-    "deepgram-sdk",
-    "pipecat-ai[deepgram]>=0.0.71",
-]
+deepgram = ["pipecat-ai[deepgram]>=0.0.71"]
 
-cartesia = [
-    "pipecat-ai[cartesia]>=0.0.71",
-]
+cartesia = ["pipecat-ai[cartesia]>=0.0.71"]
 
-daily = [
-    "pipecat-ai[daily]>=0.0.71",
-]
+daily = ["pipecat-ai[daily]>=0.0.71"]
 
-webrtc = [
-    "av>=14.0.0",
-    "pipecat-ai[webrtc]>=0.0.71",
-    "pipecat-ai-small-webrtc-prebuilt>=0.5.0",
-]
+webrtc = ["pipecat-ai[webrtc]>=0.0.71", "pipecat-ai-small-webrtc-prebuilt>=0.5.0"]
 
-smallestai = [
-    "smallestai>=3.1.0",
-]
+smallestai = ["smallestai>=3.1.0"]
 
-twilio = [
-    "twilio",
-]
+twilio = ["twilio"]
 
-groq = [
-    "pipecat-ai[groq]>=0.0.71",
-]
+groq = ["pipecat-ai[groq]>=0.0.71"]
 
-elevenlabs = [
-    "pipecat-ai[elevenlabs]>=0.0.71",
-]
+elevenlabs = ["pipecat-ai[elevenlabs]>=0.0.71"]
 
 # A convenience extra to install everything, useful for development
 all = [
-    "foundation_voice[openai_agents]",
+    "foundation_voice[openai-agents]",
+    "foundation_voice[openai]",
     "foundation_voice[deepgram]",
     "foundation_voice[cartesia]",
     "foundation_voice[daily]",
