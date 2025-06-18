@@ -86,6 +86,7 @@ async def create_agent_pipeline(
         room_url=room_url,
         token=token,
         bot_name=bot_name,
+        vad_config=agent_config.get("vad", {}),
         **kwargs,
     )
 
