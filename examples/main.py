@@ -185,7 +185,7 @@ async def websocket_endpoint(websocket: WebSocket):
         agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
 
         # SDK handles all the complex transport detection, handshake, etc.
-        await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id=session_id, metadata=metadata)
+        await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id=session_id, metadata=metadata, auto_hang_up=False)
 
     except Exception as e:
         logger.error(f"WebSocket endpoint error: {e}")
