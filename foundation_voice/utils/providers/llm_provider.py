@@ -12,7 +12,6 @@ from foundation_voice.utils.provider_utils import import_provider_service
 from pipecat.services.llm_service import LLMService
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
-from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -179,6 +178,7 @@ def create_llm_context(
 
 
     elif llm_provider == "openai_agents":
+        from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext
         logger.debug("Creating OpenAI Agent LLM context")
         try:
             config = agent_config.get("llm", {}).get("agent_config", {})
