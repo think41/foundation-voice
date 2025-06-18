@@ -10,6 +10,7 @@ from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.utils.transport.sip_detection import SIPDetector
 from foundation_voice.utils.transport.session_manager import session_manager
 from foundation_voice.utils.transport.connection_manager import WebRTCOffer, connection_manager
+from foundation_voice.utils.daily_helpers import create_room
 
 class CaiSDK:
     def __init__(
@@ -20,18 +21,21 @@ class CaiSDK:
         self.agent_func = agent_func or run_agent
         self.agent_config = agent_config or {}
 
+    def _ensure_metadata_and_session_id(self, kwargs: dict) -> None:
+        """Ensure metadata and session_id are present in kwargs with default values."""
+        kwargs.setdefault('metadata', {})
+        kwargs.setdefault('session_id', str(uuid.uuid4()))
+
     def create_args(
         self,
         transport_type: TransportType,
         connection: Any,
-        session_id: str,
         agent: Dict[str, Any],
         **kwargs
     ):
         args = {
             "transport_type": transport_type,
             "connection": connection,
-            "session_id": session_id,
             "config": agent.get("config"),
             "callbacks": agent.get("callbacks", None),
             "tool_dict": agent.get("tool_dict", {}),
@@ -67,9 +71,9 @@ class CaiSDK:
         self, 
         websocket: WebSocket, 
         agent: dict, 
-        session_id: Optional[str] = None, 
-        **kwargs
-    ):
+        **kwargs):
+        
+        self._ensure_metadata_and_session_id(kwargs)
         """
         Main WebSocket endpoint that automatically detects transport type.
         Users just call this - all complexity is handled internally.
@@ -87,7 +91,6 @@ class CaiSDK:
             args = self.create_args(
                 transport_type=transport_type,
                 connection=websocket,
-                session_id=session_id,
                 agent=agent,
                 **kwargs
             )
@@ -100,16 +103,13 @@ class CaiSDK:
             raise
 
     
-    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, metadata: Optional = None):
-        kwargs = {
-            "metadata": metadata
-        }
+    async def webrtc_endpoint(self, offer: WebRTCOffer, agent: dict, **kwargs):
+        self._ensure_metadata_and_session_id(kwargs)
             
         answer, connection = await connection_manager.handle_webrtc_connection(offer)
         args = self.create_args(
             transport_type=TransportType.WEBRTC,
             connection=connection,
-            session_id=answer["pc_id"],
             agent=agent,
             **kwargs
         )
@@ -123,10 +123,16 @@ class CaiSDK:
         return response
     
     
-    async def connect_handler(self, request: dict, agent: dict):
+    async def connect_handler(self, request: dict, agent: dict, **kwargs):
+        self._ensure_metadata_and_session_id(kwargs)
+
         try:
             transport_type_str = request.get("transportType", "").lower()
             agent_config = request.get("agentConfig", {})
+            
+            # Initialize contexts and handle session_resume if provided
+            contexts = agent.get("contexts", {})
+            
             
             # Convert string to TransportType enum
             try:
@@ -135,10 +141,9 @@ class CaiSDK:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
             
             if transport_type == TransportType.WEBSOCKET:
-                session_id = str(uuid.uuid4())
                 return {
-                    'session_id': session_id,
-                    'websocket_url': f"/ws?session_id={session_id}&agent_name={request.get('agent_name')}"
+                    'session_id': kwargs['session_id'],
+                    'websocket_url': f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}"
                 }
                 
             elif transport_type == TransportType.WEBRTC:
@@ -148,12 +153,12 @@ class CaiSDK:
                     offer = WebRTCOffer(
                         sdp=request["sdp"],
                         type=request["type"],
-                        pc_id=request.get("pc_id"),
+                        session_id=request.get("session_id"),
                         restart_pc=request.get("restart_pc", False),
                         agent_name=request.get("agent_name")
                     )
                     
-                    await self.webrtc_endpoint(offer, agent)
+                    await self.webrtc_endpoint(offer, agent, **kwargs)
                 else:
                     # Return WebRTC UI details
                     return {
@@ -169,20 +174,17 @@ class CaiSDK:
 
                 async with aiohttp.ClientSession() as session:
                     url, token = await connection_manager.handle_daily_connection(session, room_url)
-
-                    kwargs = {
+                    kwargs.update({
                         "room_url": url,
                         "token": token,
-                    }
-
+                    })
                     args = self.create_args(
                         transport_type=transport_type,
                         connection=url,
-                        session_id=str(uuid.uuid4()),
                         agent=agent,
                         **kwargs
                     )
-
+                    logger.info(f"Connect handler called with kwargs: {kwargs}")
                     return { 
                         "room_url": url,
                         "token": token,
