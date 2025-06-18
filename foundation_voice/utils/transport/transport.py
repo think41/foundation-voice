@@ -146,6 +146,24 @@ class TransportFactory:
             )
 
         elif transport_type == TransportType.SIP:
+            try:
+                from fastapi import WebSocket
+                from pipecat.transports.network.fastapi_websocket import (
+                    FastAPIWebsocketTransport,
+                    FastAPIWebsocketParams,
+                )
+            except ImportError as e:
+                logger.error(
+                    "The 'fastapi' package, required for WebSocket transport, was not found. "
+                    "To use this transport, please install the SDK with the 'fastapi' extra: "
+                    "pip install foundation-voice[fastapi]"
+                )
+                # Re-raise with a clear message and original exception context
+                raise ImportError(
+                    "WebSocket transport dependencies not found. Install with: pip install foundation-voice[fastapi]"
+                ) from e
+            logger.debug("TransportFactory: Creating standard WebSocket transport")
+
             logger.debug("TransportFactory: Creating SIP transport with Twilio serializer")
             if not isinstance(connection, WebSocket):
                 raise ValueError("WebSocket connection required for SIP transport")
