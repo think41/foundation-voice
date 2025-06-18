@@ -182,7 +182,9 @@ class TransportFactory:
                 call_sid=call_sid,
                 account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),
                 auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
-                auto_hang_up=kwargs.get("auto_hang_up", True),
+                params=TwilioFrameSerializer.InputParams(
+                    auto_hang_up=kwargs.get("auto_hang_up", True),
+                )   
             )
 
             logger.debug("TransportFactory: Created Twilio serializer, building SIP transport")
