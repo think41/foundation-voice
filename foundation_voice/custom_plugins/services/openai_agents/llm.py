@@ -4,14 +4,12 @@ from dataclasses import dataclass
 from pipecat.services.llm_service import LLMService
 from pipecat.frames.frames import (
     Frame,
-    TextFrame,
     LLMTextFrame,
     LLMFullResponseStartFrame,
     LLMFullResponseEndFrame,
     LLMMessagesFrame,
     EndFrame,
     ErrorFrame,
-    TTSSpeakFrame 
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.processors.aggregators.llm_response import (
@@ -156,9 +154,18 @@ class OpenAIAgentPlugin(LLMService):
                     ))
             
             elif event.type == "guardrail_triggered_event":
-                await self.push_frame(TTSSpeakFrame(
-                    "I am sorry, but I am not able to assist with that."
-                ))
+                message = {
+                    "role": "system",
+                    "content": f"The user is talking about topic outside the scope of this conversation. The {event.data.guardrail_name} guardrail has been triggered and the reasoning being {event.data.reasoning}. Please mention the user's question and say that you cannot help with it and redirect the user back to the current conversation by looking at your last message as context."
+                }
+
+                context.add_message(message)
+                
+                # Process this new context to generate a response
+                await self.push_frame(LLMFullResponseStartFrame())
+                await self._process_context(context)
+                await self.push_frame(LLMFullResponseEndFrame())
+
                 await self.push_frame(GuardrailTriggeredFrame(
                     guardrail_name=event.data.guardrail_name,
                     is_off_topic=event.data.is_off_topic,
