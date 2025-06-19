@@ -15,6 +15,7 @@ from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 
 from foundation_voice.custom_plugins.services.openai_agents.llm import OpenAIAgentPlugin
 from foundation_voice.custom_plugins.processors.aggregators.agent_context import AgentChatContext
+from foundation_voice.custom_plugins.services.guardrailed_cerebras.guardrail_llm import GuardrailedLLMService
 
 
 DEFAULT_PROMPT = "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way."
@@ -81,6 +82,11 @@ def create_llm_service(
         for key, value in data.get("tools", {}).items():
             if key in tools:
                 llm.register_function(key, value["function"])
+
+    guardrails = llm_config.get("guardrails", None)
+    if guardrails is not None and llm_provider != "openai_agents":
+        guardrail_llm = GuardrailedLLMService(llm, guardrails, api_key=os.getenv("CEREBRAS_API_KEY"))
+        return guardrail_llm
 
     logger.debug(f"Creating LLM service with provider: {llm_provider}")
     return llm

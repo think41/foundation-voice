@@ -16,7 +16,14 @@
     "llm": {
       "provider": "cerebras",
       "model": "llama-3.3-70b",
-      "tools": ["update_basic_info", "search_tool"]
+      "tools": ["update_basic_info", "search_tool"],
+      "guardrails": [
+        {
+          "name": "off-space-topic",
+          "model": "llama-3.3-70b",
+          "instructions": "You are a content moderator for a voice assistant. Your task is to ensure that the user does not talk about space and it's related topics. Space as in outer space."
+        }
+      ]
     },
     "tts": {
       "provider": "smallestai",
