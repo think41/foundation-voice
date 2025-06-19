@@ -109,6 +109,13 @@ def create_llm_service(
                 f"but the service instance does not support 'register_function'. Tools will not be registered."
             )
 
+    guardrails = llm_config.get("guardrails", None)
+    if guardrails is not None and llm_provider != "openai_agents":
+        from foundation_voice.custom_plugins.services.guardrailed_cerebras.guardrail_llm import GuardrailedLLMService
+        
+        guardrail_llm = GuardrailedLLMService(llm, guardrails, api_key=os.getenv("CEREBRAS_API_KEY"))
+        return guardrail_llm
+
     logger.debug(f"Creating LLM service with provider: {llm_provider}")
     return llm
 
