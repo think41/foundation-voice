@@ -6,10 +6,40 @@ import os
 from typing import Dict, Any
 
 from loguru import logger
-from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.openai.stt import OpenAISTTService
-from pipecat.transcriptions.language import Language
-from deepgram import LiveOptions
+
+from foundation_voice.utils.api_utils import _raise_missing_api_key
+from foundation_voice.utils.provider_utils import import_provider_service
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def _create_deepgram_service(stt_config: Dict[str, Any]) -> Any:
+    """Create a Deepgram STT service."""
+    DeepgramSTTService = import_provider_service(
+        "pipecat.services.deepgram.stt", "DeepgramSTTService", "deepgram"
+    )
+    from deepgram import LiveOptions
+        
+    return DeepgramSTTService(
+        api_key=os.getenv("DEEPGRAM_API_KEY") or _raise_missing_api_key("Deepgram STT", "DEEPGRAM_API_KEY"),
+        live_options=LiveOptions(
+            model=stt_config.get("model", "nova-2-general"),
+            language=stt_config.get("language", "en-us")
+        ),
+        audio_passthrough=stt_config.get("audio_passthrough", False)
+    )
+
+def _create_openai_service(stt_config: Dict[str, Any]) -> Any:
+    """Create an OpenAI STT service."""
+    OpenAISTTService = import_provider_service(
+        "pipecat.services.openai.stt", "OpenAISTTService", "openai"
+    )
+        
+    return OpenAISTTService(
+        api_key=os.getenv("OPENAI_API_KEY") or _raise_missing_api_key("OpenAI STT", "OPENAI_API_KEY"),
+        model=stt_config.get("model", "whisper-1"),
+        language=stt_config.get("language")
+    )
 
 def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     """
@@ -22,27 +52,20 @@ def create_stt_service(stt_config: Dict[str, Any]) -> Any:
         STT service instance
     """
     stt_provider = stt_config.get("provider", "deepgram")
-   
+
     # Dictionary mapping providers to their service creation functions
-    stt_providers = {
-        "deepgram": lambda: DeepgramSTTService(
-            api_key=stt_config.get("api_key")
-                    or os.getenv("DEEPGRAM_API_KEY")
-                    or _raise_missing_stt_api_key(),
-            live_options=LiveOptions(
-                model=stt_config.get("model", "nova-2-general"),
-                language=stt_config.get("language", "en-us")
-            ),
-            audio_passthrough=stt_config.get("audio_passthrough", False)  # Enable for SIP/Twilio
-        )
+    stt_provider_factories = {
+        "deepgram": _create_deepgram_service,
+        "openai": _create_openai_service,
     }
 
-    def _raise_missing_stt_api_key():
+    # Get the factory function for the selected provider
+    provider_factory = stt_provider_factories.get(stt_provider.lower())
+    if provider_factory is None:
         raise ValueError(
-            "Missing API key for STT provider. Please set 'api_key' in the config or the DEEPGRAM_API_KEY environment variable."
+            f"Unsupported STT provider: {stt_provider}. "
+            f"Available providers: {', '.join(stt_provider_factories.keys())}"
         )
-
-    # Get the provider function or default to deepgram
-    provider_func = stt_providers.get(stt_provider, stt_providers["deepgram"])
+    
     logger.debug(f"Creating STT service with provider: {stt_provider}")
-    return provider_func()
+    return provider_factory(stt_config)
