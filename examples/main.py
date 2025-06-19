@@ -21,6 +21,7 @@ from xml.sax.saxutils import escape
 
 from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
+from agent_configure.utils.new_tools import tools
 from agent_configure.utils.callbacks import custom_callbacks
 
 # Load environment variables
@@ -46,11 +47,13 @@ config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.
 config_path4 = os.path.join(
     BASE_DIR, "agent_configure", "config", "language_agent.json"
 )
+config_path5 = os.path.join(BASE_DIR, "agent_configure", "config", "leap_config.json")
 
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
 agent_config_4 = ConfigLoader.load_config(config_path4)
+agent_config_5 = ConfigLoader.load_config(config_path5)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +93,11 @@ defined_agents = {
     },
     "agent4": {
         "config": agent_config_4
+    },
+    "agent5": {
+        "config": agent_config_5, 
+        "tool_dict": tools,
+        "callbacks": custom_callbacks
     }
 }
 
@@ -99,6 +107,8 @@ metadata = {
             {"role": "user", "content": "my name is shubham"},
         ]
     }
+
+
 
 @app.get(
     "/",
@@ -179,7 +189,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Get agent name from query params (simple!)
         query_params = dict(websocket.query_params)
-        agent_name = query_params.get("agent_name", "agent1")
+        agent_name = query_params.get("agent_name", "agent5")
         session_id = query_params.get("session_id")
         # Get the agent configuration
         agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
@@ -200,7 +210,7 @@ async def webrtc_endpoint(
     metadata: Optional[str] = Query(None),
 ):
     agent_name = offer.agent_name or next(iter(defined_agents))
-    agent = defined_agents.get(agent_name)
+    agent = defined_agents.get("agent5")
 
     parsed_metadata = {}
     if metadata:
@@ -221,7 +231,7 @@ async def webrtc_endpoint(
 @app.post("/connect")
 async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     agent_name = request.get("agent_name") or next(iter(defined_agents))
-    agent = defined_agents.get(agent_name)
+    agent = defined_agents.get("agent5")
     session_id = request.get("session_id")
 
     # response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)

@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 """
@@ -23,5 +24,18 @@ class MagicalNestContext(BaseModel):
     constraints: str | None = None
     products: str | None = None
 
+class LeapScholarContext(BaseModel):
+    country: Optional[str] = None
+    intake: Optional[str] = None
+    program: Optional[str] = None
+    passport: Optional[str] = None
+    education: Optional[str] = None
+    grades: Optional[str] = None
+    ielts_status: Optional[str] = None
+    current_location: Optional[str] = None
 
-contexts = {"MagicalNestContext": MagicalNestContext}
+
+contexts = {
+    "MagicalNestContext": MagicalNestContext,
+    "LeapScholarContext": LeapScholarContext
+}
