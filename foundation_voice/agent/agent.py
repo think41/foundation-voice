@@ -103,7 +103,7 @@ async def create_agent_pipeline(
             "tools": tools,
         }
         llm = create_llm_service(
-            agent_config.get("llm", {}),
+            agent_config,
             data=args,
         )
     except Exception as e:

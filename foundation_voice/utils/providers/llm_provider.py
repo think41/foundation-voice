@@ -61,19 +61,22 @@ def _create_groq_llm_service(llm_config: Dict[str, Any]) -> LLMService:
     )
 
 def create_llm_service(
-    llm_config: Dict[str, Any],
+    agent_config: Dict[str, Any],
     data: Dict[str, Any],
 ) -> LLMService:
     """
     Create an LLM service based on configuration.
 
     Args:
-        llm_config: Dictionary containing LLM configuration.
+        agent_config: Dictionary containing agent configuration.
         data: Dictionary containing tools and other relevant data.
 
     Returns:
         LLMService: An instance of the configured LLM service.
     """
+
+    llm_config = agent_config.get("llm", {})
+
     llm_provider = llm_config.get("provider", "openai").lower()
 
     llm_provider_factories = {
@@ -113,7 +116,12 @@ def create_llm_service(
     if guardrails is not None and llm_provider != "openai_agents":
         from foundation_voice.custom_plugins.services.guardrailed_cerebras.guardrail_llm import GuardrailedLLMService
         
-        guardrail_llm = GuardrailedLLMService(llm, guardrails, api_key=os.getenv("CEREBRAS_API_KEY"))
+        guardrail_llm = GuardrailedLLMService(
+            llm,
+            guardrails,
+            prompt=agent_config.get("prompt", DEFAULT_PROMPT),
+            api_key=os.getenv("CEREBRAS_API_KEY")
+        )
         return guardrail_llm
 
     logger.debug(f"Creating LLM service with provider: {llm_provider}")

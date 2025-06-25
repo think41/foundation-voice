@@ -1,4 +1,4 @@
-from typing import Dict, override
+from typing import Dict, List, override
 from pipecat.services.cerebras.llm import CerebrasLLMService as _OG_CerebrasLLMService
 
 
@@ -13,18 +13,29 @@ class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
         self.model = model 
         self.instructions = instructions
 
-    def _create_base_message(self):
+    def _create_base_message(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
         return [
             {
                 "role": "system",
-                "content": f"{self.instructions}\n\nYou must respond in JSON format with the following structure: {{\"is_off_topic\": boolean, \"reasoning\": \"string explanation\"}}."
+                "content": (
+                    f"{self.instructions}\n\n"
+                    "You must respond in JSON format with the following structure:\n"
+                    "{\n"
+                    '  "is_off_topic": boolean,\n'
+                    '  "reasoning": "string explanation"\n'
+                    "}\n\n"
+                    "Determine whether the user's message is an appropriate and relevant response "
+                    "to the assistant's message and follows the context of the system prompt.\n\n"
+                    "Here are the last two messages from the conversation:\n"
+                    f"{messages}"
+                )
             }
         ]
 
     @override
     async def get_chat_completions(
         self, 
-        message: Dict[str, str],
+        messages: List[Dict[str, str]],
     ):
         output_schema = {
             "type": "object",
@@ -40,13 +51,12 @@ class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
             "additional_properties": False 
         }
 
-        messages = self._create_base_message()
-        messages.append(message)
+        check_messages = self._create_base_message(messages)
 
         params = {
             "model": self.model,
             "stream": False,
-            "messages": messages,
+            "messages": check_messages,
             "seed": self._settings["seed"],
             "temperature": self._settings["temperature"],
             "top_p": self._settings["top_p"],

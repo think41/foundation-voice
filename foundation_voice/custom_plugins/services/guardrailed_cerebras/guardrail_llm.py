@@ -17,6 +17,7 @@ class GuardrailedLLMService(OpenAILLMService):
         self, 
         llm_service, 
         guardrails: List[Dict[str, Any]],
+        prompt: str,
         api_key: str=None,
         **kwargs
     ):
@@ -24,6 +25,7 @@ class GuardrailedLLMService(OpenAILLMService):
         self.api_key = api_key
         self.llm_service = llm_service
         self.guardrails = self._create_guardrails(guardrails)
+        self.prompt = prompt
 
     def _create_guardrails(self, guardrails_lt: List[Dict[str, Any]]):
         guardrails = {}
@@ -41,6 +43,7 @@ class GuardrailedLLMService(OpenAILLMService):
     async def _process_context(self, context: OpenAILLMContext):
         # Extract user input for guardrail evaluation
         user_input = self._get_user_input(context)
+        assistant_input = self._get_assistant_input(context)
         
         # Buffer to collect output chunks
         buffer = []
@@ -114,13 +117,17 @@ class GuardrailedLLMService(OpenAILLMService):
         guardrail_name = ""
         
         if self.guardrails and user_input:
-            logger.info(f"Running guardrails for user input: {user_input[:50]}...")
+            logger.info(f"Running guardrails")
             
             # Run guardrails in parallel
             guardrail_tasks = []
             for name, guardrail in self.guardrails.items():
                 # Create a message with user input for guardrail evaluation
-                message = {"role": "user", "content": user_input}
+                message = [
+                    {"role": "system", "content": self.prompt}, 
+                    {"role": "assistant", "content": assistant_input}, 
+                    {"role": "user", "content": user_input}
+                ]
                 guardrail_tasks.append((name, guardrail.get_chat_completions(message)))
             
             # Wait for all guardrail evaluations
@@ -211,6 +218,14 @@ class GuardrailedLLMService(OpenAILLMService):
         if hasattr(context, "messages") and context.messages:
             for msg in reversed(context.messages):
                 if msg.get("role") == "user":
+                    return msg.get("content", "")
+        return ""
+
+    def _get_assistant_input(self, context):
+        """Extract the assistant input from the context"""
+        if hasattr(context, "messages") and context.messages:
+            for msg in reversed(context.messages):
+                if msg.get("role") == "assistant":
                     return msg.get("content", "")
         return ""
 
