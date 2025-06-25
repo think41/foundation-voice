@@ -25,7 +25,7 @@ class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
                     '  "reasoning": "string explanation"\n'
                     "}\n\n"
                     "Determine whether the user's message is an appropriate and relevant response "
-                    "to the assistant's message.\n\n"
+                    "to the assistant's message and follows the context of the system prompt.\n\n"
                     "Here are the last two messages from the conversation:\n"
                     f"{messages}"
                 )

@@ -17,6 +17,7 @@ class GuardrailedLLMService(OpenAILLMService):
         self, 
         llm_service, 
         guardrails: List[Dict[str, Any]],
+        prompt: str,
         api_key: str=None,
         **kwargs
     ):
@@ -24,6 +25,7 @@ class GuardrailedLLMService(OpenAILLMService):
         self.api_key = api_key
         self.llm_service = llm_service
         self.guardrails = self._create_guardrails(guardrails)
+        self.prompt = prompt
 
     def _create_guardrails(self, guardrails_lt: List[Dict[str, Any]]):
         guardrails = {}
@@ -121,7 +123,11 @@ class GuardrailedLLMService(OpenAILLMService):
             guardrail_tasks = []
             for name, guardrail in self.guardrails.items():
                 # Create a message with user input for guardrail evaluation
-                message = [{"role": "assistant", "content": assistant_input}, {"role": "user", "content": user_input}]
+                message = [
+                    {"role": "system", "content": self.prompt}, 
+                    {"role": "assistant", "content": assistant_input}, 
+                    {"role": "user", "content": user_input}
+                ]
                 guardrail_tasks.append((name, guardrail.get_chat_completions(message)))
             
             # Wait for all guardrail evaluations
