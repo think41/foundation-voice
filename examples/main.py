@@ -125,6 +125,9 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     agent = defined_agents.get(agent_name)
 
     response = await cai_sdk.connect_handler(request, agent)
+    if "websocket_url" in response:
+        response["ws_url"] = f"ws://localhost:8000{response['websocket_url']}"
+        del response["websocket_url"]
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
