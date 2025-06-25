@@ -38,6 +38,7 @@ class AgentFactory:
             self._traceSetup()
 
         agent_config = self._config.get("agents", {})
+        self._model = self._config.get("model", "gpt-4o-mini")
         input_guardrails = self._setup_input_guardrails(self._config.get("guardrails", {}))
 
         self._setup_agents(agent_config, input_guardrails)
@@ -184,7 +185,7 @@ class AgentFactory:
     def _create_agent(self, context: RunContextWrapper | None = None, **kwargs):
         if not kwargs['name'] or not kwargs['instructions']:
             raise ValueError("Agent name and instructions are required parameters")
-        return Agent[context](**kwargs)
+        return Agent[context](model=self._model, **kwargs)
         
 
     def get_agent(self, name: str):
