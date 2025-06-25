@@ -118,10 +118,29 @@ def create_llm_service(
         
         guardrail_llm = GuardrailedLLMService(
             llm,
-            guardrails,
+            guardrails=guardrails,
             prompt=agent_config.get("prompt", DEFAULT_PROMPT),
             api_key=os.getenv("CEREBRAS_API_KEY")
         )
+        
+        # Register tools with the guardrailed LLM service as well
+        configured_tools = llm_config.get("tools")
+        if configured_tools:
+            if hasattr(guardrail_llm, "register_function"):
+                user_defined_tools = data.get("tools", {})
+                for tool_name, tool_details in user_defined_tools.items():
+                    if tool_name in configured_tools:
+                        function_to_register = tool_details.get("function")
+                        if callable(function_to_register):
+                            guardrail_llm.register_function(tool_name, function_to_register)
+                        else:
+                            logger.warning(f"Tool '{tool_name}' is configured but its 'function' is missing or not callable.")
+            else:
+                logger.warning(
+                    f"GuardrailedLLMService is configured with tools, "
+                    f"but the service instance does not support 'register_function'. Tools will not be registered."
+                )
+        
         return guardrail_llm
 
     logger.debug(f"Creating LLM service with provider: {llm_provider}")

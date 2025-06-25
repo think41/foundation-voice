@@ -57,6 +57,7 @@ class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
             "model": self.model,
             "stream": False,
             "messages": check_messages,
+            "tool_choice": "none",
             "seed": self._settings["seed"],
             "temperature": self._settings["temperature"],
             "top_p": self._settings["top_p"],
