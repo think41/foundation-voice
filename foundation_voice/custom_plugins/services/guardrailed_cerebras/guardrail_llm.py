@@ -3,7 +3,7 @@ import asyncio
 from loguru import logger
 from typing import Any, Dict, List, override
 
-from pipecat.frames.frames import LLMTextFrame
+from pipecat.frames.frames import LLMTextFrame, FunctionCallFromLLM
 from pipecat.metrics.metrics import LLMTokenUsage
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.utils.tracing.service_decorators import traced_llm
@@ -45,8 +45,7 @@ class GuardrailedLLMService(OpenAILLMService):
         user_input = self._get_user_input(context)
         assistant_input = self._get_assistant_input(context)
         
-        # Buffer to collect output chunks
-        buffer = []
+        # Variables to collect tool call information
         functions_list = []
         arguments_list = []
         tool_id_list = []
@@ -60,19 +59,19 @@ class GuardrailedLLMService(OpenAILLMService):
         
         await self.start_ttfb_metrics()
 
-        # Define a task to stream and buffer chunks
+        # Define a task to stream chunks directly from LLM service
         async def stream_llm():
             try:
                 # Get the stream from the underlying LLM service
                 chunk_stream = await self.llm_service._stream_chat_completions(context)
                 
+                nonlocal functions_list, arguments_list, tool_id_list, func_idx, function_name, arguments, tool_call_id
+                
                 async for chunk in chunk_stream:
                     if cancel_event.is_set():
                         break
                         
-                    # Store chunks for later evaluation
-                    buffer.append(chunk)
-                    
+                    # Process metrics
                     if chunk.usage:
                         tokens = LLMTokenUsage(
                             prompt_tokens=chunk.usage.prompt_tokens,
@@ -89,7 +88,7 @@ class GuardrailedLLMService(OpenAILLMService):
                     if not chunk.choices[0].delta:
                         continue
 
-                    # Process function calls for later use
+                    # Handle tool calls
                     if chunk.choices[0].delta.tool_calls:
                         tool_call = chunk.choices[0].delta.tool_calls[0]
                         if tool_call.index != func_idx:
@@ -105,6 +104,11 @@ class GuardrailedLLMService(OpenAILLMService):
                             tool_call_id = tool_call.id
                         if tool_call.function and tool_call.function.arguments:
                             arguments += tool_call.function.arguments
+                    # Forward content chunks directly
+                    elif chunk.choices[0].delta.content:
+                        await self.push_frame(LLMTextFrame(chunk.choices[0].delta.content))
+                    elif hasattr(chunk.choices[0].delta, "audio") and chunk.choices[0].delta.audio.get("transcript"):
+                        await self.push_frame(LLMTextFrame(chunk.choices[0].delta.audio["transcript"]))
             except Exception as e:
                 logger.error(f"Error in LLM streaming: {e}")
 
@@ -154,7 +158,6 @@ class GuardrailedLLMService(OpenAILLMService):
                         
                         # Cancel the streaming task
                         cancel_event.set()
-                        stream_task.cancel()
                         try:
                             await stream_task
                         except asyncio.CancelledError:
@@ -169,24 +172,7 @@ class GuardrailedLLMService(OpenAILLMService):
                     logger.error(f"Error evaluating guardrail {name}: {e}")
         
         # Wait for streaming to complete if guardrails passed
-        while not stream_task.done():
-            await asyncio.sleep(0.01)
-        
-        # Process the buffered chunks if guardrails passed
-        for chunk in buffer:
-            if chunk.choices is None or len(chunk.choices) == 0:
-                continue
-
-            if not chunk.choices[0].delta:
-                continue
-
-            if chunk.choices[0].delta.tool_calls:
-                # Tool calls are handled after the loop
-                pass
-            elif chunk.choices[0].delta.content:
-                await self.push_frame(LLMTextFrame(chunk.choices[0].delta.content))
-            elif hasattr(chunk.choices[0].delta, "audio") and chunk.choices[0].delta.audio.get("transcript"):
-                await self.push_frame(LLMTextFrame(chunk.choices[0].delta.audio["transcript"]))
+        await stream_task
         
         # Process function calls if any
         if function_name and arguments:
@@ -199,6 +185,7 @@ class GuardrailedLLMService(OpenAILLMService):
 
             for function_name, arguments, tool_id in zip(functions_list, arguments_list, tool_id_list):
                 try:
+                    import json
                     arguments = json.loads(arguments)
                     function_calls.append(
                         FunctionCallFromLLM(
