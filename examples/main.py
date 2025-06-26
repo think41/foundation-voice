@@ -227,7 +227,7 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     session_id = request.get("session_id")
 
     # response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)
-    response = await cai_sdk.connect_handler(request, agent)
+    response = await cai_sdk.connect_handler(request, agent,session_id=session_id,metadata=metadata)
     if "websocket_url" in response:
         response["ws_url"] = f"ws://localhost:8000{response['websocket_url']}"
         del response["websocket_url"]
