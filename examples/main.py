@@ -228,6 +228,9 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
 
     # response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)
     response = await cai_sdk.connect_handler(request, agent,session_id=session_id,metadata=metadata)
+    if "websocket_url" in response:
+        response["ws_url"] = f"ws://localhost:8000{response['websocket_url']}"
+        del response["websocket_url"]
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")

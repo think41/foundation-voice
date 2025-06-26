@@ -79,7 +79,7 @@ class TransportFactory:
                     serializer=ProtobufFrameSerializer(),
                     audio_in_enabled=True,
                     audio_out_enabled=True,
-                    add_wav_header=True,
+                    add_wav_header=False,
                     vad_analyzer=vad_analyzer,
                     session_timeout=60 * 3,  # 3 minutes
                 ),
@@ -184,7 +184,7 @@ class TransportFactory:
                 auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
                 params=TwilioFrameSerializer.InputParams(
                     auto_hang_up=kwargs.get("auto_hang_up", True),
-                )   
+                )
             )
 
             logger.debug("TransportFactory: Created Twilio serializer, building SIP transport")
