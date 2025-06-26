@@ -60,7 +60,7 @@
         "guardrails": {
           "off_topic_guardrail": {
               "name": "off_topic_guardrail",
-              "instructions": "If the user talks about space, consider it off-topic."
+              "instructions": "If the user mentions outer-space and other space related topics, it is off-topic. Everything else is considered on-topic."
           }
         }
       }
@@ -83,7 +83,7 @@
     "name": "llm_agent_pipeline",
     "sample_rate_in": 16000,
     "sample_rate_out": 24000,
-    "enable_tracing": true,
+    "enable_tracing": false,
     "stages": [
       {
         "type": "input",
