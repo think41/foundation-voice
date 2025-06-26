@@ -38,6 +38,8 @@ class TranscriptHandler:
             frame: TranscriptionUpdateFrame containing new messages
         """
         for msg in frame.messages:
+            if msg.role == "user":
+                logger.info(f"User: {msg.content}")
             self.messages.append(msg)
             # Store message in saved_messages with required format
             self._saved_messages.append({
