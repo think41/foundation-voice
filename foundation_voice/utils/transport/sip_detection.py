@@ -38,10 +38,11 @@ class SIPDetector:
                 if start_data.get("event") == "start":
                     stream_sid = start_data.get("start", {}).get("streamSid")
                     call_sid = start_data.get("start", {}).get("callSid")
+                    customParameters = start_data.get("start", {}).get("customParameters")
                     
                     if stream_sid and call_sid:
                         logger.info(f"SIP handshake completed - Stream: {stream_sid}, Call: {call_sid}")
-                        return {"stream_sid": stream_sid, "call_sid": call_sid}
+                        return {"stream_sid": stream_sid, "call_sid": call_sid, "customParameters": customParameters}
             
             return None
             
