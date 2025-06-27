@@ -24,7 +24,7 @@ def _raise_missing_api_key(provider_name: str, key_name: str):
         f"Please set the {key_name} environment variable or provide 'api_key' in the configuration."
     )
 
-def auto_detect_transport(self, websocket: WebSocket) -> tuple[TransportType, Optional[dict]]:
+def auto_detect_transport(websocket: WebSocket) -> tuple[TransportType, Optional[dict]]:
     """Auto-detect transport type with simplified logic"""
     query_params = dict(websocket.query_params)
     

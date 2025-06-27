@@ -224,8 +224,11 @@ async def websocket_endpoint(websocket: WebSocket):
  
         else:
             logger.info("Processing standard WebSocket connection")
-            agent_name = websocket.query_params.get("agent_name", "agent1")
-            session_id = websocket.query_params.get("session_id")
+            query_params = dict(websocket.query_params)
+            agent_name = query_params.get("agent_name", "agent2")
+            session_id = query_params.get("session_id")
+            # agent_name = websocket.query_params.get("agent_name", "agent1")
+            # session_id = websocket.query_params.get("session_id")
             if not session_id:
                 logger.warning("No session_id provided in query params, generating new one")
                 session_id = str(uuid.uuid4())
