@@ -127,7 +127,10 @@ async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")
     twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
-        <Stream url="{escape(websocket_url)}" />
+        <Stream url="{escape(websocket_url)}">
+            <Parameter name="agent_name" value="{agent_name}" />
+            <Parameter name="session_id" value="{1234567890}" />
+        </Stream>
     </Connect>
     <Pause length="40"/>
 </Response>"""
