@@ -11,6 +11,7 @@ from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.transcript_processor import TranscriptProcessor
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIProcessor, RTVIAction, RTVIActionArgument
+from pipecat.observers.loggers.user_bot_latency_log_observer import UserBotLatencyLogObserver
 
 from foundation_voice.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
 from foundation_voice.utils.function_adapter import FunctionFactory
@@ -21,7 +22,6 @@ from foundation_voice.utils.providers.stt_provider import create_stt_service
 from foundation_voice.utils.providers.tts_provider import create_tts_service
 from foundation_voice.utils.providers.llm_provider import create_llm_service, create_llm_context
 from foundation_voice.utils.observers.func_observer import FunctionObserver
-from foundation_voice.utils.observers.user_bot_latency_log_observer import UserBotLatencyLogObserver
 from foundation_voice.utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
 
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
