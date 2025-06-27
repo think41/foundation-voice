@@ -24,7 +24,7 @@ def _raise_missing_api_key(provider_name: str, key_name: str):
         f"Please set the {key_name} environment variable or provide 'api_key' in the configuration."
     )
 
-def auto_detect_transport(websocket: WebSocket) -> tuple[TransportType, Optional[dict]]:
+async def auto_detect_transport(websocket: WebSocket) -> tuple[TransportType, Optional[dict]]:
     """Auto-detect transport type with simplified logic"""
     query_params = dict(websocket.query_params)
     
@@ -38,7 +38,7 @@ def auto_detect_transport(websocket: WebSocket) -> tuple[TransportType, Optional
     headers = dict(websocket.headers) if hasattr(websocket, 'headers') else {}
     
     if SIPDetector.detect_sip_connection(client_ip, headers, query_params):
-        sip_params = SIPDetector.handle_sip_handshake(websocket)
+        sip_params = await SIPDetector.handle_sip_handshake(websocket)
         if sip_params:
             return TransportType.SIP, sip_params
         logger.debug("SIP detection failed, falling back to WebSocket")
