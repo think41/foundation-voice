@@ -71,6 +71,11 @@ all = [
     "foundation_voice[elevenlabs]",
 ]
 
+dev = [
+    "python-semantic-release",
+    "commitizen",
+]
+
 
 [project.urls]
 "Homepage" = "https://github.com/think41/foundation-voice.git"
@@ -82,3 +87,27 @@ all = [
 where = ["."]
 include = ["foundation_voice*"]
 exclude = ["examples*"]
+
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_files = [
+    "pyproject.toml:version"
+]
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = true
+
+[tool.semantic_release]
+version_toml = [
+    "pyproject.toml:project.version",
+]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+build_command = "pip install build && python -m build"
+dist_path = "dist/"
+upload_to_pypi = true
+upload_to_release = true
+commit_author = "semantic-release <semantic-release@example.com>"
+commit_message = "chore(release): {version} [skip ci]\\n\\n{changelog}"
