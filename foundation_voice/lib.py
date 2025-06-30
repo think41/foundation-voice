@@ -71,6 +71,7 @@ class CaiSDK:
         self, 
         websocket: WebSocket, 
         agent: dict, 
+        transport_type: TransportType,
         **kwargs):
         
         self._ensure_metadata_and_session_id(kwargs)
@@ -80,11 +81,11 @@ class CaiSDK:
         """
         try:
             # Auto-detect transport type (internal SDK logic)
-            transport_type, sip_params = await self._auto_detect_transport(websocket)
+            # transport_type, sip_params = await self._auto_detect_transport(websocket)
             
-            # Add SIP parameters if this is a SIP call
-            if sip_params:
-                kwargs["sip_params"] = sip_params
+            # # Add SIP parameters if this is a SIP call
+            # if sip_params:
+            #     kwargs["sip_params"] = sip_params
             
             logger.debug(f"Auto-detected transport: {transport_type.value}")
 
