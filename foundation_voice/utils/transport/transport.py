@@ -1,13 +1,16 @@
-from typing import Optional, Union, Dict, Any
-from fastapi import WebSocket
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
-from loguru import logger
-from enum import Enum
-from pipecat.transports.base_transport import TransportParams
-from pipecat.serializers.protobuf import ProtobufFrameSerializer
-from pipecat.serializers.twilio import TwilioFrameSerializer
-from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 import os
+
+from enum import Enum
+from loguru import logger
+from fastapi import WebSocket
+from typing import Optional, Union, Dict, Any
+
+from pipecat.serializers.twilio import TwilioFrameSerializer
+from pipecat.serializers.protobuf import ProtobufFrameSerializer
+from pipecat.transports.base_transport import TransportParams
+from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+
+from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 
 class TransportType(Enum):
     """Enum defining all supported transport types"""
@@ -205,7 +208,41 @@ class TransportFactory:
                 return transport
 
             case TransportType.LIVEKIT:
-                logger.debug("TransportFactory: Creating LiveKit transport")
+                logger.debug("Creating LiveKit transport")
+                try: 
+                    from pipecat.transports.services.livekit import LiveKitParams
+                    from foundation_voice.utils.transport.livekit_transport import LiveKitTransport
+                except ImportError as e:
+                    logger.error(
+                        "The 'livekit' package, required for LiveKit transport, was not found. "
+                        "To use this transport, please install the SDK with the 'livekit' extra: "
+                        "pip install foundation-voice[livekit]"
+                    )
+                    # Re-raise with a clear message and original exception context
+                    raise ImportError(
+                        "LiveKit transport dependencies not found. Install with: pip install foundation-voice[livekit]"
+                    ) from e
+
+                room_url = room_url
+                agent_token = kwargs.get("agent_token")
+                room_name = kwargs.get("room_name")
+
+                logger.info(f"Room_URL: {room_url}, Token: {agent_token}, Room_Name: {room_name}")
+
+                if not room_url or not agent_token or not room_name:
+                    raise ValueError("room_url, agent_token and room_name are required for LiveKit transport")
+
+                return LiveKitTransport(
+                    url=room_url,
+                    token=agent_token,
+                    room_name=room_name,
+                    params=LiveKitParams(
+                        audio_out_enabled=True,
+                        transcription_enabled=True,
+                        vad_enabled=True,
+                        vad_analyzer=vad_analyzer,
+                    ),
+                )
 
             case _:
                 raise ValueError(f"Unhandled transport type: {transport_type}")

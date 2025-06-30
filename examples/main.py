@@ -211,7 +211,7 @@ async def webrtc_endpoint(
         except json.JSONDecodeError:
             logger.warning("Failed to decode metadata JSON")
 
-    response = await cai_sdk.webrtc_endpoint(offer, agent,session_id=offer.session_id, metadata=metadata)
+    response = await cai_sdk.webrtc_endpoint(offer, agent,session_id=offer.session_id, metadata=parsed_metadata)
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")

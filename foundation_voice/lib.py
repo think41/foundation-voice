@@ -10,7 +10,7 @@ from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.utils.transport.sip_detection import SIPDetector
 from foundation_voice.utils.transport.session_manager import session_manager
 from foundation_voice.utils.transport.connection_manager import WebRTCOffer, connection_manager
-from foundation_voice.utils.daily_helpers import create_room
+from foundation_voice.utils.helpers.daily_helpers import create_room
 
 class CaiSDK:
     def __init__(
@@ -128,52 +128,45 @@ class CaiSDK:
 
         try:
             transport_type_str = request.get("transportType", "").lower()
-            agent_config = request.get("agentConfig", {})
-            
-            # Initialize contexts and handle session_resume if provided
-            contexts = agent.get("contexts", {})
-            
             
             # Convert string to TransportType enum
             try:
                 transport_type = TransportType(transport_type_str)
             except ValueError:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
-            
-            if transport_type == TransportType.WEBSOCKET:
-                return {
-                    'session_id': kwargs['session_id'],
-                    'websocket_url': f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}"
-                }
-                
-            elif transport_type == TransportType.WEBRTC:
-                # Check if this is a WebRTC offer
-                if "sdp" in request and "type" in request:
-                    # Handle WebRTC offer
-                    offer = WebRTCOffer(
-                        sdp=request["sdp"],
-                        type=request["type"],
-                        session_id=request.get("session_id"),
-                        restart_pc=request.get("restart_pc", False),
-                        agent_name=request.get("agent_name")
-                    )
-                    
-                    await self.webrtc_endpoint(offer, agent, **kwargs)
-                else:
-                    # Return WebRTC UI details
-                    return {
-                        "offer_url": "/api/connect",  # Use same endpoint for offers
-                        "webrtc_ui_url": "/webrtc",
-                    }
-                    
-            elif transport_type == TransportType.DAILY:
-                # Create a new room if not provided
-                room_url = request.get("room_url")
-                if not room_url:
-                    room_url, _ = create_room()
 
-                async with aiohttp.ClientSession() as session:
-                    url, token = await connection_manager.handle_daily_connection(session, room_url)
+            match(transport_type):
+                case TransportType.WEBSOCKET:
+                    return {
+                        'session_id': kwargs['session_id'],
+                        'websocket_url': f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}"
+                    }
+                
+                case TransportType.WEBRTC:
+                    if "sdp" in request and "type" in request:
+                        # Handle WebRTC offer
+                        offer = WebRTCOffer(
+                            sdp=request["sdp"],
+                            type=request["type"],
+                            session_id=request.get("session_id"),
+                            restart_pc=request.get("restart_pc", False),
+                            agent_name=request.get("agent_name")
+                        )
+                        
+                        await self.webrtc_endpoint(offer, agent, **kwargs)
+                    else:
+                        # Return WebRTC UI details
+                        return {
+                            "offer_url": "/api/connect",  # Use same endpoint for offers
+                            "webrtc_ui_url": "/webrtc",
+                        }
+
+                case TransportType.DAILY:
+                    room_url = request.get("room_url")
+                    if not room_url:
+                        room_url, _ = create_room()
+
+                    url, token = await connection_manager.handle_daily_connection(room_url)
                     kwargs.update({
                         "room_url": url,
                         "token": token,
@@ -194,8 +187,35 @@ class CaiSDK:
                         }
                     }
                 
-            else:
-                return {"error": f"Unsupported transport type: {transport_type_str}"}
+                case TransportType.LIVEKIT: 
+                    url, user_token, room_name, token = await connection_manager.handle_livekit_connection()
+                    kwargs.update({
+                        "room_url": url,
+                        "user_token": user_token,
+                        "room_name": room_name,
+                        "agent_token": token,
+                    })
+                    args = self.create_args(
+                        transport_type=transport_type,
+                        connection=url,
+                        agent=agent,
+                        **kwargs
+                    )
+                    logger.info(f"Connect handler called with kwargs: {kwargs}")
+                    return { 
+                        "room_url": url,
+                        "token": user_token,
+                        "room_name": room_name,
+                        
+                        "background_task_args": {
+                            "func": run_agent,
+                            **args,
+                        }
+                    }
+
+                
+                case _:
+                    return {"error": f"Unsupported transport type: {transport_type_str}"}
                 
         except Exception as e:
             return {"error": f"Failed to establish connection: {str(e)}"}
