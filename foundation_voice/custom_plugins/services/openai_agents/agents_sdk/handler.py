@@ -2,7 +2,7 @@ import asyncio
 
 from loguru import logger
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from agents import (
     Runner,
@@ -11,15 +11,18 @@ from agents import (
 
 from openai.types.responses import ResponseTextDeltaEvent
 
-from foundation_voice.custom_plugins.services.openai_agents.agents_sdk.agent import AgentFactory
+from foundation_voice.custom_plugins.services.openai_agents.agents_sdk.agent import (
+    AgentFactory,
+)
 from foundation_voice.custom_plugins.services.openai_agents.agents_sdk.utils.chunks import *
+
 
 class AgentHandler:
     def __init__(
-        self, 
-        config, 
+        self,
+        config,
         context: Optional[RunContextWrapper] = None,
-        tools: Optional[Dict[str, Any]] = None
+        tools: Optional[Dict[str, Any]] = None,
     ):
         self._config = config
         self._setup(context, tools)
@@ -38,10 +41,14 @@ class AgentHandler:
 
         async def stream_agent():
             try:
-                async for chunk in Runner.run_streamed(agent, messages, context=context).stream_events():
+                async for chunk in Runner.run_streamed(
+                    agent, messages, context=context
+                ).stream_events():
                     if cancel_event.is_set():
                         break
-                    if chunk.type == "raw_response_event" and isinstance(chunk.data, ResponseTextDeltaEvent):
+                    if chunk.type == "raw_response_event" and isinstance(
+                        chunk.data, ResponseTextDeltaEvent
+                    ):
                         buffer.append(chunk)
                     elif chunk.type == "run_item_stream_event":
                         item = chunk.item
@@ -59,7 +66,10 @@ class AgentHandler:
         # Guardrail evaluation only for user input
         if messages[-1].get("role") == "user" and guardrails:
             results = await asyncio.gather(
-                *[self._run_guardrail(gr, agent, user_input, context) for gr in guardrails]
+                *[
+                    self._run_guardrail(gr, agent, user_input, context)
+                    for gr in guardrails
+                ]
             )
 
             for name, result in results:

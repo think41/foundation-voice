@@ -8,6 +8,7 @@ class ToolCallData(BaseModel):
     input: Any
     call_id: str
 
+
 class ToolCallChunk(BaseModel):
     type: Literal["tool_call_item"]
     data: ToolCallData
@@ -16,6 +17,7 @@ class ToolCallChunk(BaseModel):
 class ToolCallOutputData(BaseModel):
     tool_result: Any
     call_id: str
+
 
 class ToolCallOutputChunk(BaseModel):
     type: Literal["tool_call_output_item"]
@@ -26,6 +28,7 @@ class AgentUpdatedData(BaseModel):
     from_agent: str
     to_agent: str
 
+
 class AgentUpdatedChunk(BaseModel):
     type: Literal["agent_updated_stream_event"]
     data: AgentUpdatedData
@@ -33,6 +36,7 @@ class AgentUpdatedChunk(BaseModel):
 
 class ErrorData(BaseModel):
     text: str
+
 
 class ErrorChunk(BaseModel):
     type: Literal["error_event"]
@@ -43,6 +47,7 @@ class GuardrailTriggerData(BaseModel):
     guardrail_name: str
     is_off_topic: bool
     reasoning: str
+
 
 class GuardrailTriggerChunk(BaseModel):
     type: Literal["guardrail_triggered_event"]

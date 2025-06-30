@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union
 from fastapi import WebSocket
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from loguru import logger
@@ -9,12 +9,15 @@ from pipecat.serializers.twilio import TwilioFrameSerializer
 from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 import os
 
+
 class TransportType(Enum):
     """Enum defining all supported transport types"""
+
     WEBSOCKET = "websocket"
     WEBRTC = "webrtc"
     DAILY = "daily"
     SIP = "sip"
+
 
 class TransportFactory:
     @staticmethod
@@ -43,8 +46,12 @@ class TransportFactory:
         if not isinstance(transport_type, TransportType):
             raise ValueError("transport_type must be a TransportType enum")
 
-        logger.debug(f"TransportFactory: Creating transport type: {transport_type.value}")
-        logger.debug(f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}")
+        logger.debug(
+            f"TransportFactory: Creating transport type: {transport_type.value}"
+        )
+        logger.debug(
+            f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}"
+        )
         logger.debug(f"TransportFactory: Additional kwargs: {list(kwargs.keys())}")
 
         vad_config = kwargs.get("vad_config", {})
@@ -87,7 +94,9 @@ class TransportFactory:
 
         elif transport_type == TransportType.WEBRTC:
             try:
-                from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+                from pipecat.transports.network.webrtc_connection import (
+                    SmallWebRTCConnection,
+                )
                 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
             except ImportError as e:
                 logger.error(
@@ -115,7 +124,10 @@ class TransportFactory:
         elif transport_type == TransportType.DAILY:
             logger.debug("TransportFactory: Creating Daily transport")
             try:
-                from pipecat.transports.services.daily import DailyTransport, DailyParams
+                from pipecat.transports.services.daily import (
+                    DailyTransport,
+                    DailyParams,
+                )
             except ImportError as e:
                 logger.error(
                     "The 'daily' package, required for Daily transport, was not found. "
@@ -164,7 +176,9 @@ class TransportFactory:
                 ) from e
             logger.debug("TransportFactory: Creating standard WebSocket transport")
 
-            logger.debug("TransportFactory: Creating SIP transport with Twilio serializer")
+            logger.debug(
+                "TransportFactory: Creating SIP transport with Twilio serializer"
+            )
             if not isinstance(connection, WebSocket):
                 raise ValueError("WebSocket connection required for SIP transport")
 
@@ -172,10 +186,14 @@ class TransportFactory:
             stream_sid = sip_params.get("stream_sid")
             call_sid = sip_params.get("call_sid")
 
-            logger.debug(f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}")
+            logger.debug(
+                f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}"
+            )
 
             if not stream_sid or not call_sid:
-                raise ValueError("stream_sid and call_sid are required for SIP transport")
+                raise ValueError(
+                    "stream_sid and call_sid are required for SIP transport"
+                )
 
             serializer = TwilioFrameSerializer(
                 stream_sid=stream_sid,
@@ -184,10 +202,12 @@ class TransportFactory:
                 auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
                 params=TwilioFrameSerializer.InputParams(
                     auto_hang_up=kwargs.get("auto_hang_up", True),
-                )
+                ),
             )
 
-            logger.debug("TransportFactory: Created Twilio serializer, building SIP transport")
+            logger.debug(
+                "TransportFactory: Created Twilio serializer, building SIP transport"
+            )
 
             # SIP transport configuration optimized for Twilio
             return FastAPIWebsocketTransport(
