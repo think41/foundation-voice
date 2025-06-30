@@ -6,7 +6,7 @@ from io import BytesIO
 from foundation_voice.models.schemas import AgentRequest, AgentResponse
 from foundation_voice.services.agent_services import AgentGenerationService
 from foundation_voice.utils.file_generator import FileGenerator
-
+from loguru import logger
 router = APIRouter()
 agent_service = AgentGenerationService()
 file_generator = FileGenerator()
@@ -22,6 +22,7 @@ async def generate_agent(request: AgentRequest):
                 detail="agent_type must be either 'single' or 'multi'"
             )
         
+        logger.info(f"Request: {request}");
         # Generate agent configuration and Python file
         agent_config, python_content = await agent_service.generate_agent(
             request.user_prompt,
@@ -30,6 +31,7 @@ async def generate_agent(request: AgentRequest):
             request.guardrails
         )
         
+        logger.info(f"Agent config: {agent_config}");
         return AgentResponse(
             agent_config=agent_config,
             python_file_content=python_content,
