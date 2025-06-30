@@ -5,12 +5,13 @@ from foundation_voice.utils.templates import AgentTemplates
 from foundation_voice.utils.llm_prompts import LLMPrompts
 from foundation_voice.models.schemas import GuardrailConfig
 from loguru import logger
+import os
 
 class AgentGenerationService:
     """Service class for generating voice agents"""
     
     def __init__(self):
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.templates = AgentTemplates()
         self.prompts = LLMPrompts()
     
