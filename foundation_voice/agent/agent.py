@@ -221,7 +221,7 @@ async def create_agent_pipeline(
 
     async def append_to_messages_func(processor, service, arguments):
         messages = arguments.get("messages")
-        run_immediately = arguments.get("run_immediately")
+        _run_immediately = arguments.get("run_immediately")
         context_aggregator.user().add_messages(messages)
         await task.queue_frames([context_aggregator.user().get_context_frame()])
         return True
@@ -231,7 +231,7 @@ async def create_agent_pipeline(
         action="append_to_messages",
         arguments=[
             RTVIActionArgument(name="messages", type="array"),
-            RTVIActionArgument(name="run_immediately", type="bool"),
+            RTVIActionArgument(name="_run_immediately", type="bool"),
         ],
         result="bool",
         handler=append_to_messages_func,

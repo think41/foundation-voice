@@ -131,9 +131,7 @@ class GuardrailedLLMService(OpenAILLMService):
         stream_task = asyncio.create_task(stream_llm())
 
         # Run guardrails in parallel if we have user input
-        guardrail_passed = True
         guardrail_failure_reason = ""
-        guardrail_name = ""
 
         if self.guardrails and user_input:
             logger.info("Running guardrails")
@@ -170,9 +168,7 @@ class GuardrailedLLMService(OpenAILLMService):
 
                     # Check if guardrail triggered
                     if response_json.get("is_off_topic", False):
-                        guardrail_passed = False
                         guardrail_failure_reason = response_json.get("reasoning", "")
-                        guardrail_name = name
 
                         # Cancel the streaming task
                         cancel_event.set()

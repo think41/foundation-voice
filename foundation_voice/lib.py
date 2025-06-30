@@ -123,12 +123,7 @@ class CaiSDK:
         self._ensure_metadata_and_session_id(kwargs)
 
         try:
-            transport_type_str = request.get("transportType", "").lower()
-            agent_config = request.get("agentConfig", {})
-
-            # Initialize contexts and handle session_resume if provided
-            contexts = agent.get("contexts", {})
-
+            transport_type_str = request.get("transportType", "").lower
             # Convert string to TransportType enum
             try:
                 transport_type = TransportType(transport_type_str)
