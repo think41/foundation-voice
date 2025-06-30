@@ -1,4 +1,3 @@
-from typing import Optional
 from pydantic import BaseModel
 
 """
@@ -23,6 +22,7 @@ class MagicalNestContext(BaseModel):
     themes: str | None = None
     constraints: str | None = None
     products: str | None = None
+
 
 contexts = {
     "MagicalNestContext": MagicalNestContext,

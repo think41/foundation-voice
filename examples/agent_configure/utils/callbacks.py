@@ -2,7 +2,6 @@ from typing import Dict, Any
 import aiohttp
 from loguru import logger
 from foundation_voice.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
-from pipecat_ai_small_webrtc_prebuilt.frontend import SmallWebRTCPrebuiltUI
 
 
 async def on_client_connected_callback(client):

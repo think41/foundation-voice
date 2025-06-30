@@ -8,8 +8,8 @@ from pipecat.frames.frames import (
     Frame,
     TTSAudioRawFrame,
     TTSStartedFrame,
-    TTSStoppedFrame
-) 
+    TTSStoppedFrame,
+)
 from pipecat.services.tts_service import TTSService
 from pipecat.utils.tracing.service_decorators import traced_tts
 
@@ -17,7 +17,9 @@ try:
     from smallestai.waves import AsyncWavesClient
 except ModuleNotFoundError as e:
     logger.error(f"Exception: {e}")
-    logger.error("In order to use SmallestAI TTS, please install the smallestai package. pip install smallestai")
+    logger.error(
+        "In order to use SmallestAI TTS, please install the smallestai package. pip install smallestai"
+    )
     raise Exception(f"Missing module: {e}")
 
 
@@ -30,7 +32,7 @@ class SmallestTTSService(TTSService):
         voice_id: Optional[str] = None,
         model: Optional[str] = "lightning-v2",
         speed: Optional[float] = 1.0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(sample_rate=sample_rate, **kwargs)
         self._sample_rate = sample_rate
@@ -41,24 +43,22 @@ class SmallestTTSService(TTSService):
         self._create_client()
 
     def _create_client(self):
-        self._client = AsyncWavesClient(
-            api_key=self._api_key,
-            model=self._model
-        )
+        self._client = AsyncWavesClient(api_key=self._api_key, model=self._model)
 
         if self._voice_id:
             voices = json.loads(self._client.get_voices())
-            voice_ids = [voice['voiceId'] for voice in voices['voices']]
+            voice_ids = [voice["voiceId"] for voice in voices["voices"]]
             # logger.info(f"Available voices: {voice_ids}")
             if self._voice_id not in voice_ids:
-                logger.warning(f"Voice ID '{self._voice_id}' not found among available voices. Defaulting to 'emily'")
+                logger.warning(
+                    f"Voice ID '{self._voice_id}' not found among available voices. Defaulting to 'emily'"
+                )
                 self._voice_id = "emily"
             self._client.opts.voice_id = self._voice_id
-        
+
         else:
             self._voice_id = "emily"
             self._client.opts.voice_id = self._voice_id
-
 
     def can_generate_metrics(self) -> bool:
         return True
@@ -71,9 +71,7 @@ class SmallestTTSService(TTSService):
             yield TTSStartedFrame()
 
             async with AsyncWavesClient(
-                api_key=self._api_key,
-                voice_id=self._voice_id,
-                speed=self._speed
+                api_key=self._api_key, voice_id=self._voice_id, speed=self._speed
             ) as tts_client:
                 audio_stream = await tts_client.synthesize(text=text, stream=True)
                 async for audio_chunk in audio_stream:
@@ -82,7 +80,7 @@ class SmallestTTSService(TTSService):
                         yield TTSAudioRawFrame(
                             audio=audio_chunk,
                             sample_rate=self._sample_rate,
-                            num_channels=1
+                            num_channels=1,
                         )
 
             yield TTSStoppedFrame()

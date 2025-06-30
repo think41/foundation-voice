@@ -9,17 +9,19 @@ from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.utils.tracing.service_decorators import traced_llm
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 
-from foundation_voice.custom_plugins.services.guardrailed_cerebras.llm_based_guardrail import GuardrailCerebrasLLMService
+from foundation_voice.custom_plugins.services.guardrailed_cerebras.llm_based_guardrail import (
+    GuardrailCerebrasLLMService,
+)
 
 
 class GuardrailedLLMService(OpenAILLMService):
     def __init__(
-        self, 
-        llm_service, 
+        self,
+        llm_service,
         guardrails: List[Dict[str, Any]],
         prompt: str,
-        api_key: str=None,
-        **kwargs
+        api_key: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.api_key = api_key
@@ -33,7 +35,7 @@ class GuardrailedLLMService(OpenAILLMService):
             guardrails[guardrail["name"]] = GuardrailCerebrasLLMService(
                 model=guardrail["model"],
                 instructions=guardrail["instructions"],
-                api_key=self.api_key
+                api_key=self.api_key,
             )
 
         return guardrails
@@ -44,7 +46,7 @@ class GuardrailedLLMService(OpenAILLMService):
         # Extract user input for guardrail evaluation
         user_input = self._get_user_input(context)
         assistant_input = self._get_assistant_input(context)
-        
+
         # Variables to collect tool call information
         functions_list = []
         arguments_list = []
@@ -53,10 +55,10 @@ class GuardrailedLLMService(OpenAILLMService):
         function_name = ""
         arguments = ""
         tool_call_id = ""
-        
+
         # Create an event for cancellation
         cancel_event = asyncio.Event()
-        
+
         await self.start_ttfb_metrics()
 
         # Define a task to stream chunks directly from LLM service
@@ -64,13 +66,20 @@ class GuardrailedLLMService(OpenAILLMService):
             try:
                 # Get the stream from the underlying LLM service
                 chunk_stream = await self.llm_service._stream_chat_completions(context)
-                
-                nonlocal functions_list, arguments_list, tool_id_list, func_idx, function_name, arguments, tool_call_id
-                
+
+                nonlocal \
+                    functions_list, \
+                    arguments_list, \
+                    tool_id_list, \
+                    func_idx, \
+                    function_name, \
+                    arguments, \
+                    tool_call_id
+
                 async for chunk in chunk_stream:
                     if cancel_event.is_set():
                         break
-                        
+
                     # Process metrics
                     if chunk.usage:
                         tokens = LLMTokenUsage(
@@ -106,34 +115,38 @@ class GuardrailedLLMService(OpenAILLMService):
                             arguments += tool_call.function.arguments
                     # Forward content chunks directly
                     elif chunk.choices[0].delta.content:
-                        await self.push_frame(LLMTextFrame(chunk.choices[0].delta.content))
-                    elif hasattr(chunk.choices[0].delta, "audio") and chunk.choices[0].delta.audio.get("transcript"):
-                        await self.push_frame(LLMTextFrame(chunk.choices[0].delta.audio["transcript"]))
+                        await self.push_frame(
+                            LLMTextFrame(chunk.choices[0].delta.content)
+                        )
+                    elif hasattr(chunk.choices[0].delta, "audio") and chunk.choices[
+                        0
+                    ].delta.audio.get("transcript"):
+                        await self.push_frame(
+                            LLMTextFrame(chunk.choices[0].delta.audio["transcript"])
+                        )
             except Exception as e:
                 logger.error(f"Error in LLM streaming: {e}")
 
         # Create and start the streaming task
         stream_task = asyncio.create_task(stream_llm())
-        
+
         # Run guardrails in parallel if we have user input
-        guardrail_passed = True
         guardrail_failure_reason = ""
-        guardrail_name = ""
-        
+
         if self.guardrails and user_input:
-            logger.info(f"Running guardrails")
-            
+            logger.info("Running guardrails")
+
             # Run guardrails in parallel
             guardrail_tasks = []
             for name, guardrail in self.guardrails.items():
                 # Create a message with user input for guardrail evaluation
                 message = [
-                    {"role": "system", "content": self.prompt}, 
-                    {"role": "assistant", "content": assistant_input}, 
-                    {"role": "user", "content": user_input}
+                    {"role": "system", "content": self.prompt},
+                    {"role": "assistant", "content": assistant_input},
+                    {"role": "user", "content": user_input},
                 ]
                 guardrail_tasks.append((name, guardrail.get_chat_completions(message)))
-            
+
             # Wait for all guardrail evaluations
             for name, task in guardrail_tasks:
                 try:
@@ -142,38 +155,45 @@ class GuardrailedLLMService(OpenAILLMService):
                     response_json = result.choices[0].message.content
                     if isinstance(response_json, str):
                         import json
+
                         try:
                             response_json = json.loads(response_json)
                         except json.JSONDecodeError:
-                            logger.error(f"Failed to parse guardrail response: {response_json}")
+                            logger.error(
+                                f"Failed to parse guardrail response: {response_json}"
+                            )
                             continue
-                    
+
                     logger.info(f"Guardrail {name} response: {response_json}")
-                    
+
                     # Check if guardrail triggered
                     if response_json.get("is_off_topic", False):
-                        guardrail_passed = False
                         guardrail_failure_reason = response_json.get("reasoning", "")
-                        guardrail_name = name
-                        
+
                         # Cancel the streaming task
                         cancel_event.set()
                         try:
                             await stream_task
                         except asyncio.CancelledError:
                             pass
-                        
+
                         # Send blocked response
-                        await self.push_frame(LLMTextFrame("I'm unable to provide a response to that request."))
-                        logger.warning(f"Guardrail {name} blocked output: {guardrail_failure_reason}")
+                        await self.push_frame(
+                            LLMTextFrame(
+                                "I'm unable to provide a response to that request."
+                            )
+                        )
+                        logger.warning(
+                            f"Guardrail {name} blocked output: {guardrail_failure_reason}"
+                        )
                         return
                 except Exception as e:
                     # Log error but continue (assume guardrail passed if it fails)
                     logger.error(f"Error evaluating guardrail {name}: {e}")
-        
+
         # Wait for streaming to complete if guardrails passed
         await stream_task
-        
+
         # Process function calls if any
         if function_name and arguments:
             # Add the last function call
@@ -183,9 +203,12 @@ class GuardrailedLLMService(OpenAILLMService):
 
             function_calls = []
 
-            for function_name, arguments, tool_id in zip(functions_list, arguments_list, tool_id_list):
+            for function_name, arguments, tool_id in zip(
+                functions_list, arguments_list, tool_id_list
+            ):
                 try:
                     import json
+
                     arguments = json.loads(arguments)
                     function_calls.append(
                         FunctionCallFromLLM(
@@ -220,6 +243,10 @@ class GuardrailedLLMService(OpenAILLMService):
         """Extract the full text output from buffer chunks"""
         full_output = ""
         for chunk in buffer:
-            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+            if (
+                chunk.choices
+                and chunk.choices[0].delta
+                and chunk.choices[0].delta.content
+            ):
                 full_output += chunk.choices[0].delta.content
         return full_output
