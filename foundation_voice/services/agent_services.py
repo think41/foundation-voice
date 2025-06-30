@@ -6,6 +6,7 @@ from foundation_voice.utils.llm_prompts import LLMPrompts
 from foundation_voice.models.schemas import GuardrailConfig
 from loguru import logger
 import os
+import re
 
 class AgentGenerationService:
     """Service class for generating voice agents"""
@@ -64,9 +65,9 @@ class AgentGenerationService:
     def _parse_llm_response(self, response_content: str) -> Tuple[Dict[str, Any], str]:
         """Parse LLM response to extract JSON config and Python content"""
         try:
-            logger.info(f"Response content: {response_content}");
-            result = json.loads(response_content)
-            logger.info(f"Result: {result}");
+            logger.info(f"Response content: {response_content}")
+            result = json.loads(self.extract_json_from_markdown(response_content))
+            logger.info(f"Result: {result}")
             return result["agent_config"], result["python_content"]
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse LLM response as JSON: {str(e)}")
@@ -83,3 +84,11 @@ class AgentGenerationService:
                 "instructions": rule.instructions
             })
         return guardrails_list
+
+    def extract_json_from_markdown(self, response_content: str):
+    
+        match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_content, re.DOTALL)
+        if match:
+            return match.group(1)
+        else:
+            return response_content.strip()
