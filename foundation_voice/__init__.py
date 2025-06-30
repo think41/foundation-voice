@@ -1,5 +1,5 @@
 from .lib import CaiSDK
-from .models import HealthResponse, WebRTCResponse
+from .models.response_models import HealthResponse, WebRTCResponse
 from .utils.transport.transport import TransportType
 from .utils.transport.connection_manager import WebRTCOffer, connection_manager
 from .utils.transport.session_manager import session_manager

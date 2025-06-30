@@ -3,7 +3,10 @@ from fastapi.responses import StreamingResponse
 from datetime import datetime
 from io import BytesIO
 
-from foundation_voice.models.schemas import AgentRequest, AgentResponse
+from foundation_voice.models.schemas import (
+    AgentRequest, 
+    AgentResponse
+)
 from foundation_voice.services.agent_services import AgentGenerationService
 from foundation_voice.utils.agent_file_generator import FileGenerator
 
