@@ -129,7 +129,7 @@ async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")
     <Connect>
         <Stream url="{escape(websocket_url)}">
             <Parameter name="agent_name" value="{agent_name}" />
-            <Parameter name="session_id" value="{1234567890}" />
+            <Parameter name="session_id" value="{uuid.uuid4()}" />
         </Stream>
     </Connect>
     <Pause length="40"/>
