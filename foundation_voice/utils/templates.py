@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 class AgentTemplates:
     """Templates for different agent configurations"""
@@ -14,7 +14,7 @@ class AgentTemplates:
                     "type": "small-webrtc"
                 },
                 "vad": {
-                    "provider": "silero"
+                    "provider": "silerio"
                 },
                 "stt": {
                     "provider": "deepgram",
@@ -23,16 +23,26 @@ class AgentTemplates:
                 "llm": {
                     "provider": "cerebras",
                     "model": "llama-3.3-70b",
-                    "tools": []
+                    "tools": [],
+                    "guardrails": []
                 },
                 "tts": {
                     "provider": "smallestai",
-                    "voice_id": "ananya",
-                    "speed": 1.5
+                    "voice_id": "emily",
+                    "speed": "1.0"
                 }
             },
             "pipeline": {
-                "enable_tracing": False
+                "name": "llm_agent_pipeline",
+                "enable_tracing": True,
+                "stages": [
+                    {"type": "input", "config": {}},
+                    {"type": "vad", "config": {}},
+                    {"type": "stt", "config": {}},
+                    {"type": "llm", "config": {"use_tools": False}},
+                    {"type": "tts", "config": {}},
+                    {"type": "output", "config": {}}
+                ]
             }
         }
     
@@ -62,14 +72,18 @@ class AgentTemplates:
                         "logfire_trace": True,
                         "triage": True,
                         "context": "",
-                        "agents": {},
-                        "guardrails": {}
+                        "agents": {
+                            # This will be populated by the LLM
+                        },
+                        "guardrails": {
+                            # This will be populated by the LLM
+                        }
                     }
                 },
                 "tts": {
                     "provider": "smallestai",
-                    "voice_id": "ananya",
-                    "speed": 1.5
+                    "voice_id": "emily",
+                    "speed": "1.0"
                 },
                 "mcp": {
                     "type": "llm_orchestrator",
@@ -150,3 +164,24 @@ custom_callbacks.register_callback(
 
 {contexts_dict}
 '''
+
+    @staticmethod
+    def add_guardrails_to_config(config: Dict[str, Any], guardrails_list: List[Dict[str, Any]], agent_type: str) -> Dict[str, Any]:
+        """Add guardrails configuration to the agent config"""
+        if agent_type == "single":
+            # For single agents, add guardrails to the LLM section
+            config["agent"]["llm"]["guardrails"] = guardrails_list
+        else:
+            # For multi-agents, add guardrails to the agent_config and each individual agent
+            config["agent"]["llm"]["agent_config"]["guardrails"] = {}
+            
+            # Add guardrails definitions
+            for guardrail in guardrails_list:
+                config["agent"]["llm"]["agent_config"]["guardrails"][guardrail["name"]] = {
+                    "name": guardrail["name"],
+                    "instructions": guardrail["instructions"]
+                }
+            
+            # Add guardrails to each agent (this will be handled by the LLM when creating agents)
+        
+        return config

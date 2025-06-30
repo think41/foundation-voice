@@ -3,12 +3,9 @@ from fastapi.responses import StreamingResponse
 from datetime import datetime
 from io import BytesIO
 
-from foundation_voice.models.schemas import (
-    AgentRequest, 
-    AgentResponse
-)
+from foundation_voice.models.schemas import AgentRequest, AgentResponse
 from foundation_voice.services.agent_services import AgentGenerationService
-from foundation_voice.utils.agent_file_generator import FileGenerator
+from foundation_voice.utils.file_generator import FileGenerator
 
 router = APIRouter()
 agent_service = AgentGenerationService()
@@ -29,7 +26,8 @@ async def generate_agent(request: AgentRequest):
         agent_config, python_content = await agent_service.generate_agent(
             request.user_prompt,
             request.agent_type,
-            request.additional_info
+            request.additional_info,
+            request.guardrails
         )
         
         return AgentResponse(
@@ -43,40 +41,40 @@ async def generate_agent(request: AgentRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating agent: {str(e)}")
 
-@router.post("/generate-agent-files")
-async def generate_agent_files(request: AgentRequest):
-    """Generate agent files and return as downloadable zip"""
-    try:
-        # Generate the agent
-        response = await generate_agent(request)
+# @router.post("/generate-agent-files")
+# async def generate_agent_files(request: AgentRequest):
+#     """Generate agent files and return as downloadable zip"""
+#     try:
+#         # Generate the agent
+#         response = await generate_agent(request)
         
-        # Create zip file
-        zip_buffer = file_generator.create_zip_file(
-            response.agent_config,
-            response.python_file_content,
-            response.agent_type
-        )
+#         # Create zip file
+#         zip_buffer = file_generator.create_zip_file(
+#             response.agent_config,
+#             response.python_file_content,
+#             response.agent_type
+#         )
         
-        # Generate filename
-        filename = file_generator.generate_filename(
-            response.agent_config,
-            response.agent_type
-        )
+#         # Generate filename
+#         filename = file_generator.generate_filename(
+#             response.agent_config,
+#             response.agent_type
+#         )
         
-        return StreamingResponse(
-            BytesIO(zip_buffer.read()),
-            media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
+#         return StreamingResponse(
+#             BytesIO(zip_buffer.read()),
+#             media_type="application/zip",
+#             headers={"Content-Disposition": f"attachment; filename={filename}"}
+#         )
     
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating agent files: {str(e)}")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error generating agent files: {str(e)}")
 
-@router.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy", 
-        "timestamp": datetime.now().isoformat(),
-        "service": "Voice Agent Generator API"
-    }
+# @router.get("/health")
+# async def health_check():
+#     """Health check endpoint"""
+#     return {
+#         "status": "healthy", 
+#         "timestamp": datetime.now().isoformat(),
+#         "service": "Voice Agent Generator API"
+#     }
