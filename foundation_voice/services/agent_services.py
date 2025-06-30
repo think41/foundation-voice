@@ -55,7 +55,7 @@ class AgentGenerationService:
         system_prompt = self.prompts.get_system_prompt(agent_type, template, guardrails)
         
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Create a {agent_type} agent for: {prompt}"}
