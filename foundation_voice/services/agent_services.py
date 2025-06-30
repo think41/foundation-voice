@@ -4,6 +4,7 @@ from openai import OpenAI
 from foundation_voice.utils.templates import AgentTemplates
 from foundation_voice.utils.llm_prompts import LLMPrompts
 import os
+from loguru import logger
 
 class AgentGenerationService:
     """Service class for generating voice agents"""
@@ -51,7 +52,9 @@ class AgentGenerationService:
     def _parse_llm_response(self, response_content: str) -> Tuple[Dict[str, Any], str]:
         """Parse LLM response to extract JSON config and Python content"""
         try:
+            logger.info(f"LLM response: {response_content}");
             result = json.loads(response_content)
+            logger.info(f"LLM response: {result}");
             return result["json_config"], result["python_content"]
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse LLM response as JSON: {str(e)}")
