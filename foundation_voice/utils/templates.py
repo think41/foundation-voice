@@ -113,6 +113,20 @@ class AgentTemplates:
         }
     
     @staticmethod
+    def get_llm_response_template(agent_type: str) -> Dict[str, Any]:
+        """Get the complete template structure that LLMPrompts expects"""
+        if agent_type == "single":
+            agent_template = AgentTemplates.get_single_agent_template()
+        else:
+            agent_template = AgentTemplates.get_multi_agent_template()
+        
+        return {
+            "agent_config": agent_template,
+            "python_content": AgentTemplates.get_python_file_template(),
+            "tools_list": []
+        }
+    
+    @staticmethod
     def get_python_file_template() -> str:
         return '''import os
 import json

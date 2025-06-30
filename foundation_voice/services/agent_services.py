@@ -18,24 +18,19 @@ class AgentGenerationService:
     async def generate_agent(self, prompt: str, agent_type: str, additional_info: Dict[str, Any] = None, guardrails: GuardrailConfig = None) -> Tuple[Dict[str, Any], str]:
         """Generate agent configuration and Python file using LLM"""
         
-        # Get the appropriate template
-        if agent_type == "single":
-            template = self.templates.get_single_agent_template()
-        else:
-            template = self.templates.get_multi_agent_template()
-
-        logger.info(f"Template: {template}");
-        
         # Enhance prompt with additional context (only if provided)
         enhanced_prompt = self._enhance_prompt(prompt, additional_info)
         logger.info(f"Enhanced prompt: {enhanced_prompt}");
+        
         # Get LLM response
-        response = await self._get_llm_response(enhanced_prompt, agent_type, template, guardrails)
+        response = await self._get_llm_response(enhanced_prompt, agent_type, guardrails)
         logger.info(f"Response: {response}");
+        
         # Parse response
         agent_config, python_content = self._parse_llm_response(response)
         logger.info(f"Agent config: {agent_config}");
         logger.info(f"Python content: {python_content}");
+        
         # Apply guardrails to config if specified
         if guardrails and guardrails.enabled and guardrails.rules:
             guardrails_list = self._build_guardrails_list(guardrails.rules)
@@ -50,9 +45,9 @@ class AgentGenerationService:
             enhanced_prompt += f"\n\nAdditional context: {json.dumps(additional_info)}"
         return enhanced_prompt
     
-    async def _get_llm_response(self, prompt: str, agent_type: str, template: Dict[str, Any], guardrails: GuardrailConfig = None) -> str:
+    async def _get_llm_response(self, prompt: str, agent_type: str, guardrails: GuardrailConfig = None) -> str:
         """Get response from LLM"""
-        system_prompt = self.prompts.get_system_prompt(agent_type, template, guardrails)
+        system_prompt = self.prompts.get_system_prompt(agent_type, guardrails)
         
         response = self.client.chat.completions.create(
             model="gpt-4o",

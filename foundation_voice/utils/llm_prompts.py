@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
 from foundation_voice.models.schemas import GuardrailConfig
+from foundation_voice.utils.templates import AgentTemplates
 import json
 
 class LLMPrompts:
@@ -39,8 +40,11 @@ Return your response as JSON with these exact keys:
 """
 
     @staticmethod
-    def get_system_prompt(agent_type: str, template: Dict[str, Any], guardrails: GuardrailConfig = None) -> str:
+    def get_system_prompt(agent_type: str, guardrails: GuardrailConfig = None) -> str:
         """Get system prompt for LLM based on agent type and template"""
+        # Get the complete template structure that includes agent_config, python_content, and tools_list
+        template = AgentTemplates.get_llm_response_template(agent_type)
+        
         guardrails_instruction = ""
         if guardrails and guardrails.enabled and guardrails.rules:
             guardrails_list = []
