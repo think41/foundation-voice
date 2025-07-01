@@ -11,10 +11,10 @@ class AgentTemplates:
                 "initial_greeting": "",
                 "prompt": "",
                 "transport": {
-                    "type": "small-webrtc"
+                    "type": "daily"
                 },
                 "vad": {
-                    "provider": "silerio"
+                    "provider": "silero"
                 },
                 "stt": {
                     "provider": "deepgram",
@@ -54,10 +54,10 @@ class AgentTemplates:
                 "initial_greeting": "",
                 "prompt": "",
                 "transport": {
-                    "type": "sip"
+                    "type": "daily"
                 },
                 "vad": {
-                    "provider": "silerio"
+                    "provider": "silero"
                 },
                 "stt": {
                     "provider": "deepgram",

@@ -22,7 +22,7 @@ async def generate_agent(request: AgentRequest):
                 detail="agent_type must be either 'single' or 'multi'"
             )
         
-        logger.info(f"Request: {request}");
+        logger.info(f"Request received");
         # Generate agent configuration and Python file
         agent_config, python_content = await agent_service.generate_agent(
             request.user_prompt,
@@ -31,7 +31,7 @@ async def generate_agent(request: AgentRequest):
             request.guardrails
         )
         
-        logger.info(f"Agent config: {agent_config}");
+        logger.info(f"Agent config generated");
         return AgentResponse(
             agent_config=agent_config,
             python_file_content=python_content,
