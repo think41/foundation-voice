@@ -66,8 +66,10 @@ MULTI-AGENT STRUCTURE REQUIREMENTS:
 Each agent in the agents object should have this structure:
 "agent_name": {
     "name": "agent_name",
-    "prompt": "Agent-specific system prompt",
+    "instructions": "Agent-specific system prompt",
     "tools": ["tool1", "tool2"],
+    "handoffs": ["agent_name1", "agent_name2"],
+    "handoff_instructions": "Instructions for handoffs",
     "input_guardrails": ["guardrail_name1", "guardrail_name2"]
 }
 
@@ -75,14 +77,18 @@ Example:
 "agents": {
     "triage_agent": {
         "name": "triage_agent",
-        "prompt": "You are a triage agent that categorizes user requests...",
+        "instructions": "You are a triage agent that categorizes user requests...",
         "tools": ["categorize_request", "route_to_specialist"],
+        "handoffs": ["appointment_agent"],
+        "handoff_description": "When the conversation starts or needs to return to introduction",
         "input_guardrails": ["off_topic_guardrail", "medical_disclaimer_guardrail"]
     },
     "appointment_agent": {
         "name": "appointment_agent", 
-        "prompt": "You are an appointment scheduling agent...",
+        "instructions": "You are an appointment scheduling agent...",
         "tools": ["check_availability", "book_appointment"],
+        "handoffs": ["triage_agent"],
+        "handoff_description": "When the user needs to go to triage",
         "input_guardrails": ["off_topic_guardrail"]
     }
 }
@@ -104,12 +110,12 @@ Customize this template based on the user's requirements. Fill in:
 - title: Appropriate title for the agent
 - initial_greeting: Natural greeting message
 - prompt: Detailed system prompt for the agent's behavior
-- tools: List of relevant tool names
-- For multi-agent: customize the agents config, start_agent, and guardrails
+- tools: List of relevant tool names, dont create class or any other tools types. Tools should be a simple function that can be called by the agent.
+- For multi-agent: customize the agents config, start_agent, and guardrails, handoffs, handoff_description
 
 Generate appropriate Python code with:
 - Tool implementations
 - Callback functions
-- Context models (if needed)
+- Context models (if needed for multi-agent)
 """
     
