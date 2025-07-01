@@ -68,7 +68,7 @@ Each agent in the agents object should have this structure:
     "name": "agent_name",
     "prompt": "Agent-specific system prompt",
     "tools": ["tool1", "tool2"],
-    "guardrails": ["guardrail_name1", "guardrail_name2"]
+    "input_guardrails": ["guardrail_name1", "guardrail_name2"]
 }
 
 Example:
@@ -77,13 +77,13 @@ Example:
         "name": "triage_agent",
         "prompt": "You are a triage agent that categorizes user requests...",
         "tools": ["categorize_request", "route_to_specialist"],
-        "guardrails": ["off_topic_guardrail", "medical_disclaimer_guardrail"]
+        "input_guardrails": ["off_topic_guardrail", "medical_disclaimer_guardrail"]
     },
     "appointment_agent": {
         "name": "appointment_agent", 
         "prompt": "You are an appointment scheduling agent...",
         "tools": ["check_availability", "book_appointment"],
-        "guardrails": ["off_topic_guardrail"]
+        "input_guardrails": ["off_topic_guardrail"]
     }
 }
 """
