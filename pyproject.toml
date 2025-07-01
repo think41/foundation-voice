@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "foundation_voice"
-version = "0.1.1"
+version = "0.1.3"
 authors = [
-    { name="Aniket-think41" }
+    { name="think41" }
 ]
 description = "Core package for Open Source CAI Pipecat - foundation voice"
 readme = "README.md"
@@ -71,11 +71,6 @@ all = [
     "foundation_voice[elevenlabs]",
 ]
 
-dev = [
-    "python-semantic-release",
-    "commitizen",
-]
-
 
 [project.urls]
 "Homepage" = "https://github.com/think41/foundation-voice.git"
@@ -87,27 +82,3 @@ dev = [
 where = ["."]
 include = ["foundation_voice*"]
 exclude = ["examples*"]
-
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-tag_format = "v$version"
-version_files = [
-    "pyproject.toml:version"
-]
-version_provider = "pep621"
-update_changelog_on_bump = true
-major_version_zero = true
-
-[tool.semantic_release]
-version_toml = [
-    "pyproject.toml:project.version",
-]
-branch = "main"
-changelog_file = "CHANGELOG.md"
-build_command = "pip install build && python -m build"
-dist_path = "dist/"
-upload_to_pypi = true
-upload_to_release = false
-commit_author = "semantic-release <semantic-release@example.com>"
-commit_message = "chore(release): {version} [skip ci]\\n\\n{changelog}"
