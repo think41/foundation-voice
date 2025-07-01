@@ -108,6 +108,6 @@ changelog_file = "CHANGELOG.md"
 build_command = "pip install build && python -m build"
 dist_path = "dist/"
 upload_to_pypi = true
-upload_to_release = true
+upload_to_release = false
 commit_author = "semantic-release <semantic-release@example.com>"
 commit_message = "chore(release): {version} [skip ci]\\n\\n{changelog}"
