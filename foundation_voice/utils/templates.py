@@ -32,17 +32,10 @@ class AgentTemplates:
                     "speed": "1.0"
                 }
             },
-            "pipeline": {
-                "name": "llm_agent_pipeline",
-                "enable_tracing": True,
-                "stages": [
-                    {"type": "input", "config": {}},
-                    {"type": "vad", "config": {}},
-                    {"type": "stt", "config": {}},
-                    {"type": "llm", "config": {"use_tools": False}},
-                    {"type": "tts", "config": {}},
-                    {"type": "output", "config": {}}
-                ]
+            "pipeline": {                
+                "enable_tracing": True,                    
+                "sample_rate_in": 8000,
+                "sample_rate_out": 8000               
             }
         }
     
@@ -97,18 +90,10 @@ class AgentTemplates:
                     }
                 }
             },
-            "pipeline": {
-                "name": "llm_agent_pipeline",
+            "pipeline": {            
+                "enable_tracing": False,                    
                 "sample_rate_in": 8000,
-                "sample_rate_out": 8000,
-                "stages": [
-                    {"type": "input", "config": {}},
-                    {"type": "vad", "config": {"min_silence_duration": 0.8, "speech_detection_sensitivity": 0.7}},
-                    {"type": "stt", "config": {"language": "en", "model": "nova-2"}},
-                    {"type": "llm", "config": {"use_tools": True, "context_window": 4000, "temperature": 0.7}},
-                    {"type": "tts", "config": {"sample_rate": 8000, "voice_settings": {"speed": 1.1, "pitch": 0.9}}},
-                    {"type": "output", "config": {}}
-                ]
+                "sample_rate_out": 8000 
             }
         }
     
@@ -139,9 +124,25 @@ from pydantic import BaseModel, Field
 
 {tools_section}
 
+
 tool_config = {{
 {tool_config_section}
 }}
+
+# EXAMPLE OF TOOLS SECTION FORMAT:
+# def get_account_balance():
+#     """Get the current account balance"""
+#     return "Balance: $1,524.67"
+#
+# def get_recent_transactions():
+#     """Fetch the most recent transactions"""
+#     return "Here are your 3 most recent transactions."
+#
+# tool_config = {{
+#     "get_account_balance": get_account_balance,
+#     "get_recent_transactions": get_recent_transactions,
+# }}
+
 
 {callbacks_section}
 
