@@ -16,7 +16,7 @@ from pipecat.metrics.metrics import (
 )
 from pipecat.observers.base_observer import BaseObserver, FramePushed
 from pipecat.processors.frame_processor import FrameDirection
-from foundation_voice.utils.metrics_context import token_usage_context
+from pipecat.frames.frames import StartFrame, EndFrame
 
 class CallSummaryMetricsObserver(BaseObserver):
     """
@@ -29,8 +29,9 @@ class CallSummaryMetricsObserver(BaseObserver):
     The summary is logged when an EndFrame is received.
     """
 
-    def __init__(self):
+    def __init__(self, llm):
         super().__init__()
+        self.llm = llm  # Store the llm instance
         # Store all individual values to calculate overall averages at the end
         self._ttfb_values: List[float] = []
         self._processing_times: List[float] = []
@@ -94,12 +95,20 @@ class CallSummaryMetricsObserver(BaseObserver):
                 "input_tokens": self._llm_usage.get("prompt_tokens", 0),
                 "output_tokens": self._llm_usage.get("completion_tokens", 0),
             }
-        else:
-            # If standard LLM usage is zero or not available, fall back to the shared context.
+        elif hasattr(self.llm._client.agents, 'token_usage'):
+            # Handle OpenAIAgentPlugin case where token usage is tracked in the AgentFactory
+            usage = self.llm._client.agents.token_usage
             metrics["llm_token_usage"] = {
-                "input_tokens": token_usage_context["total_input_tokens"],
-                "output_tokens": token_usage_context["total_output_tokens"],
+                "input_tokens": usage.get("total_input_tokens", 0),
+                "output_tokens": usage.get("total_output_tokens", 0),
             }
+        else:
+            logger.warning("No LLM usage data available.")
+            metrics["llm_token_usage"] = {
+                "input_tokens": 0,
+                "output_tokens": 0,
+            }
+
 
         if self._userbot_latencies:
             metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(

@@ -2,15 +2,14 @@ import os
 import logfire
 from logfire import ConsoleOptions
 from loguru import logger
-
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult, SimpleSpanProcessor, BatchSpanProcessor
 from opentelemetry.sdk.trace import ReadableSpan
-from foundation_voice.utils.metrics_context import token_usage_context
 
+from foundation_voice.utils.metrics_context import create_token_usage_processor
 from agents import (
     Agent,
     Runner,
@@ -37,6 +36,8 @@ class AgentFactory:
         self._config = config
         self._context = context
         self._user_defined_tools = user_defined_tools
+        self.token_usage = {"total_input_tokens": 0, "total_output_tokens": 0}
+        self._token_usage_processor = None
         self._setup()
 
     def _setup(self):
@@ -69,36 +70,14 @@ class AgentFactory:
             print("Logfire token not found in .env file. Tracing will be disabled.")
             return
 
-        # Create a custom exporter to pass token usage to the metrics observer via a shared dictionary.
-        class TokenUsageExporter(SpanExporter):
-            def export(self, spans: tuple[ReadableSpan, ...]) -> SpanExportResult:
-                logger.debug(f"[TokenUsageExporter] Received {len(spans)} spans to process.")
-                for span in spans:
-                    attributes = dict(span.attributes)
-                    # Log all span attributes for debugging purposes
-                    logger.debug(f"[TokenUsageExporter] Processing span: {span.name}, Attributes: {attributes}")
-                    if "gen_ai.usage.input_tokens" in attributes:
-                        input_tokens = attributes.get("gen_ai.usage.input_tokens", 0)
-                        logger.debug(f"[TokenUsageExporter] Found input tokens: {input_tokens}")
-                        token_usage_context["total_input_tokens"] += input_tokens
-                    if "gen_ai.usage.output_tokens" in attributes:
-                        output_tokens = attributes.get("gen_ai.usage.output_tokens", 0)
-                        logger.debug(f"[TokenUsageExporter] Found output tokens: {output_tokens}")
-                        token_usage_context["total_output_tokens"] += output_tokens
-                return SpanExportResult.SUCCESS
-
-            def shutdown(self) -> None:
-                pass
-
-        token_usage_exporter = TokenUsageExporter()
-        # Use SimpleSpanProcessor to export synchronously so metrics are available immediately.
-        token_usage_processor = SimpleSpanProcessor(token_usage_exporter)
+        # Create a token usage processor that will track token metrics
+        self._token_usage_processor = create_token_usage_processor(self.token_usage)
 
         logfire.configure(
             service_name="agent_handler",
             token=token,
             console=ConsoleOptions(),
-            additional_span_processors=[token_usage_processor],
+            additional_span_processors=[self._token_usage_processor],
         )
         logfire.instrument_openai_agents()
 
