@@ -146,6 +146,23 @@ tool_config = {{
 
 {callbacks_section}
 
+# EXAMPLE OF CALLBACKS SECTION FORMAT:
+# async def on_client_connected_callback(client):
+#     """Callback function for when a client connects"""
+#     pass
+#
+# async def on_first_participant_joined_callback(participant):
+#     """Callback function for when the first participant joins"""
+#     pass
+#
+# async def on_transcript_update_callback(data):
+#     """Callback function for when a participant leaves"""
+#     pass
+# 
+# async def on_participant_left_callback(data):
+#     """Callback function for when a participant leaves"""
+#     pass
+
 # Create a custom AgentCallbacks instance
 custom_callbacks = AgentCallbacks()
 
