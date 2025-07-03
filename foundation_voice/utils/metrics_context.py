@@ -3,7 +3,6 @@
 
 from typing import Dict
 
-from loguru import logger
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import (
     SimpleSpanProcessor,

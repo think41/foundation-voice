@@ -16,7 +16,6 @@ from pipecat.metrics.metrics import (
 )
 from pipecat.observers.base_observer import BaseObserver, FramePushed
 from pipecat.processors.frame_processor import FrameDirection
-from pipecat.frames.frames import StartFrame, EndFrame
 
 class CallSummaryMetricsObserver(BaseObserver):
     """
