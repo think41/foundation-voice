@@ -31,7 +31,8 @@ def generate_token_with_agent(
     )
     return token.to_jwt()
 
-def configure_livekit() -> None:
+
+def get_token():
     room_name = os.getenv("LIVEKIT_ROOM_NAME") or "livekitRoom_" + str(uuid.uuid4())
     url = os.getenv("LIVEKIT_URL")
     api_key = os.getenv("LIVEKIT_API_KEY")
@@ -49,6 +50,12 @@ def configure_livekit() -> None:
         raise Exception(
             "No LiveKit API secret specified. Set LIVEKIT_API_SECRET in your environment."
         )
+
+    return room_name, url, api_key, api_secret
+
+
+def configure_livekit() -> None:
+    room_name, url, api_key, api_secret = get_token()
 
     token = generate_token_with_agent(
         room_name=room_name,
@@ -69,6 +76,13 @@ def configure_livekit() -> None:
     return url, user_token, room_name, token
 
 
-    
+def configure_livekit_sip() -> None:
+    room_name, url, api_key, api_secret = get_token()
+    token = generate_token_with_agent(
+        room_name=room_name,
+        participant_name="agent", 
+        api_key=api_key,
+        api_secret=api_secret
+    )
 
-    
+    return url, room_name, token

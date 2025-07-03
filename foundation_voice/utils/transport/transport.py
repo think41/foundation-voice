@@ -19,6 +19,8 @@ class TransportType(Enum):
     DAILY = "daily"
     SIP = "sip"
     LIVEKIT = "livekit"
+    LIVEKIT_SIP = "livekit_sip"
+    
 
 
 def get_fastapi_websocket_transport(
@@ -207,7 +209,7 @@ class TransportFactory:
                 # SIP transport configuration optimized for Twilio
                 return transport
 
-            case TransportType.LIVEKIT:
+            case TransportType.LIVEKIT | TransportType.LIVEKIT_SIP:
                 logger.debug("Creating LiveKit transport")
                 try: 
                     from pipecat.transports.services.livekit import LiveKitParams

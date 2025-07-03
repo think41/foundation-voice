@@ -26,7 +26,7 @@
                     "name": "intro_agent",
                     "instructions": "You're an intro bot. Introduce yourself and converse with the user.",
                     "handoffs": ["spanish_agent"],
-                    "tools": ["weather_tool", "search_tool"],
+                    "tools": ["weather_tool", "search_tool", "transfer_call"],
                     "input_guardrails": ["off_topic_guardrail"]
                 },
                 "spanish_agent": {

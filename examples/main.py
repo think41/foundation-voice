@@ -23,6 +23,8 @@ from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 
+from foundation_voice.custom_plugins.services.sip.livekitSIP.router import router as sip_router
+
 # Load environment variables
 load_dotenv()
 
@@ -100,7 +102,13 @@ metadata = {
         ]
     }
 
+app.include_router(
+    sip_router, 
+    prefix="/sip", 
+)
 
+app.state.cai_sdk = cai_sdk
+app.state.defined_agents = defined_agents
 
 @app.get(
     "/",

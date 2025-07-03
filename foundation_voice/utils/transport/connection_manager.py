@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 
 from foundation_voice.utils.helpers.daily_helpers import get_token
-from foundation_voice.utils.helpers.livekit_helpers import configure_livekit
+from foundation_voice.utils.helpers.livekit_helpers import configure_livekit, configure_livekit_sip
 
 
 class WebRTCOffer(BaseModel):
@@ -68,6 +68,11 @@ class ConnectionManager:
         url, user_token, room_name, agent_token = configure_livekit()
         return url, user_token, room_name, agent_token
 
+
+    async def handle_livekit_sip_connection(self) -> tuple[str, str, str]:
+        """Handle LiveKit SIP connection setup."""
+        url, room_name, token = configure_livekit_sip()
+        return url, room_name, token
 
 
 # Create global instance

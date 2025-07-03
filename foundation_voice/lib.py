@@ -1,5 +1,4 @@
 import uuid
-import aiohttp
 
 from loguru import logger
 from fastapi import WebSocket
@@ -206,13 +205,36 @@ class CaiSDK:
                         "room_url": url,
                         "token": user_token,
                         "room_name": room_name,
-                        
                         "background_task_args": {
                             "func": run_agent,
                             **args,
                         }
                     }
 
+                case TransportType.LIVEKIT_SIP:
+                    url, room_name, agent_token = await connection_manager.handle_livekit_sip_connection()
+                    kwargs.update({
+                        "room_url": url,
+                        "room_name": room_name,
+                        "agent_token": agent_token,
+                    })
+
+                    args = self.create_args(
+                        transport_type=transport_type,
+                        connection=url,
+                        agent=agent,
+                        **kwargs
+                    )
+                    return { 
+                        "room_url": url,
+                        "token": agent_token,
+                        "room_name": room_name,
+                        
+                        "background_task_args": {
+                            "func": run_agent,
+                            **args,
+                        }
+                    }
                 
                 case _:
                     return {"error": f"Unsupported transport type: {transport_type_str}"}

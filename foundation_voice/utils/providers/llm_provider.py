@@ -150,7 +150,8 @@ def create_llm_service(
 def create_llm_context(
     agent_config: Dict[str, Any], 
     context=None, 
-    tools={}
+    tools={},
+    metadata = None
 ):
     """
     Create an LLM context based on configuration.
@@ -178,6 +179,14 @@ def create_llm_context(
             "content": f"{prompt}. Start by greeting the user with: '{initial_greeting}'",
         }
     ]
+
+    logger.info(f"Metadata: {metadata}")
+
+    if metadata:
+        messages.append({
+            "role": "system",
+            "content": f"This is metadata: {metadata}. Use this metadata for context/tool calling",
+        })
 
     llm_provider = agent_config["llm"]["provider"]
     

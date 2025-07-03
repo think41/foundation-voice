@@ -48,3 +48,6 @@ class LiveKitTransport(_OGLiveKitTransport):
                 name=self._output_name
             )
         return self._output
+
+    def cleanup(self):
+        self._client.cleanup()
