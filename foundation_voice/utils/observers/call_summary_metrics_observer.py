@@ -17,6 +17,7 @@ from pipecat.metrics.metrics import (
 from pipecat.observers.base_observer import BaseObserver, FramePushed
 from pipecat.processors.frame_processor import FrameDirection
 
+
 class CallSummaryMetricsObserver(BaseObserver):
     """
     An observer that tracks and logs various metrics during a call, including:
@@ -87,14 +88,17 @@ class CallSummaryMetricsObserver(BaseObserver):
 
         # LLM Usage
         # Check if we have valid usage data from the standard metrics.
-        has_standard_llm_usage = self._llm_usage and (self._llm_usage.get("prompt_tokens", 0) > 0 or self._llm_usage.get("completion_tokens", 0) > 0)
+        has_standard_llm_usage = self._llm_usage and (
+            self._llm_usage.get("prompt_tokens", 0) > 0
+            or self._llm_usage.get("completion_tokens", 0) > 0
+        )
 
         if has_standard_llm_usage:
             metrics["llm_token_usage"] = {
                 "input_tokens": self._llm_usage.get("prompt_tokens", 0),
                 "output_tokens": self._llm_usage.get("completion_tokens", 0),
             }
-        elif hasattr(self.llm._client.agents, 'token_usage'):
+        elif hasattr(self.llm._client.agents, "token_usage"):
             # Handle OpenAIAgentPlugin case where token usage is tracked in the AgentFactory
             usage = self.llm._client.agents.token_usage
             metrics["llm_token_usage"] = {
@@ -107,7 +111,6 @@ class CallSummaryMetricsObserver(BaseObserver):
                 "input_tokens": 0,
                 "output_tokens": 0,
             }
-
 
         if self._userbot_latencies:
             metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(
@@ -193,8 +196,13 @@ class CallSummaryMetricsObserver(BaseObserver):
         else:
             logger.info("• Average Processing Time: No data")
 
-        if "llm_token_usage" in metrics and (metrics["llm_token_usage"]["input_tokens"] > 0 or metrics["llm_token_usage"]["output_tokens"] > 0):
-            logger.info(f"• Token Usage: {metrics['llm_token_usage']['input_tokens']} input tokens, {metrics['llm_token_usage']['output_tokens']} output tokens")
+        if "llm_token_usage" in metrics and (
+            metrics["llm_token_usage"]["input_tokens"] > 0
+            or metrics["llm_token_usage"]["output_tokens"] > 0
+        ):
+            logger.info(
+                f"• Token Usage: {metrics['llm_token_usage']['input_tokens']} input tokens, {metrics['llm_token_usage']['output_tokens']} output tokens"
+            )
         else:
             logger.info("• Token Usage: No token usage detected.")
 
