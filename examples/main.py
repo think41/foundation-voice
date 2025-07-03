@@ -184,7 +184,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         logger.debug("WebSocket connection accepted")
 
-        transport_type, sip_params = auto_detect_transport(websocket)
+        transport_type, sip_params = await auto_detect_transport(websocket)
         logger.info(f"Detected transport type: {transport_type}")
 
         if sip_params:

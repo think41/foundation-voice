@@ -29,8 +29,9 @@ class CallSummaryMetricsObserver(BaseObserver):
     The summary is logged when an EndFrame is received.
     """
 
-    def __init__(self):
+    def __init__(self, llm):
         super().__init__()
+        self.llm = llm  # Store the llm instance
         # Store all individual values to calculate overall averages at the end
         self._ttfb_values: List[float] = []
         self._processing_times: List[float] = []
@@ -43,6 +44,7 @@ class CallSummaryMetricsObserver(BaseObserver):
         # Userbot latency tracking
         self._user_stopped_time: Optional[float] = None
         self._userbot_latencies: List[float] = []
+        self._llm_usage: Dict[str, int] = {}
 
     def get_metrics_summary(self) -> Dict[str, Any]:
         """
@@ -68,14 +70,7 @@ class CallSummaryMetricsObserver(BaseObserver):
             "ttfb_samples": len(self._ttfb_values),
             "avg_processing_time": None,
             "processing_samples": len(self._processing_times),
-            "total_prompt_tokens": self._total_prompt_tokens,
-            "total_completion_tokens": self._total_completion_tokens,
-            "total_llm_tokens": self._total_prompt_tokens
-            + self._total_completion_tokens,
-            "estimated_cost": (
-                self._total_prompt_tokens + self._total_completion_tokens
-            )
-            * 0.00002,
+            "llm_token_usage": None,
             "total_tts_characters": self._total_tts_characters,
             "call_duration": time.time() - self._call_start_time,
             "avg_userbot_latency": None,
@@ -90,6 +85,32 @@ class CallSummaryMetricsObserver(BaseObserver):
             metrics["avg_processing_time"] = sum(self._processing_times) / len(
                 self._processing_times
             )
+
+        # LLM Usage
+        # Check if we have valid usage data from the standard metrics.
+        has_standard_llm_usage = self._llm_usage and (
+            self._llm_usage.get("prompt_tokens", 0) > 0
+            or self._llm_usage.get("completion_tokens", 0) > 0
+        )
+
+        if has_standard_llm_usage:
+            metrics["llm_token_usage"] = {
+                "input_tokens": self._llm_usage.get("prompt_tokens", 0),
+                "output_tokens": self._llm_usage.get("completion_tokens", 0),
+            }
+        elif hasattr(self.llm._client.agents, "token_usage"):
+            # Handle OpenAIAgentPlugin case where token usage is tracked in the AgentFactory
+            usage = self.llm._client.agents.token_usage
+            metrics["llm_token_usage"] = {
+                "input_tokens": usage.get("total_input_tokens", 0),
+                "output_tokens": usage.get("total_output_tokens", 0),
+            }
+        else:
+            logger.warning("No LLM usage data available.")
+            metrics["llm_token_usage"] = {
+                "input_tokens": 0,
+                "output_tokens": 0,
+            }
 
         if self._userbot_latencies:
             metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(
@@ -128,8 +149,10 @@ class CallSummaryMetricsObserver(BaseObserver):
                     logger.trace(
                         f"Observer received LLMUsage from {data.processor}: {data.value.prompt_tokens}p, {data.value.completion_tokens}c"
                     )
-                    self._total_prompt_tokens += data.value.prompt_tokens
-                    self._total_completion_tokens += data.value.completion_tokens
+                    self._llm_usage = {
+                        "prompt_tokens": data.value.prompt_tokens,
+                        "completion_tokens": data.value.completion_tokens,
+                    }
                 elif isinstance(data, TTSUsageMetricsData):
                     logger.trace(
                         f"Observer received TTSUsage from {data.processor}: {data.value} chars"
@@ -173,13 +196,18 @@ class CallSummaryMetricsObserver(BaseObserver):
         else:
             logger.info("• Average Processing Time: No data")
 
-        logger.info(f"• Total Prompt Tokens: {metrics['total_prompt_tokens']}")
-        logger.info(f"• Total Completion Tokens: {metrics['total_completion_tokens']}")
-        logger.info(
-            f"• Total LLM Tokens: {metrics['total_llm_tokens']} (${metrics['estimated_cost']:.4f} estimated cost)"
-        )
+        if "llm_token_usage" in metrics and (
+            metrics["llm_token_usage"]["input_tokens"] > 0
+            or metrics["llm_token_usage"]["output_tokens"] > 0
+        ):
+            logger.info(
+                f"• Token Usage: {metrics['llm_token_usage']['input_tokens']} input tokens, {metrics['llm_token_usage']['output_tokens']} output tokens"
+            )
+        else:
+            logger.info("• Token Usage: No token usage detected.")
 
         logger.info(f"• Total TTS Characters: {metrics['total_tts_characters']}")
+
         logger.info(f"• Call Duration: {metrics['call_duration']:.2f} seconds")
 
         if metrics["avg_userbot_latency"] is not None:

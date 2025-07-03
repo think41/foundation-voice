@@ -239,7 +239,7 @@ async def create_agent_pipeline(
     rtvi.register_action(append_to_messages)
 
     # Create observers
-    call_metrics_observer = CallSummaryMetricsObserver()
+    call_metrics_observer = CallSummaryMetricsObserver(llm=llm)
     task_observers = [
         UserBotLatencyLogObserver(),
         call_metrics_observer,
