@@ -125,8 +125,6 @@ class CaiSDK:
         try:
             transport_type_str = request.get("transportType", "").lower()
             # Convert string to TransportType enum
-            logger.debug('string to enum')
-            print(transport_type_str)
             try:
                 transport_type = TransportType(transport_type_str)
             except ValueError:
