@@ -18,7 +18,6 @@ def placeholder(ctx: RunContextWrapper):
 def weather_tool(ctx: RunContextWrapper, location: str):
     return f"Weather in {location} is 32 degrees celsius"
 
+
 # Add your tools here. Key: Function_name; Value: Reference to function
-tool_config = {
-    "weather_tool": weather_tool
-}
+tool_config = {"weather_tool": weather_tool}

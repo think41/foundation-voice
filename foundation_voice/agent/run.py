@@ -13,6 +13,7 @@ from foundation_voice.agent.agent import create_agent_pipeline
 from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.utils.transport.session_manager import session_manager
 
+
 async def run_agent(
     transport_type: TransportType,
     config: Dict[str, Any],
@@ -36,7 +37,9 @@ async def run_agent(
             logger.info(f"Bot already exists in Daily room: {room_url}")
             return
 
-    if transport_type == TransportType.WEBRTC and isinstance(connection, SmallWebRTCConnection):
+    if transport_type == TransportType.WEBRTC and isinstance(
+        connection, SmallWebRTCConnection
+    ):
         existing_session = session_manager.get_webrtc_session(connection.pc_id)
         if existing_session:
             logger.info(f"Bot already exists for WebRTC connection: {connection.pc_id}")
@@ -60,14 +63,16 @@ async def run_agent(
     try:
         if transport_type == TransportType.DAILY:
             await session_manager.add_session(session_id, task, daily_room_url=room_url)
-        elif transport_type == TransportType.WEBRTC and isinstance(connection, SmallWebRTCConnection):
+        elif transport_type == TransportType.WEBRTC and isinstance(
+            connection, SmallWebRTCConnection
+        ):
             await session_manager.add_webrtc_session(session_id, task)
         else:
             await session_manager.add_session(session_id, task)
 
         runner = PipelineRunner()
         await runner.run(task)
-        
+
     except Exception as e:
         logger.error(f"Error running agent: {e}")
         raise
