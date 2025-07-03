@@ -10,13 +10,14 @@ RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
     ffmpeg \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Copy the application code
 COPY . .
@@ -24,8 +25,9 @@ COPY . .
 # Set Python path
 ENV PYTHONPATH=/app
 
-# Expose the port the app runs on
-EXPOSE 8000
+# Expose the ports
+EXPOSE 8000 
+EXPOSE 40000-40100/udp
 
 # Command to run the application
-CMD ["uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "examples.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]

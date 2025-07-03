@@ -23,7 +23,6 @@ class SessionManager:
         try:
             if session_id in self.active_sessions:
                 task = self.active_sessions[session_id]
-
                 # Clean up daily room sessions if this task is associated with any
                 for room_url, room_task in list(self.daily_room_sessions.items()):
                     if room_task == task:

@@ -20,6 +20,7 @@
         "start_agent": "introduction_agent",
         "context": "MagicalNestContext",
         "logfire_trace": true,
+        "model": "gpt-4o-mini",
         "agents": {
           "introduction_agent": {
             "name": "introduction_agent",
@@ -27,6 +28,7 @@
             "handoff_description": "When the conversation starts or needs to return to introduction",
             "handoffs": ["demographics_agent"],
             "tools": ["update_basic_info", "retrieve_from_knowledge_base"],
+            "input_guardrails": ["off_topic_guardrail"],
             "context": "MagicalNestContext"
           },
           "demographics_agent": {
@@ -35,6 +37,7 @@
             "handoff_description": "When basic information is collected and it's time to gather preferences",
             "handoffs": ["introduction_agent", "product_selection_agent", "faq_agent"],
             "tools": ["update_room_data"],
+            "input_guardrails": ["off_topic_guardrail"],
             "context": "MagicalNestContext"
           },
           "product_selection_agent": {
@@ -43,6 +46,7 @@
             "handoff_description": "When preferences are collected and it's time to suggest products",
             "handoffs": ["introduction_agent", "demographics_agent", "faq_agent"],
             "tools": ["update_products"],
+            "input_guardrails": ["off_topic_guardrail"],
             "context": "MagicalNestContext"
           },
           "faq_agent": {
@@ -50,6 +54,12 @@
             "instructions": "You are the FAQ Agent for Magical Nest, a premium interior design company specializing in creating magical spaces for children.\n\nIMPORTANT: Keep all responses SHORT, CRISP and CONVERSATIONAL - suitable for a voice interface.\nLimit responses to 1-2 short sentences whenever possible.\n\nYour responsibilities:\n- Answer questions about Magical Nest's services and operations:\n  * Design process and timeline\n  * Pricing structure and payment options\n  * Installation and delivery services\n  * Warranty and after-sales support\n  * Customization options\n  * Safety features\n- Provide clear, concise information\n- Highlight Magical Nest's unique selling points when relevant\n\nBe informative and helpful. Keep answers brief and to the point.\n\nIf the customer wants to return to the introduction, hand off to the Introduction Agent.\nIf the customer wants to discuss preferences, hand off to the Demographics Agent.\nIf the customer wants to discuss product selection, hand off to the Product Selection Agent.",
             "handoff_description": "When the user has questions about Magical Nest's services, process, or operations",
             "handoffs": ["introduction_agent", "demographics_agent", "product_selection_agent"]
+          }
+        },
+        "guardrails": {
+          "off_topic_guardrail": {
+              "name": "off_topic_guardrail",
+              "instructions": "If the user mentions outer-space and other space related topics, it is off-topic. Everything else is considered on-topic."
           }
         }
       }
@@ -70,6 +80,9 @@
   },
   "pipeline": {
     "name": "llm_agent_pipeline",
+    "sample_rate_in": 16000,
+    "sample_rate_out": 24000,
+    "enable_tracing": false,
     "stages": [
       {
         "type": "input",
