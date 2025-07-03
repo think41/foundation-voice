@@ -30,23 +30,14 @@ class TokenUsageExporter(SpanExporter):
         Returns:
             SpanExportResult: SUCCESS if processing completed successfully
         """
-        logger.debug(f"[TokenUsageExporter] Received {len(spans)} spans to process.")
         usage = self.usage_dict
         for span in spans:
             attributes = dict(span.attributes)
-            # Log all span attributes for debugging purposes
-            logger.debug(
-                f"[TokenUsageExporter] Processing span: {span.name}, Attributes: {attributes}"
-            )
             if "gen_ai.usage.input_tokens" in attributes:
                 input_tokens = attributes.get("gen_ai.usage.input_tokens", 0)
-                logger.debug(f"[TokenUsageExporter] Found input tokens: {input_tokens}")
                 usage["total_input_tokens"] += input_tokens
             if "gen_ai.usage.output_tokens" in attributes:
                 output_tokens = attributes.get("gen_ai.usage.output_tokens", 0)
-                logger.debug(
-                    f"[TokenUsageExporter] Found output tokens: {output_tokens}"
-                )
                 usage["total_output_tokens"] += output_tokens
         return SpanExportResult.SUCCESS
 
