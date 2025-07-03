@@ -1,13 +1,9 @@
 import os
 import logfire
 from logfire import ConsoleOptions
-from loguru import logger
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
-
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult, SimpleSpanProcessor, BatchSpanProcessor
-from opentelemetry.sdk.trace import ReadableSpan
 
 from foundation_voice.utils.metrics_context import create_token_usage_processor
 from agents import (
