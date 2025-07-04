@@ -112,7 +112,9 @@ metadata = {
 async def index():
     return {"message": "welcome to cai"}
 
+
 app.include_router(agent_router.router, prefix="/api/v1")
+
 
 @app.post("/api/sip")
 async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")):

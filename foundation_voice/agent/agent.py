@@ -32,7 +32,9 @@ from foundation_voice.utils.providers.llm_provider import (
     create_llm_context,
 )
 from foundation_voice.utils.observers.func_observer import FunctionObserver
-from foundation_voice.utils.observers.call_summary_metrics_observer import CallSummaryMetricsObserver
+from foundation_voice.utils.observers.call_summary_metrics_observer import (
+    CallSummaryMetricsObserver,
+)
 from foundation_voice.utils.callbacks_utils import save_conversation_data
 
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -324,9 +326,9 @@ async def create_agent_pipeline(
                 "session_id": session_id,
             }
 
-            await callback(data)       
+            await callback(data)
             save_conversation_data(data)
-           
+
             try:
                 # Only try to log metrics if the observer exists
                 if call_metrics_observer:
@@ -370,9 +372,9 @@ async def create_agent_pipeline(
                 "session_id": session_id,
             }
 
-            await callback(data)        
+            await callback(data)
             save_conversation_data(data)
-            
+
             try:
                 # Only try to log metrics if the observer exists
                 if call_metrics_observer:

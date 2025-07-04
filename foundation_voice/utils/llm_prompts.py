@@ -2,9 +2,10 @@ from foundation_voice.models.schemas import GuardrailConfig
 from foundation_voice.utils.templates import AgentTemplates
 import json
 
+
 class LLMPrompts:
     """Utility class for LLM prompts and instructions"""
-    
+
     BASE_INSTRUCTIONS = """
 You are an expert AI assistant that creates voice agent configurations. You will be given a template configuration and need to customize it based on the user's requirements.
 
@@ -43,13 +44,13 @@ Return your response as JSON with these exact keys:
         """Get system prompt for LLM based on agent type and template"""
         # Get the complete template structure that includes agent_config, python_content, and tools_list
         template = AgentTemplates.get_llm_response_template(agent_type)
-        
+
         guardrails_instruction = ""
         if guardrails and guardrails.enabled and guardrails.rules:
             guardrails_list = []
             for rule in guardrails.rules:
                 guardrails_list.append(f"- {rule.name}: {rule.instructions}")
-            
+
             guardrails_instruction = f"""
 GUARDRAILS TO IMPLEMENT:
 {chr(10).join(guardrails_list)}
@@ -92,7 +93,7 @@ Example:
     }
 }
 """
-        
+
         return f"""
 {LLMPrompts.BASE_INSTRUCTIONS}
 
@@ -117,4 +118,3 @@ Generate appropriate Python code with:
 - Callback functions
 - Context models (if needed for multi-agent)
 """
-    

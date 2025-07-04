@@ -8,60 +8,76 @@ from loguru import logger
 import os
 import re
 
+
 class AgentGenerationService:
     """Service class for generating voice agents"""
-    
+
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.templates = AgentTemplates()
         self.prompts = LLMPrompts()
-    
-    async def generate_agent(self, prompt: str, agent_type: str, additional_info: Dict[str, Any] = None, guardrails: GuardrailConfig = None) -> Tuple[Dict[str, Any], str]:
+
+    async def generate_agent(
+        self,
+        prompt: str,
+        agent_type: str,
+        additional_info: Dict[str, Any] = None,
+        guardrails: GuardrailConfig = None,
+    ) -> Tuple[Dict[str, Any], str]:
         """Generate agent configuration and Python file using LLM"""
-        
+
         # Enhance prompt with additional context (only if provided)
         enhanced_prompt = self._enhance_prompt(prompt, additional_info)
         logger.info("Prompt Enhanced")
-        
+
         # Get LLM response
         response = await self._get_llm_response(enhanced_prompt, agent_type, guardrails)
         logger.info("LLM Response Generated")
-        
+
         # Parse response
         agent_config, python_content = self._parse_llm_response(response)
         logger.info("Agent config parsed")
         logger.info("Python content parsed")
-        
+
         # Apply guardrails to config if specified
         if guardrails and guardrails.enabled and guardrails.rules:
             guardrails_list = self._build_guardrails_list(guardrails.rules)
-            agent_config = self.templates.add_guardrails_to_config(agent_config, guardrails_list, agent_type)
-        
+            agent_config = self.templates.add_guardrails_to_config(
+                agent_config, guardrails_list, agent_type
+            )
+
         return agent_config, python_content
-    
-    def _enhance_prompt(self, prompt: str, additional_info: Dict[str, Any] = None) -> str:
+
+    def _enhance_prompt(
+        self, prompt: str, additional_info: Dict[str, Any] = None
+    ) -> str:
         """Enhance user prompt with additional context"""
         enhanced_prompt = prompt
         if additional_info:
             enhanced_prompt += f"\n\nAdditional context: {json.dumps(additional_info)}"
         return enhanced_prompt
-    
-    async def _get_llm_response(self, prompt: str, agent_type: str, guardrails: GuardrailConfig = None) -> str:
+
+    async def _get_llm_response(
+        self, prompt: str, agent_type: str, guardrails: GuardrailConfig = None
+    ) -> str:
         """Get response from LLM"""
         system_prompt = self.prompts.get_system_prompt(agent_type, guardrails)
-        
+
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Create a {agent_type} agent for: {prompt}"}
+                {
+                    "role": "user",
+                    "content": f"Create a {agent_type} agent for: {prompt}",
+                },
             ],
             temperature=0.7,
-            max_tokens=4000
+            max_tokens=4000,
         )
-        
+
         return response.choices[0].message.content
-    
+
     def _parse_llm_response(self, response_content: str) -> Tuple[Dict[str, Any], str]:
         """Parse LLM response to extract JSON config and Python content"""
         try:
@@ -73,21 +89,24 @@ class AgentGenerationService:
             raise ValueError(f"Failed to parse LLM response as JSON: {str(e)}")
         except KeyError as e:
             raise ValueError(f"Missing required key in LLM response: {str(e)}")
-    
+
     def _build_guardrails_list(self, rules: List) -> List[Dict[str, Any]]:
         """Build guardrails list from GuardrailRule objects"""
         guardrails_list = []
         for rule in rules:
-            guardrails_list.append({
-                "name": rule.name,
-                "model": rule.model,
-                "instructions": rule.instructions
-            })
+            guardrails_list.append(
+                {
+                    "name": rule.name,
+                    "model": rule.model,
+                    "instructions": rule.instructions,
+                }
+            )
         return guardrails_list
 
     def extract_json_from_markdown(self, response_content: str):
-    
-        match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_content, re.DOTALL)
+        match = re.search(
+            r"```(?:json)?\s*(\{.*?\})\s*```", response_content, re.DOTALL
+        )
         if match:
             return match.group(1)
         else:

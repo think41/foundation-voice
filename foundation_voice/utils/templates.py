@@ -1,8 +1,9 @@
-from typing import Any, Dict, List 
+from typing import Any, Dict, List
+
 
 class AgentTemplates:
     """Templates for different agent configurations"""
-    
+
     @staticmethod
     def get_single_agent_template() -> Dict[str, Any]:
         return {
@@ -10,35 +11,24 @@ class AgentTemplates:
                 "title": "",
                 "initial_greeting": "",
                 "prompt": "",
-                "transport": {
-                    "type": "daily"
-                },
-                "vad": {
-                    "provider": "silero"
-                },
-                "stt": {
-                    "provider": "deepgram",
-                    "model": "nova-2"
-                },
+                "transport": {"type": "daily"},
+                "vad": {"provider": "silero"},
+                "stt": {"provider": "deepgram", "model": "nova-2"},
                 "llm": {
                     "provider": "cerebras",
                     "model": "llama-3.3-70b",
                     "tools": [],
-                    "guardrails": []
+                    "guardrails": [],
                 },
-                "tts": {
-                    "provider": "smallestai",
-                    "voice_id": "emily",
-                    "speed": "1.0"
-                }
+                "tts": {"provider": "smallestai", "voice_id": "emily", "speed": "1.0"},
             },
-            "pipeline": {                
-                "enable_tracing": True,                    
+            "pipeline": {
+                "enable_tracing": True,
                 "sample_rate_in": 8000,
-                "sample_rate_out": 8000               
-            }
+                "sample_rate_out": 8000,
+            },
         }
-    
+
     @staticmethod
     def get_multi_agent_template() -> Dict[str, Any]:
         return {
@@ -46,16 +36,9 @@ class AgentTemplates:
                 "title": "",
                 "initial_greeting": "",
                 "prompt": "",
-                "transport": {
-                    "type": "daily"
-                },
-                "vad": {
-                    "provider": "silero"
-                },
-                "stt": {
-                    "provider": "deepgram",
-                    "audio_passthrough": True
-                },
+                "transport": {"type": "daily"},
+                "vad": {"provider": "silero"},
+                "stt": {"provider": "deepgram", "audio_passthrough": True},
                 "llm": {
                     "provider": "openai_agents",
                     "logfire_trace": False,
@@ -70,14 +53,10 @@ class AgentTemplates:
                         },
                         "guardrails": {
                             # This will be populated by the LLM
-                        }
-                    }
+                        },
+                    },
                 },
-                "tts": {
-                    "provider": "smallestai",
-                    "voice_id": "emily",
-                    "speed": "1.0"
-                },
+                "tts": {"provider": "smallestai", "voice_id": "emily", "speed": "1.0"},
                 "mcp": {
                     "type": "llm_orchestrator",
                     "config": {
@@ -86,17 +65,17 @@ class AgentTemplates:
                         "history_length": 10,
                         "enable_tool_selection": True,
                         "tool_selection_strategy": "highest_confidence",
-                        "context_management": ""
-                    }
-                }
+                        "context_management": "",
+                    },
+                },
             },
-            "pipeline": {            
-                "enable_tracing": False,                    
+            "pipeline": {
+                "enable_tracing": False,
                 "sample_rate_in": 8000,
-                "sample_rate_out": 8000 
-            }
+                "sample_rate_out": 8000,
+            },
         }
-    
+
     @staticmethod
     def get_llm_response_template(agent_type: str) -> Dict[str, Any]:
         """Get the complete template structure that LLMPrompts expects"""
@@ -104,13 +83,13 @@ class AgentTemplates:
             agent_template = AgentTemplates.get_single_agent_template()
         else:
             agent_template = AgentTemplates.get_multi_agent_template()
-        
+
         return {
             "agent_config": agent_template,
             "python_content": AgentTemplates.get_python_file_template(),
-            "tools_list": []
+            "tools_list": [],
         }
-    
+
     @staticmethod
     def get_python_file_template() -> str:
         return '''import os
@@ -198,7 +177,9 @@ custom_callbacks.register_callback(
 '''
 
     @staticmethod
-    def add_guardrails_to_config(config: Dict[str, Any], guardrails_list: List[Dict[str, Any]], agent_type: str) -> Dict[str, Any]:
+    def add_guardrails_to_config(
+        config: Dict[str, Any], guardrails_list: List[Dict[str, Any]], agent_type: str
+    ) -> Dict[str, Any]:
         """Add guardrails configuration to the agent config"""
         if agent_type == "single":
             # For single agents, add guardrails to the LLM section
@@ -206,14 +187,16 @@ custom_callbacks.register_callback(
         else:
             # For multi-agents, add guardrails to the agent_config and each individual agent
             config["agent"]["llm"]["agent_config"]["guardrails"] = {}
-            
+
             # Add guardrails definitions
             for guardrail in guardrails_list:
-                config["agent"]["llm"]["agent_config"]["guardrails"][guardrail["name"]] = {
+                config["agent"]["llm"]["agent_config"]["guardrails"][
+                    guardrail["name"]
+                ] = {
                     "name": guardrail["name"],
-                    "instructions": guardrail["instructions"]
+                    "instructions": guardrail["instructions"],
                 }
-            
+
             # Add guardrails to each agent (this will be handled by the LLM when creating agents)
-        
+
         return config
