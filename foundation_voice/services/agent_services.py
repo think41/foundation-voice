@@ -21,16 +21,16 @@ class AgentGenerationService:
         
         # Enhance prompt with additional context (only if provided)
         enhanced_prompt = self._enhance_prompt(prompt, additional_info)
-        logger.info(f"Prompt Enhanced");
+        logger.info("Prompt Enhanced")
         
         # Get LLM response
         response = await self._get_llm_response(enhanced_prompt, agent_type, guardrails)
-        logger.info(f"LLM Response Generated");
+        logger.info("LLM Response Generated")
         
         # Parse response
         agent_config, python_content = self._parse_llm_response(response)
-        logger.info(f"Agent config parsed");
-        logger.info(f"Python content parsed");
+        logger.info("Agent config parsed")
+        logger.info("Python content parsed")
         
         # Apply guardrails to config if specified
         if guardrails and guardrails.enabled and guardrails.rules:
@@ -65,9 +65,9 @@ class AgentGenerationService:
     def _parse_llm_response(self, response_content: str) -> Tuple[Dict[str, Any], str]:
         """Parse LLM response to extract JSON config and Python content"""
         try:
-            logger.info(f"Response content parsed")
+            logger.info("Response content parsed")
             result = json.loads(self.extract_json_from_markdown(response_content))
-            logger.info(f"Result parsed")
+            logger.info("Result parsed")
             return result["agent_config"], result["python_content"]
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse LLM response as JSON: {str(e)}")

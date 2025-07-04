@@ -9,7 +9,7 @@ def save_conversation_data(data):
     if os.getenv("CONVERSATION_HISTORY") == "true" and os.getenv("CONVERSATION_DIR") is not None:
         CONVERSATIONS_DIR = os.getenv("CONVERSATION_DIR")
     else:
-        return False;
+        return False
         
     if not os.path.exists(CONVERSATIONS_DIR):
         os.makedirs(CONVERSATIONS_DIR)
