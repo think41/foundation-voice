@@ -24,6 +24,7 @@ from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 from foundation_voice.utils.api_utils import auto_detect_transport
 import uuid
+from foundation_voice.routers import agent_router
 
 # Load environment variables
 load_dotenv()
@@ -112,6 +113,9 @@ async def index():
     return {"message": "welcome to cai"}
 
 
+app.include_router(agent_router.router, prefix="/api/v1")
+
+
 @app.post("/api/sip")
 async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")):
     """
@@ -184,7 +188,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         logger.debug("WebSocket connection accepted")
 
-        transport_type, sip_params = auto_detect_transport(websocket)
+        transport_type, sip_params = await auto_detect_transport(websocket)
         logger.info(f"Detected transport type: {transport_type}")
 
         if sip_params:

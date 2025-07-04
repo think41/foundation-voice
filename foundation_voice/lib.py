@@ -121,9 +121,9 @@ class CaiSDK:
 
     async def connect_handler(self, request: dict, agent: dict, **kwargs):
         self._ensure_metadata_and_session_id(kwargs)
-
+        logger.debug(request.get("transportType"))
         try:
-            transport_type_str = request.get("transportType", "").lower
+            transport_type_str = request.get("transportType", "").lower()
             # Convert string to TransportType enum
             try:
                 transport_type = TransportType(transport_type_str)
@@ -131,6 +131,7 @@ class CaiSDK:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
 
             if transport_type == TransportType.WEBSOCKET:
+                logger.info("Websocket URL")
                 return {
                     "session_id": kwargs["session_id"],
                     "websocket_url": f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}",
