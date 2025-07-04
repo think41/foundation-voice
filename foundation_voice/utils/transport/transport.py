@@ -7,6 +7,7 @@ from pipecat.transports.base_transport import TransportParams
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
+from pipecat.audio.filters.noisereduce_filter import NoisereduceFilter
 import os
 
 
@@ -86,6 +87,7 @@ class TransportFactory:
                     serializer=ProtobufFrameSerializer(),
                     audio_in_enabled=True,
                     audio_out_enabled=True,
+                    audio_in_filter=NoisereduceFilter(),
                     add_wav_header=False,
                     vad_analyzer=vad_analyzer,
                     session_timeout=60 * 3,  # 3 minutes
@@ -117,6 +119,7 @@ class TransportFactory:
                 params=TransportParams(
                     audio_in_enabled=True,
                     audio_out_enabled=True,
+                    audio_in_filter=NoisereduceFilter(),
                     vad_analyzer=vad_analyzer,
                 ),
             )
@@ -154,6 +157,7 @@ class TransportFactory:
                     transcription_enabled=True,
                     vad_enabled=True,
                     vad_analyzer=vad_analyzer,
+                    audio_in_filter=NoisereduceFilter(),
                 ),
             )
 
@@ -215,6 +219,7 @@ class TransportFactory:
                 params=FastAPIWebsocketParams(
                     audio_in_enabled=True,
                     audio_out_enabled=True,
+                    audio_in_filter=NoisereduceFilter(),
                     add_wav_header=False,  # Twilio doesn't need WAV headers
                     vad_enabled=True,
                     vad_analyzer=vad_analyzer,
