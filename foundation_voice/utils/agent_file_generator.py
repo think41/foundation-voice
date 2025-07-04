@@ -61,7 +61,7 @@ class FileGenerator:
         Returns:
             str: Formatted README content
         """
-        return f"""# Voice Agent: {agent_config['agent']['title']}
+        return f"""# Voice Agent: {agent_config["agent"]["title"]}
 
 ## Agent Type: {agent_type.upper()}
 
@@ -75,13 +75,13 @@ class FileGenerator:
 3. Import the tools and callbacks from agent_tools.py
 4. Deploy using your voice agent platform
 
-## Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+## Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 ## Configuration:
-- Transport: {agent_config['agent']['transport']['type']}
-- TTS Provider: {agent_config['agent']['tts']['provider']}
-- STT Provider: {agent_config['agent']['stt']['provider']}
-- LLM Provider: {agent_config['agent']['llm']['provider']}
+- Transport: {agent_config["agent"]["transport"]["type"]}
+- TTS Provider: {agent_config["agent"]["tts"]["provider"]}
+- STT Provider: {agent_config["agent"]["stt"]["provider"]}
+- LLM Provider: {agent_config["agent"]["llm"]["provider"]}
 """
 
     @staticmethod
