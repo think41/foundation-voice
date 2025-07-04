@@ -35,8 +35,10 @@ from foundation_voice.utils.observers.func_observer import FunctionObserver
 from foundation_voice.utils.observers.call_summary_metrics_observer import (
     CallSummaryMetricsObserver,
 )
+from foundation_voice.utils.callbacks_utils import save_conversation_data
 
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
 
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
@@ -325,6 +327,7 @@ async def create_agent_pipeline(
             }
 
             await callback(data)
+            save_conversation_data(data)
 
             try:
                 # Only try to log metrics if the observer exists
@@ -370,6 +373,7 @@ async def create_agent_pipeline(
             }
 
             await callback(data)
+            save_conversation_data(data)
 
             try:
                 # Only try to log metrics if the observer exists
