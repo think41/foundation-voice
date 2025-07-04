@@ -785,4 +785,3 @@ uvicorn main:app --reload
 ```
 
 3. Open your browser and navigate to `http://localhost:8000`
-* Automated releases with semantic-release.
