@@ -38,6 +38,7 @@ from foundation_voice.utils.observers.call_summary_metrics_observer import (
 from foundation_voice.utils.callbacks_utils import save_conversation_data
 
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from pipecat.processors.filters.stt_mute_filter import STTMuteConfig, STTMuteFilter, STTMuteStrategy
 
 
 logger.remove(0)
@@ -201,11 +202,14 @@ async def create_agent_pipeline(
         transport_type=transport_type.value,  # Use enum value for backward compatibility
         connection=connection,
     )
-
+    stt_mute_filter = STTMuteFilter(
+        config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE})
+    )
     # Create pipeline with RTVI processor included
     pipeline = Pipeline(
         [
             transport.input(),
+            stt_mute_filter,
             stt,
             idle_processor,
             transcript.user(),
@@ -260,6 +264,7 @@ async def create_agent_pipeline(
     #     logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
 
     # Create pipeline task with transport-appropriate sample rates
+    
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
