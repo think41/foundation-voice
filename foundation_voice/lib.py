@@ -1,7 +1,7 @@
 import uuid
 
 from loguru import logger
-from fastapi import WebSocket
+from fastapi import WebSocket, HTTPException
 from typing import Any, Dict, Optional, Callable
 
 from foundation_voice.agent.run import run_agent
@@ -237,7 +237,7 @@ class CaiSDK:
                     }
                 
                 case _:
-                    return {"error": f"Unsupported transport type: {transport_type_str}"}
+                    raise HTTPException(status_code=400, detail=f"Unsupported transport type: {transport_type_str}")
                 
         except Exception as e:
-            return {"error": f"Failed to establish connection: {str(e)}"}
+            raise HTTPException(status_code=500, detail=f"Failed to establish connection: {str(e)}")

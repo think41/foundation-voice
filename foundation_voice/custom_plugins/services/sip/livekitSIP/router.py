@@ -1,8 +1,13 @@
+import os
+import uuid
 import random
 
 from loguru import logger
+from livekit.api.webhook import WebhookReceiver
+from livekit.api.access_token import TokenVerifier
 from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException
 
+from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.custom_plugins.services.sip.livekitSIP.service import Stream, LiveKitSIPService
 
 sip_service = None
@@ -87,6 +92,48 @@ async def list_trunks(
         raise err
 
 
+@router.post("/create-rule")
+async def create_rule(
+    request: Request,
+    sip: LiveKitSIPService = Depends(get_service_instance) 
+):
+    try: 
+        data = await request.json()
+        rule = await sip.create_rule(**data)
+        return rule
+    except Exception as err:
+        logger.error(f"Error creating rule: {err}")
+        raise err
+
+
+@router.delete("/delete-rule")
+async def delete_rule(
+    request: Request,
+    sip: LiveKitSIPService = Depends(get_service_instance) 
+):
+    try: 
+        data = await request.json()
+        rule = await sip.delete_rule(**data)
+        return rule
+    except Exception as err:
+        logger.error(f"Error deleting rule: {err}")
+        raise err
+
+
+@router.get("/list-rules")
+async def list_rules(
+    request: Request,
+    sip: LiveKitSIPService = Depends(get_service_instance) 
+):
+    try: 
+        data = await request.json()
+        rules = await sip.list_rules(**data)
+        return rules
+    except Exception as err:
+        logger.error(f"Error listing rules: {err}")
+        raise err
+
+
 # Call dispatch route
 @router.post("/dispatch-call")
 async def dispatch_call(
@@ -163,4 +210,89 @@ async def transfer_call(
         return response
     except Exception as err:
         logger.error(f"Error transferring call: {err}")
+        raise err
+
+
+@router.post("/receive-call")  
+async def receive_call(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    commons: dict = Depends(get_commons)
+):  
+    cai_sdk = commons.get("cai_sdk")
+    defined_agents = commons.get("defined_agents")
+    
+    if not cai_sdk or not defined_agents:
+        raise HTTPException(status_code=400, detail="cai_sdk or defined_agents not found in commons")
+
+    try:  
+        # Get the raw body as string  
+        body = await request.body()  
+        body_str = body.decode('utf-8')  
+          
+        # Get the authorization header  
+        auth_header = request.headers.get('Authorization')  
+        if not auth_header:  
+            raise HTTPException(status_code=400, detail="Missing Authorization header")  
+          
+        # Initialize webhook receiver  
+        token_verifier = TokenVerifier(  
+            os.getenv("LIVEKIT_API_KEY"),   
+            os.getenv("LIVEKIT_API_SECRET")  
+        )  
+        receiver = WebhookReceiver(token_verifier)  
+          
+        # Receive and verify the webhook (this is synchronous)  
+        event = receiver.receive(body_str, auth_header)  
+          
+        # Access event data  
+        room_name = event.room.name if event.room else None  
+        event_type = event.event  
+
+        logger.info(f"Room name: {room_name}, event type: {event_type}")
+
+        if not room_name: 
+            raise HTTPException(status_code=400, detail="Error in receiving webhook event")
+
+        match event_type:
+            case "room_started":
+                try:
+                    transport_type = TransportType.LIVEKIT_SIP
+
+                    data = {
+                        "transportType": "livekit_sip",
+                    }
+                    agent_name = data.get("agent_name", "agent2")
+                    agent = defined_agents.get(agent_name)
+
+                    session_id = data.get("session_id", str(uuid.uuid4()))
+                    metadata = data.get("metadata", {})
+
+                    response = await cai_sdk.connect_handler(data, agent, session_id=session_id, metadata=metadata)
+
+                    logger.info(f"Response: {response}")
+
+                    if "background_task_args" in response:
+                        task_args = response.pop("background_task_args")
+                        func = task_args.pop("func")
+                        background_tasks.add_task(func, **task_args)
+                    
+                except Exception as err:
+                    logger.error(f"Error in joining inbound called room: {err}")
+                    raise err
+                
+            case _:
+                raise HTTPException(status_code=400, detail="Invalid event type")
+              
+        # Process your webhook event here  
+        return {"status": "success", "event": event_type, "room": room_name}  
+          
+    except Exception as e:  
+        raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
+
+
+
+    
+    except Exception as err:
+        logger.error(f"Error receiving call: {err}")
         raise err

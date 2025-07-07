@@ -49,5 +49,5 @@ class LiveKitTransport(_OGLiveKitTransport):
             )
         return self._output
 
-    def cleanup(self):
-        self._client.cleanup()
+    async def cleanup(self):
+        await self._client.cleanup()

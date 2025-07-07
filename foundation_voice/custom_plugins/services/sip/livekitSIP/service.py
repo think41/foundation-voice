@@ -6,15 +6,17 @@ from livekit import api
 from livekit.api import (
     CreateSIPInboundTrunkRequest,
     CreateSIPOutboundTrunkRequest,
+    CreateSIPDispatchRuleRequest,
     CreateSIPParticipantRequest,
-    ListRoomsRequest,
-    ListParticipantsRequest,
     ListSIPInboundTrunkRequest, 
     ListSIPOutboundTrunkRequest,
-    RoomParticipantIdentity,
+    ListSIPDispatchRuleRequest,
+    SIPDispatchRule,
     SIPInboundTrunkInfo, 
     SIPOutboundTrunkInfo,
+    SIPDispatchRuleIndividual,
     DeleteSIPTrunkRequest,
+    DeleteSIPDispatchRuleRequest,
 )
 from google.protobuf.json_format import MessageToDict
 
@@ -56,6 +58,24 @@ class LiveKitSIPService(SIPService):
 
                 trunk = await self.lkapi.sip.create_sip_inbound_trunk(request)
 
+                rules = await self.list_rules()
+
+                # Check if 'individual_room_rule' already exists
+                existing_rule = next(
+                    (item for item in rules.get("items", []) if item.get("name") == "individual_room_rule"),
+                    None
+                )
+
+                if existing_rule:
+                    rule = existing_rule
+                else:
+                    rule = await self.create_rule()
+
+                trunk = {
+                    "trunk": MessageToDict(trunk, preserving_proto_field_name=True),
+                    "rule": rule
+                }
+
             elif stream == Stream.OUTBOUND:
                 trunk_info = SIPOutboundTrunkInfo(
                     name=name,
@@ -71,7 +91,12 @@ class LiveKitSIPService(SIPService):
 
                 trunk = await self.lkapi.sip.create_sip_outbound_trunk(request)
 
-            return MessageToDict(trunk, preserving_proto_field_name=True)
+            # Check if trunk is already a dictionary (for inbound trunks)
+            if isinstance(trunk, dict):
+                return trunk
+            else:
+                # Convert protobuf message to dict for outbound trunks
+                return MessageToDict(trunk, preserving_proto_field_name=True)
 
         except Exception as err:
             logger.error(f"Error creating trunk: {err}")
@@ -126,6 +151,49 @@ class LiveKitSIPService(SIPService):
 
         except Exception as err:
             logger.error(f"Error listing trunks: {err}")
+            raise
+
+
+    async def create_rule(
+        self,
+        **kwargs
+    ):
+        try: 
+            req = CreateSIPDispatchRuleRequest(
+                name=kwargs.get("name", "individual_room_rule"),
+                rule=SIPDispatchRule(
+                    dispatch_rule_individual=SIPDispatchRuleIndividual(
+                        room_prefix=kwargs.get("room_prefix", "call-"),
+                    )
+                )
+            )
+            rule = await self.lkapi.sip.create_sip_dispatch_rule(req)
+            return MessageToDict(rule, preserving_proto_field_name=True)
+
+        except Exception as err:
+            logger.error(f"Error creating rule: {err}")
+            raise
+
+    
+    async def delete_rule(self, rule_id: str):
+        try: 
+            req = DeleteSIPDispatchRuleRequest(sip_dispatch_rule_id=rule_id)
+            await self.lkapi.sip.delete_sip_dispatch_rule(req)
+            return {"message": "Rule deleted"}
+
+        except Exception as err:
+            logger.error(f"Error deleting rule: {err}")
+            raise
+
+    
+    async def list_rules(self):
+        try: 
+            req = ListSIPDispatchRuleRequest()
+            rules = await self.lkapi.sip.list_sip_dispatch_rule(req)
+            return MessageToDict(rules, preserving_proto_field_name=True)
+
+        except Exception as err:
+            logger.error(f"Error listing rules: {err}")
             raise
 
     
