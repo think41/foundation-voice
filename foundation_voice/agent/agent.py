@@ -38,7 +38,11 @@ from foundation_voice.utils.observers.call_summary_metrics_observer import (
 from foundation_voice.utils.callbacks_utils import save_conversation_data
 
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from pipecat.processors.filters.stt_mute_filter import STTMuteConfig, STTMuteFilter, STTMuteStrategy
+from pipecat.processors.filters.stt_mute_filter import (
+    STTMuteConfig,
+    STTMuteFilter,
+    STTMuteStrategy,
+)
 
 
 logger.remove(0)
@@ -264,7 +268,7 @@ async def create_agent_pipeline(
     #     logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
 
     # Create pipeline task with transport-appropriate sample rates
-    
+
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
