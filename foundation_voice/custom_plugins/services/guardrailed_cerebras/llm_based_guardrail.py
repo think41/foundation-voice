@@ -3,17 +3,14 @@ from pipecat.services.cerebras.llm import CerebrasLLMService as _OG_CerebrasLLMS
 
 
 class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
-    def __init__(
-        self, 
-        model: str,
-        instructions: str,
-        **kwargs    
-    ):
+    def __init__(self, model: str, instructions: str, **kwargs):
         super().__init__(**kwargs)
-        self.model = model 
+        self.model = model
         self.instructions = instructions
 
-    def _create_base_message(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def _create_base_message(
+        self, messages: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
         return [
             {
                 "role": "system",
@@ -28,13 +25,13 @@ class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
                     "to the assistant's message and follows the context of the system prompt.\n\n"
                     "Here are the last two messages from the conversation:\n"
                     f"{messages}"
-                )
+                ),
             }
         ]
 
     @override
     async def get_chat_completions(
-        self, 
+        self,
         messages: List[Dict[str, str]],
     ):
         output_schema = {
@@ -45,10 +42,10 @@ class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
                 },
                 "reasoning": {
                     "type": "string",
-                }
+                },
             },
             "required": ["is_off_topic", "reasoning"],
-            "additional_properties": False 
+            "additional_properties": False,
         }
 
         check_messages = self._create_base_message(messages)
@@ -66,11 +63,8 @@ class GuardrailCerebrasLLMService(_OG_CerebrasLLMService):
 
         params["response_format"] = {
             "type": "json_object",  # Changed from json_schema to json_object
-            "schema": output_schema
+            "schema": output_schema,
         }
 
         response = await self._client.chat.completions.create(**params)
         return response
-        
-        
-        

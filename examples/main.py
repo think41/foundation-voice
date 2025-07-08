@@ -1,6 +1,7 @@
 import os
-import argparse
 import json
+import uuid
+import argparse
 
 from dotenv import load_dotenv
 from typing import Optional
@@ -22,7 +23,8 @@ from xml.sax.saxutils import escape
 from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
-
+from foundation_voice.utils.api_utils import auto_detect_transport
+from foundation_voice.routers import agent_router
 from foundation_voice.custom_plugins.services.sip.livekitSIP.router import router as sip_router
 
 # Load environment variables
@@ -96,15 +98,15 @@ defined_agents = {
 }
 
 metadata = {
-        "transcript": [
-            {"role": "assistant", "content": "Hi there!"},
-            {"role": "user", "content": "my name is shubham"},
-        ]
-    }
+    "transcript": [
+        {"role": "assistant", "content": "Hi there!"},
+        {"role": "user", "content": "my name is shubham"},
+    ]
+}
 
 app.include_router(
-    sip_router, 
-    prefix="/sip", 
+    sip_router,
+    prefix="/sip",
 )
 
 app.state.cai_sdk = cai_sdk
@@ -121,6 +123,9 @@ async def index():
     return {"message": "welcome to cai"}
 
 
+app.include_router(agent_router.router, prefix="/api/v1")
+
+
 @app.post("/api/sip")
 async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")):
     """
@@ -133,7 +138,10 @@ async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")
     twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
-        <Stream url="{escape(websocket_url)}" />
+        <Stream url="{escape(websocket_url)}">
+            <Parameter name="agent_name" value="{agent_name}" />
+            <Parameter name="session_id" value="{uuid.uuid4()}" />
+        </Stream>
     </Connect>
     <Pause length="40"/>
 </Response>"""
@@ -184,21 +192,97 @@ async def websocket_endpoint(websocket: WebSocket):
     Super simple WebSocket endpoint - SDK handles all complexity!
     Users just need to specify which agent to use.
     """
-    await websocket.accept()
+    logger.info("New WebSocket connection request received")
 
     try:
-        # Get agent name from query params (simple!)
-        query_params = dict(websocket.query_params)
-        agent_name = query_params.get("agent_name", "agent1")
-        session_id = query_params.get("session_id")
-        # Get the agent configuration
-        agent = defined_agents.get(agent_name) or next(iter(defined_agents.values()))
+        await websocket.accept()
+        logger.debug("WebSocket connection accepted")
 
-        # SDK handles all the complex transport detection, handshake, etc.
-        await cai_sdk.websocket_endpoint_with_agent(websocket, agent, session_id=session_id, metadata=metadata, auto_hang_up=False)
+        transport_type, sip_params = await auto_detect_transport(websocket)
+        logger.info(f"Detected transport type: {transport_type}")
 
+        if sip_params:
+            logger.info("Processing SIP connection")
+            if sip_params.get("customParameters"):
+                logger.info(
+                    f"Processing SIP connection with custom parameters{sip_params}"
+                )
+                agent_name = sip_params.get("agent_name", "agent1")
+                session_id = sip_params.get("session_id")
+                if not session_id:
+                    logger.warning(
+                        "No session_id provided in SIP params, generating new one"
+                    )
+                    session_id = str(uuid.uuid4())
+                sip_params = sip_params.pop("customParameters")
+
+            metadata = {"session_id": session_id}
+            try:
+                agent = defined_agents.get(agent_name)
+                if not agent:
+                    logger.warning(
+                        f"Agent '{agent_name}' not found, using default agent"
+                    )
+                    agent = next(iter(defined_agents.values()))
+            except (KeyError, StopIteration) as e:
+                logger.error("No agents defined or error accessing agents")
+                raise ValueError("No valid agents available") from e
+
+            logger.info(
+                f"Starting SIP call with agent '{agent_name}' and session '{session_id}'"
+            )
+            await cai_sdk.websocket_endpoint_with_agent(
+                websocket,
+                agent,
+                transport_type,
+                session_id=session_id,
+                metadata=metadata,
+                auto_hang_up=False,
+                sip_params=sip_params,
+            )
+
+        else:
+            logger.info("Processing standard WebSocket connection")
+            query_params = dict(websocket.query_params)
+            agent_name = query_params.get("agent_name", "agent2")
+            session_id = query_params.get("session_id")
+            # agent_name = websocket.query_params.get("agent_name", "agent1")
+            # session_id = websocket.query_params.get("session_id")
+            if not session_id:
+                logger.warning(
+                    "No session_id provided in query params, generating new one"
+                )
+                session_id = str(uuid.uuid4())
+
+            metadata = {"session_id": session_id}
+            try:
+                agent = defined_agents.get(agent_name)
+                if not agent:
+                    logger.warning(
+                        f"Agent '{agent_name}' not found, using default agent"
+                    )
+                    agent = next(iter(defined_agents.values()))
+            except (KeyError, StopIteration) as e:
+                logger.error("No agents defined or error accessing agents")
+                raise ValueError("No valid agents available") from e
+
+            logger.info(
+                f"Starting WebSocket session with agent '{agent_name}' and session '{session_id}'"
+            )
+            await cai_sdk.websocket_endpoint_with_agent(
+                websocket,
+                agent,
+                transport_type,
+                session_id=session_id,
+                metadata=metadata,
+            )
+
+    except ValueError as e:
+        logger.error(f"Validation error in websocket endpoint: {e}")
+        if not websocket.client_state.DISCONNECTED:
+            await websocket.close(code=1008, reason=str(e))
     except Exception as e:
-        logger.error(f"WebSocket endpoint error: {e}")
+        logger.error(f"WebSocket endpoint error: {e}", exc_info=True)
         if not websocket.client_state.DISCONNECTED:
             await websocket.close(code=1011, reason="Server Error")
 
@@ -219,7 +303,9 @@ async def webrtc_endpoint(
         except json.JSONDecodeError:
             logger.warning("Failed to decode metadata JSON")
 
-    response = await cai_sdk.webrtc_endpoint(offer, agent,session_id=offer.session_id, metadata=parsed_metadata)
+    response = await cai_sdk.webrtc_endpoint(
+        offer, agent, session_id=offer.session_id, metadata=parsed_metadata
+    )
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
@@ -235,7 +321,9 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     session_id = request.get("session_id")
 
     # response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)
-    response = await cai_sdk.connect_handler(request, agent,session_id=session_id,metadata=metadata)
+    response = await cai_sdk.connect_handler(
+        request, agent, session_id=session_id, metadata=metadata
+    )
     if "websocket_url" in response:
         response["ws_url"] = f"ws://localhost:8000{response['websocket_url']}"
         del response["websocket_url"]
@@ -252,7 +340,7 @@ async def get_sessions():
     active_session_ids = list(session_manager.active_sessions.keys())
     return {
         "active_sessions_count": len(active_session_ids),
-        "active_session_ids": active_session_ids
+        "active_session_ids": active_session_ids,
     }
 
 

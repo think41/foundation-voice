@@ -5,21 +5,22 @@ from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.pipeline.task import PipelineTask
 from ..utils.transport.session_manager import session_manager
 
+
 async def cleanup(
     transport_type: str,
     connection: Optional[Union[WebSocket, SmallWebRTCConnection]] = None,
     room_url: str = None,
     session_id: str = None,
-    task: PipelineTask = None
+    task: PipelineTask = None,
 ):
     try:
         # Cancel the pipeline task if it exists and is running
         if task:
             await task.cancel()
             logger.info(f"Cancelled pipeline task for session: {session_id}")
-        
+
         # Clean up transport-specific resources
-        if transport_type == "webrtc" and hasattr(connection, 'pc'):
+        if transport_type == "webrtc" and hasattr(connection, "pc"):
             pc_id = id(connection.pc)
             await session_manager.remove_session(session_id)
             if pc_id in session_manager.webrtc_sessions:
@@ -37,7 +38,7 @@ async def cleanup(
         # Remove from active sessions if still present
         if session_id in session_manager.active_sessions:
             del session_manager.active_sessions[session_id]
-            
+
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
         # Re-raise the exception to ensure it's not silently ignored

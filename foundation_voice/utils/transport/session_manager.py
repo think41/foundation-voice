@@ -45,7 +45,7 @@ class SessionManager:
 
     def get_livekit_room_session(self, room_name: str) -> Optional["PipelineTask"]:
         return self.livekit_room_sessions.get(room_name)
-    
+
     def get_webrtc_session(self, pc_id: str) -> Optional["PipelineTask"]:
         return self.webrtc_sessions.get(pc_id)
 

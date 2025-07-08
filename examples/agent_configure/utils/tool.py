@@ -1,4 +1,4 @@
-from agents import function_tool, RunContextWrapper
+from agents import RunContextWrapper
 from .context import MagicalNestContext
 
 """

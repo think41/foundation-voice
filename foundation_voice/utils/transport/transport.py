@@ -9,18 +9,22 @@ from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from pipecat.audio.filters.noisereduce_filter import NoisereduceFilter
 
 from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 
+
+
 class TransportType(Enum):
     """Enum defining all supported transport types"""
+
     WEBSOCKET = "websocket"
     WEBRTC = "webrtc"
     DAILY = "daily"
     SIP = "sip"
     LIVEKIT = "livekit"
     LIVEKIT_SIP = "livekit_sip"
-    
+
 
 
 def get_fastapi_websocket_transport(
@@ -58,11 +62,13 @@ def get_fastapi_websocket_transport(
             serializer=serializer,
             audio_in_enabled=True,
             audio_out_enabled=True,
+            audio_in_filter=NoisereduceFilter(),
             add_wav_header=False,
             vad_analyzer=vad_analyzer,
             **(extra_params or {}),
         ),
     )
+
 
 
 class TransportFactory:
@@ -92,8 +98,12 @@ class TransportFactory:
         if not isinstance(transport_type, TransportType):
             raise ValueError("transport_type must be a TransportType enum")
 
-        logger.debug(f"TransportFactory: Creating transport type: {transport_type.value}")
-        logger.debug(f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}")
+        logger.debug(
+            f"TransportFactory: Creating transport type: {transport_type.value}"
+        )
+        logger.debug(
+            f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}"
+        )
         logger.debug(f"TransportFactory: Additional kwargs: {list(kwargs.keys())}")
 
         vad_config = kwargs.get("vad_config", {})
@@ -135,6 +145,7 @@ class TransportFactory:
                     params=TransportParams(
                         audio_in_enabled=True,
                         audio_out_enabled=True,
+                        audio_in_filter=NoisereduceFilter(),
                         vad_analyzer=vad_analyzer,
                     ),
                 )
@@ -169,6 +180,7 @@ class TransportFactory:
                         transcription_enabled=True,
                         vad_enabled=True,
                         vad_analyzer=vad_analyzer,
+                        audio_in_filter=NoisereduceFilter(),
                     ),
                 )
 
@@ -211,7 +223,7 @@ class TransportFactory:
 
             case TransportType.LIVEKIT | TransportType.LIVEKIT_SIP:
                 logger.debug("Creating LiveKit transport")
-                try: 
+                try:
                     from pipecat.transports.services.livekit import LiveKitParams
                     from foundation_voice.utils.transport.livekit_transport import LiveKitTransport
                 except ImportError as e:
