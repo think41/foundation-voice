@@ -37,7 +37,7 @@ async def run_agent(
             logger.info(f"Bot already exists in Daily room: {room_url}")
             return
 
-    if transport_type == TransportType.LIVEKIT_SIP and room_url:
+    if (transport_type == TransportType.LIVEKIT_SIP or transport_type == TransportType.LIVEKIT) and room_url:
         existing_session = session_manager.get_livekit_room_session(room_url)
         if existing_session:
             logger.info(f"Bot already exists in Livekit room: {room_url}")

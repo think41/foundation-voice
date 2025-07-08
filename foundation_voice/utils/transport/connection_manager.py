@@ -69,9 +69,9 @@ class ConnectionManager:
         return url, user_token, room_name, agent_token
 
 
-    async def handle_livekit_sip_connection(self) -> tuple[str, str, str]:
+    async def handle_livekit_sip_connection(self, room_name: str) -> tuple[str, str, str]:
         """Handle LiveKit SIP connection setup."""
-        url, room_name, token = configure_livekit_sip()
+        url, room_name, token = configure_livekit_sip(room_name)
         return url, room_name, token
 
 

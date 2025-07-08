@@ -22,16 +22,15 @@ classifiers = [
 dependencies = [
     "fastapi>=0.115.6",
     "loguru>=0.7.0",
-    "mcp",
+    "mcp>=1.10.1",
     "pipecat-ai>=0.0.71", # Core pipecat library with version
-    "pipecat-ai[silero]>=0.0.71", # Core pipecat library with version
+    "pipecat-ai[silero,noisereduce]>=0.0.71", # Core pipecat library with version
     "pydantic-ai[logfire]>=0.0.51",
     "python-dotenv>=1.0.1",
     "ruff>=0.8.6",
     "uvicorn>=0.30.6",
     "websockets>=13.0.1",
     "opentelemetry-exporter-otlp-proto-grpc>=1.25.0", # For OTLP gRPC tracing
-    "pipecat-ai[noisereduce]"
 ]
 
 [project.optional-dependencies]
@@ -58,7 +57,7 @@ groq = ["pipecat-ai[groq]>=0.0.71"]
 
 elevenlabs = ["pipecat-ai[elevenlabs]>=0.0.71"]
 
-livekit = ["livekit>=1.0.11", "livekit-api>=1.0.3", "livekit-protocol>=1.0.4"]
+livekit = ["livekit>=1.0.11", "livekit-api>=1.0.3", "livekit-protocol>=1.0.4", "tenacity>=9.1.2"]
 
 # A convenience extra to install everything, useful for development
 all = [
@@ -75,10 +74,7 @@ all = [
     "foundation_voice[livekit]",
 ]
 
-dev = [
-    "python-semantic-release",
-    "commitizen",
-]
+dev = []
 
 
 [project.urls]
@@ -91,27 +87,3 @@ dev = [
 where = ["."]
 include = ["foundation_voice*"]
 exclude = ["examples*"]
-
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-tag_format = "v$version"
-version_files = [
-    "pyproject.toml:version"
-]
-version_provider = "pep621"
-update_changelog_on_bump = true
-major_version_zero = true
-
-[tool.semantic_release]
-version_toml = [
-    "pyproject.toml:project.version",
-]
-branch = "main"
-changelog_file = "CHANGELOG.md"
-build_command = "pip install build && python -m build"
-dist_path = "dist/"
-upload_to_pypi = true
-upload_to_release = true
-commit_author = "semantic-release <semantic-release@example.com>"
-commit_message = "chore(release): {version} [skip ci]\\n\\n{changelog}"
