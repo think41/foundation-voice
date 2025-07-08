@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "foundation_voice"
-version = "0.1.0"
+version = "0.1.3"
 authors = [
-    { name="Aniket-think41" }
+    { name="think41" }
 ]
 description = "Core package for Open Source CAI Pipecat - foundation voice"
 readme = "README.md"
