@@ -8,6 +8,7 @@ try:
 except ImportError:
     function_tool = None
 
+from pipecat.services.llm_service import FunctionCallParams
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 
 
@@ -65,22 +66,29 @@ class FunctionAdapter:
         return {"schema": schema, "function": self._wrap_function()}
 
     def _wrap_function(self):
-        async def wrapped_function(
-            function_name, tool_call_id, args, llm, context, result_callback
-        ):
+        async def wrapped_function(params: FunctionCallParams):
             try:
                 if inspect.iscoroutinefunction(self.func):
-                    result = await self.func(**args)
+                    result = await self.func(
+                        **params.arguments,
+                        llm=params.llm,
+                        result_callback=params.result_callback
+                    )
                 else:
-                    result = self.func(**args)
+                    result = self.func(
+                        **params.arguments,
+                        llm=params.llm,
+                        result_callback=params.result_callback
+                    )
 
-                await result_callback(result)
-
+                await params.result_callback(result)
+                
             except Exception as e:
                 logger.error(f"Failed to execute function {self.name}: {e}")
-                await result_callback({"error": str(e)})
+                await params.result_callback({"error": str(e)})
 
         return wrapped_function
+        
 
     def _is_optional(self, annotation):
         origin = getattr(annotation, "__origin__", None)

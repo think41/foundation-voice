@@ -21,6 +21,8 @@ wheels/
 *.egg
 
 # Virtual Environment
+.venv/
+.uvenv/
 venv/
 env/
 ENV/
@@ -140,3 +142,12 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Github Actions
+.github/workflows/*.tmp
+.github/cache/
+
+# Ruff files
+.ruff_cache/
+.ruff_cache.json
+
