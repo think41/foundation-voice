@@ -208,7 +208,7 @@ class CaiSDK:
                     }
 
                 case TransportType.LIVEKIT_SIP:
-                    url, room_name, agent_token = await connection_manager.handle_livekit_sip_connection()
+                    url, room_name, agent_token = await connection_manager.handle_livekit_sip_connection(request.get("room_name"))
                     kwargs.update({
                         "room_url": url,
                         "room_name": room_name,

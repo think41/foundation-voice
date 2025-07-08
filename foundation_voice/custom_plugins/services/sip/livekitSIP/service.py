@@ -15,6 +15,7 @@ from livekit.api import (
     SIPInboundTrunkInfo, 
     SIPOutboundTrunkInfo,
     SIPDispatchRuleIndividual,
+    DeleteRoomRequest,
     DeleteSIPTrunkRequest,
     DeleteSIPDispatchRuleRequest,
 )
@@ -296,6 +297,16 @@ class LiveKitSIPService(SIPService):
             return {"message": "Agent removed from room"}
         except Exception as err:
             logger.error(f"Error removing participant: {err}")
+            raise err
+
+    async def leave_room(self, room_name: str):
+        try: 
+            await self.lkapi.room.delete_room(
+                DeleteRoomRequest(room=room_name)
+            )
+            return {"message": "Room left"}
+        except Exception as err:
+            logger.error(f"Error leaving room: {err}")
             raise err
 
     async def aclose(self):
