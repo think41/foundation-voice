@@ -32,8 +32,9 @@ def generate_token_with_agent(
     return token.to_jwt()
 
 
-def get_token():
-    room_name = os.getenv("LIVEKIT_ROOM_NAME") or "livekitRoom_" + str(uuid.uuid4())
+def get_token(room_name: str = None):
+    if not room_name:
+        room_name = os.getenv("LIVEKIT_ROOM_NAME") or "livekitRoom_" + str(uuid.uuid4())
     url = os.getenv("LIVEKIT_URL")
     api_key = os.getenv("LIVEKIT_API_KEY")
     api_secret = os.getenv("LIVEKIT_API_SECRET")
@@ -76,11 +77,11 @@ def configure_livekit() -> None:
     return url, user_token, room_name, token
 
 
-def configure_livekit_sip() -> None:
-    room_name, url, api_key, api_secret = get_token()
+def configure_livekit_sip(room_name: str) -> None:
+    room_name, url, api_key, api_secret = get_token(room_name)
     token = generate_token_with_agent(
         room_name=room_name,
-        participant_name="agent", 
+        participant_name="agent",  
         api_key=api_key,
         api_secret=api_secret
     )

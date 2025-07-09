@@ -257,10 +257,10 @@ async def receive_call(
         match event_type:
             case "room_started":
                 try:
-                    transport_type = TransportType.LIVEKIT_SIP
 
                     data = {
                         "transportType": "livekit_sip",
+                        "room_name": room_name
                     }
                     agent_name = data.get("agent_name", "agent2")
                     agent = defined_agents.get(agent_name)
@@ -279,6 +279,13 @@ async def receive_call(
                     
                 except Exception as err:
                     logger.error(f"Error in joining inbound called room: {err}")
+                    raise err
+
+            case "participant_left":
+                try:
+                    await sip.leave_room(room_name)
+                except Exception as err:
+                    logger.error(f"Error in leaving inbound called room: {err}")
                     raise err
                 
             case _:
