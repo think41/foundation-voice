@@ -217,11 +217,12 @@ async def transfer_call(
 async def receive_call(
     request: Request,
     background_tasks: BackgroundTasks,
+    sip: LiveKitSIPService = Depends(get_service_instance),
     commons: dict = Depends(get_commons)
-):  
+):     
     cai_sdk = commons.get("cai_sdk")
     defined_agents = commons.get("defined_agents")
-    
+
     if not cai_sdk or not defined_agents:
         raise HTTPException(status_code=400, detail="cai_sdk or defined_agents not found in commons")
 
@@ -229,22 +230,22 @@ async def receive_call(
         # Get the raw body as string  
         body = await request.body()  
         body_str = body.decode('utf-8')  
-          
+        
         # Get the authorization header  
         auth_header = request.headers.get('Authorization')  
         if not auth_header:  
             raise HTTPException(status_code=400, detail="Missing Authorization header")  
-          
+        
         # Initialize webhook receiver  
         token_verifier = TokenVerifier(  
             os.getenv("LIVEKIT_API_KEY"),   
             os.getenv("LIVEKIT_API_SECRET")  
         )  
         receiver = WebhookReceiver(token_verifier)  
-          
+        
         # Receive and verify the webhook (this is synchronous)  
-        event = receiver.receive(body_str, auth_header)  
-          
+        event = receiver.receive(body_str, auth_header) 
+        
         # Access event data  
         room_name = event.room.name if event.room else None  
         event_type = event.event  
@@ -262,11 +263,13 @@ async def receive_call(
                         "transportType": "livekit_sip",
                         "room_name": room_name
                     }
-                    agent_name = data.get("agent_name", "agent2")
+                    agent_name = data.get("agent_name", "fe23e878-9fdd-4ea3-87cc-014440daa635")
                     agent = defined_agents.get(agent_name)
 
                     session_id = data.get("session_id", str(uuid.uuid4()))
                     metadata = data.get("metadata", {})
+
+                    logger.info(f"Agent name: {agent_name}, agent: {agent}, session_id: {session_id}, metadata: {metadata}")
 
                     response = await cai_sdk.connect_handler(data, agent, session_id=session_id, metadata=metadata)
 
@@ -287,19 +290,20 @@ async def receive_call(
                 except Exception as err:
                     logger.error(f"Error in leaving inbound called room: {err}")
                     raise err
+
+            case "room_finished":
+                try:
+                    await sip.leave_room(room_name)
+                except Exception as err:
+                    logger.error(f"Error in leaving inbound called room: {err}")
+                    raise err
                 
             case _:
-                raise HTTPException(status_code=400, detail="Invalid event type")
-              
+                pass
+            
         # Process your webhook event here  
         return {"status": "success", "event": event_type, "room": room_name}  
-          
+        
     except Exception as e:  
         raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
 
-
-
-    
-    except Exception as err:
-        logger.error(f"Error receiving call: {err}")
-        raise err
