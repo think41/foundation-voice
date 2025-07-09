@@ -219,10 +219,10 @@ async def receive_call(
     background_tasks: BackgroundTasks,
     sip: LiveKitSIPService = Depends(get_service_instance),
     commons: dict = Depends(get_commons)
-):  
+):     
     cai_sdk = commons.get("cai_sdk")
     defined_agents = commons.get("defined_agents")
-    
+
     if not cai_sdk or not defined_agents:
         raise HTTPException(status_code=400, detail="cai_sdk or defined_agents not found in commons")
 
@@ -230,22 +230,22 @@ async def receive_call(
         # Get the raw body as string  
         body = await request.body()  
         body_str = body.decode('utf-8')  
-          
+        
         # Get the authorization header  
         auth_header = request.headers.get('Authorization')  
         if not auth_header:  
             raise HTTPException(status_code=400, detail="Missing Authorization header")  
-          
+        
         # Initialize webhook receiver  
         token_verifier = TokenVerifier(  
             os.getenv("LIVEKIT_API_KEY"),   
             os.getenv("LIVEKIT_API_SECRET")  
         )  
         receiver = WebhookReceiver(token_verifier)  
-          
+        
         # Receive and verify the webhook (this is synchronous)  
-        event = receiver.receive(body_str, auth_header)  
-          
+        event = receiver.receive(body_str, auth_header) 
+        
         # Access event data  
         room_name = event.room.name if event.room else None  
         event_type = event.event  
@@ -299,17 +299,11 @@ async def receive_call(
                     raise err
                 
             case _:
-                raise HTTPException(status_code=400, detail="Invalid event type")
-              
+                pass
+            
         # Process your webhook event here  
         return {"status": "success", "event": event_type, "room": room_name}  
-          
+        
     except Exception as e:  
         raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
 
-
-
-    
-    except Exception as err:
-        logger.error(f"Error receiving call: {err}")
-        raise err
