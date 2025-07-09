@@ -217,6 +217,7 @@ async def transfer_call(
 async def receive_call(
     request: Request,
     background_tasks: BackgroundTasks,
+    sip: LiveKitSIPService = Depends(get_service_instance),
     commons: dict = Depends(get_commons)
 ):  
     cai_sdk = commons.get("cai_sdk")
@@ -262,11 +263,13 @@ async def receive_call(
                         "transportType": "livekit_sip",
                         "room_name": room_name
                     }
-                    agent_name = data.get("agent_name", "agent2")
+                    agent_name = data.get("agent_name", "fe23e878-9fdd-4ea3-87cc-014440daa635")
                     agent = defined_agents.get(agent_name)
 
                     session_id = data.get("session_id", str(uuid.uuid4()))
                     metadata = data.get("metadata", {})
+
+                    logger.info(f"Agent name: {agent_name}, agent: {agent}, session_id: {session_id}, metadata: {metadata}")
 
                     response = await cai_sdk.connect_handler(data, agent, session_id=session_id, metadata=metadata)
 
@@ -282,6 +285,13 @@ async def receive_call(
                     raise err
 
             case "participant_left":
+                try:
+                    await sip.leave_room(room_name)
+                except Exception as err:
+                    logger.error(f"Error in leaving inbound called room: {err}")
+                    raise err
+
+            case "room_finished":
                 try:
                     await sip.leave_room(room_name)
                 except Exception as err:
