@@ -109,11 +109,11 @@ tool_config = {{
 }}
 
 # EXAMPLE OF TOOLS SECTION FORMAT:
-# def get_account_balance():
+# def get_account_balance(**kwargs):
 #     """Get the current account balance"""
 #     return "Balance: $1,524.67"
 #
-# def get_recent_transactions():
+# def get_recent_transactions(**kwargs):
 #     """Fetch the most recent transactions"""
 #     return "Here are your 3 most recent transactions."
 #
