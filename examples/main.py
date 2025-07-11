@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 import uuid
 import argparse
 
@@ -14,8 +15,9 @@ import logging
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from foundation_voice.lib import CaiSDK
+from fastapi import WebSocket, WebSocketDisconnect
 from foundation_voice.utils.config_loader import ConfigLoader
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, Response
 from twilio.rest import Client as TwilioClient
 from twilio.base.exceptions import TwilioRestException
 from xml.sax.saxutils import escape
@@ -25,6 +27,7 @@ from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 from foundation_voice.utils.api_utils import auto_detect_transport
 from foundation_voice.routers import agent_router
+from pipecat.serializers.exotel import ExotelFrameSerializer
 from foundation_voice.custom_plugins.services.sip.livekitSIP.router import router as sip_router
 
 # Load environment variables
@@ -32,6 +35,7 @@ load_dotenv()
 
 # Initialize the SDK - it handles all complexity internally
 cai_sdk = CaiSDK()
+
 
 # Initialize Twilio client (optional, only needed for outbound calls)
 twilio_client = None
@@ -121,6 +125,133 @@ app.state.defined_agents = defined_agents
 )
 async def index():
     return {"message": "welcome to cai"}
+
+
+# This endpoint is called by Exotel's API to start the outbound call.
+# It triggers the call and points Exotel to our /exotel/call_flow endpoint.
+@app.post("/exotel/outbound")
+async def exotel_outbound_call(request: dict):
+    to_number = request.get("to_number")
+    if not to_number:
+        return {"status": "error", "message": "'to_number' is required."}
+
+    # Load Exotel credentials from environment variables
+    exotel_api_key = os.getenv("EXOTEL_API_KEY")
+    exotel_api_token = os.getenv("EXOTEL_API_TOKEN")
+    exotel_sid = os.getenv("EXOTEL_SID")
+    exotel_subdomain = os.getenv("EXOTEL_SUBDOMAIN", "api.in.exotel.com") # Default to Mumbai
+    exotel_caller_id = os.getenv("EXOTEL_CALLER_ID")
+
+    if not all([exotel_api_key, exotel_api_token, exotel_sid, exotel_caller_id]):
+        return {"status": "error", "message": "Exotel credentials not configured in environment."}
+
+    # The URL Exotel will call to get the call flow instructions.
+    # IMPORTANT: This must be a publicly accessible URL (e.g., using ngrok).
+    server_base_url = os.getenv("SERVER_BASE_URL")
+    if not server_base_url:
+        return {"status": "error", "message": "SERVER_BASE_URL environment variable not set."}
+    
+    call_flow_url = f"{server_base_url}/exotel/call_flow"
+
+    api_url = f"https://{exotel_api_key}:{exotel_api_token}@{exotel_subdomain}/v1/Accounts/{exotel_sid}/Calls/connect.json"
+
+    data = {
+        'From': to_number,
+        'CallerId': exotel_caller_id,
+        'Url': call_flow_url,
+        'CallType': 'trans' # Use 'trans' for transactional calls
+    }
+
+    try:
+        response = requests.post(api_url, data=data)
+        response.raise_for_status()
+        return {"status": "success", "message": "Exotel call initiated.", "exotel_response": response.json()}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": str(e)}
+
+# This endpoint provides the dynamic WebSocket URL to the Exotel Voicebot applet.
+@app.post("/exotel/call_flow")
+async def exotel_call_flow(request: Request):
+    data = await request.form()
+    call_sid = data.get("CallSid")
+    
+    server_base_url = os.getenv("SERVER_BASE_URL").replace("https://", "wss://").replace("http://", "ws://")
+    websocket_url = f"{server_base_url}/exotel/ws/{call_sid}"
+
+    # Exotel expects a specific JSON format for the Voicebot applet
+    call_flow_response = [
+        {
+            "applet": "Voicebot",
+            "params": {
+                "url": websocket_url
+            }
+        }
+    ]
+    
+    return Response(content=json.dumps(call_flow_response), media_type="application/json")
+
+from foundation_voice.utils.transport.transport import TransportType, TransportFactory
+
+# This is the WebSocket endpoint that handles the live audio stream.
+@app.websocket("/exotel/ws/{call_sid}")
+async def exotel_websocket_handler(websocket: WebSocket, call_sid: str):
+    await websocket.accept()
+    logger.info(f"WebSocket connection established for call: {call_sid}")
+
+    # The first message from Exotel is the 'start' event, which contains stream details.
+    start_message = await websocket.receive_text()
+    start_data = json.loads(start_message)
+    stream_sid = start_data.get("stream_sid")
+    logger.info(f"Stream started with SID: {stream_sid}")
+
+    # Use TransportFactory to create an Exotel transport
+    transport = TransportFactory.create_transport(
+        transport_type=TransportType.EXOTEL,
+        connection=websocket,
+        stream_sid=stream_sid
+    )
+    
+    agent_name = "agent2"  # Using agent2 as default for Exotel calls
+    agent = defined_agents.get(agent_name, next(iter(defined_agents.values())))
+    session_id = str(uuid.uuid4())
+    metadata = {"session_id": session_id, "call_sid": call_sid, "stream_sid": stream_sid}
+
+    try:
+        # Use the standard websocket_endpoint_with_agent method
+        await cai_sdk.websocket_endpoint_with_agent(
+            websocket=websocket,
+            agent=agent,
+            transport_type=TransportType.EXOTEL,
+            session_id=session_id,
+            metadata=metadata,
+            stream_sid=stream_sid
+        )
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for call: {call_sid}")
+    except Exception as e:
+        logger.error(f"An error occurred during the call: {e}")
+
+
+# This endpoint fetches call details from Exotel to help with debugging.
+@app.get("/exotel/call_details/{call_sid}")
+async def get_call_details(call_sid: str):
+    exotel_api_key = os.getenv("EXOTEL_API_KEY")
+    exotel_api_token = os.getenv("EXOTEL_API_TOKEN")
+    exotel_sid = os.getenv("EXOTEL_SID")
+    exotel_subdomain = os.getenv("EXOTEL_SUBDOMAIN", "api.in.exotel.com")
+
+    if not all([exotel_api_key, exotel_api_token, exotel_sid]):
+        return {"status": "error", "message": "Exotel credentials not configured."}
+
+    api_url = f"https://{exotel_api_key}:{exotel_api_token}@{exotel_subdomain}/v1/Accounts/{exotel_sid}/Calls/{call_sid}.json"
+
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": str(e), "response_text": e.response.text if e.response else None}
+
 
 
 app.include_router(agent_router.router, prefix="/api/v1")
@@ -372,8 +503,15 @@ if __name__ == "__main__":
         default=False,
         help="set the server in testing mode",
     )
-    args, _ = parser.parse_known_args()
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=8000,
+        help="port to run the server on",
+    )
+    args = parser.parse_args()
 
     app.state.testing = args.test
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=args.port)
