@@ -23,8 +23,8 @@ dependencies = [
     "fastapi>=0.115.6",
     "loguru>=0.7.0",
     "mcp>=1.10.1",
-    "pipecat-ai>=0.0.71", # Core pipecat library with version
-    "pipecat-ai[silero,noisereduce]>=0.0.71", # Core pipecat library with version
+    "pipecat-ai==0.0.72", # Core pipecat library with version
+    "pipecat-ai[silero,noisereduce]==0.0.72", # Core pipecat library with version
     "pydantic-ai[logfire]>=0.0.51",
     "python-dotenv>=1.0.1",
     "ruff>=0.8.6",
