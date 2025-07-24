@@ -265,24 +265,25 @@ async def create_agent_pipeline(
 
     # Create pipeline task with transport-appropriate sample rates
 
+    pipeline_params = {
+        "allow_interruptions": True,
+        "enable_metrics": True,
+        "enable_usage_metrics": True,
+        "enable_tracing": config.get("pipeline", {}).get("enable_tracing", False),
+        "enable_turn_tracking": True,
+        "conversation_id": "customer-123",
+    }   
+
+# Only add sample rates if they exist in config
+    pipeline_config = config.get("pipeline", {})
+    if "sample_rate_in" in pipeline_config:
+        pipeline_params["audio_in_sample_rate"] = pipeline_config["sample_rate_in"]
+    if "sample_rate_out" in pipeline_config:
+        pipeline_params["audio_out_sample_rate"] = pipeline_config["sample_rate_out"]
+
     task = PipelineTask(
         pipeline,
-        params=PipelineParams(
-            audio_in_sample_rate=config.get("pipeline", {}).get(
-                "sample_rate_in", 16000
-            ),
-            audio_out_sample_rate=config.get("pipeline", {}).get(
-                "sample_rate_out", 24000
-            ),
-            allow_interruptions=True,
-            enable_metrics=True,
-            enable_usage_metrics=True,
-            enable_tracing=config.get("pipeline", {}).get(
-                "enable_tracing", False
-            ),  # Enable tracing for this task
-            enable_turn_tracking=True,  # Enable turn tracking for this task
-            conversation_id="customer-123",
-        ),
+        params=PipelineParams(**pipeline_params),
         observers=task_observers,
     )
 
