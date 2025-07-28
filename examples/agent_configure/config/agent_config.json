@@ -79,6 +79,27 @@
       }
     }
   },
+  "preemptive": {
+    "enabled": true,
+    "delay_threshold_ms": 500,
+    "phrases": [
+      "Let me check that for you...",
+      "Just a moment please...",
+      "I'm thinking about that...",
+      "Processing your request...",
+      "Working on that...",
+      "One moment while I process that...",
+      "Give me just a second...",
+      "I'm working on your request...",
+      "Let me look into that...",
+      "Hold on, I'm gathering that information...",
+      "Just processing your question...",
+      "Let me find the best answer for you...",
+      "I'm checking on that now...",
+      "Working on getting you the details...",
+      "Let me pull up that information..."
+    ]
+  },
   "pipeline": {
     "name": "llm_agent_pipeline",
     "sample_rate_in": 16000,
@@ -96,6 +117,12 @@
       {
         "type": "stt",
         "config": {}
+      },
+      {
+        "type": "preemptive",
+        "config": {
+          "enabled": true
+        }
       },
       {
         "type": "llm",
