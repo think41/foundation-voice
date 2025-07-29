@@ -23,6 +23,8 @@ def create_vad_analyzer(vad_config: Dict[str, Any]) -> Optional[Any]:
 
     params_config = vad_config.get("params", {})
     sample_rate = vad_config.get("sample_rate", None)
+    logger.debug(f"Creating VAD analyzer with provider: {vad_config}")
+    logger.debug(f"VAD sample rate: {sample_rate}")
     vad_params = VADParams(**params_config) if params_config else VADParams()
 
     # Dictionary mapping providers to their analyzer creation functions
