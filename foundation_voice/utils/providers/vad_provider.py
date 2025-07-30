@@ -26,7 +26,7 @@ def create_vad_analyzer(vad_config: Dict[str, Any]) -> Optional[Any]:
 
     # Dictionary mapping providers to their analyzer creation functions
     vad_providers = {
-        "silero": lambda: SileroVADAnalyzer(sample_rate=sample_rate, params=vad_params),
+        "silero": lambda: SileroVADAnalyzer(params=vad_params),
         # Add other VAD providers here as needed
         "none": lambda: None,
     }
