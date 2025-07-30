@@ -21,16 +21,12 @@ def create_vad_analyzer(vad_config: Dict[str, Any]) -> Optional[Any]:
     """
     vad_provider = vad_config.get("provider", "silero")
 
-    params_config = vad_config.get("params", {})
-    sample_rate = vad_config.get("sample_rate", None)
-    logger.debug(f"Creating VAD analyzer with provider: {vad_config}")
-    logger.debug(f"VAD sample rate: {sample_rate}")
-    logger.debug(f"Sample rate type: {type(sample_rate)}")
+    params_config = vad_config.get("params", {})     
     vad_params = VADParams(**params_config) if params_config else VADParams()
 
     # Dictionary mapping providers to their analyzer creation functions
     vad_providers = {
-        "silero": lambda: SileroVADAnalyzer(sample_rate=sample_rate, params=vad_params),
+        "silero": lambda: SileroVADAnalyzer(params=vad_params),
         # Add other VAD providers here as needed
         "none": lambda: None,
     }
