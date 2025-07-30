@@ -46,11 +46,17 @@ def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
     api_key = os.getenv("DEEPGRAM_API_KEY") or _raise_missing_api_key(
         "Deepgram TTS", "DEEPGRAM_API_KEY"
     )
-    return DeepgramTTSService(
-        api_key=api_key,
-        voice=tts_config.get("voice", "aura-asteria-en"),
-    )
-
+    if tts_config.get("sample_rate", None) is not None:
+        return DeepgramTTSService(
+            api_key=api_key,
+            voice=tts_config.get("voice", "aura-asteria-en"),
+            sample_rate=tts_config.get("sample_rate", 16000),
+        )
+    else:
+        return DeepgramTTSService(
+            api_key=api_key,
+            voice=tts_config.get("voice", "aura-asteria-en"),
+        )
 
 def _create_smallestai_tts_service(tts_config: Dict[str, Any]) -> Any:
     SmallestTTSService = import_provider_service(
