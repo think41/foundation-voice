@@ -20,6 +20,11 @@ wheels/
 .installed.cfg
 *.egg
 
+# Application specific
+examples/websocket/client/node_modules/
+examples/websocket/server/__pycache__/
+examples/websocket/server/venv/
+
 # Virtual Environment
 venv/
 env/

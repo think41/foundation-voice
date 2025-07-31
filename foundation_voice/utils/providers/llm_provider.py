@@ -21,6 +21,7 @@ DEFAULT_PROMPT = "You are a helpful LLM in a WebRTC call. Your goal is to demons
 DEFAULT_INITIAL_GREETING = "Hello. How can I help you today?"
 
 
+
 def _create_openai_llm_service(llm_config: Dict[str, Any]) -> LLMService:
     """Create an OpenAI LLM service."""
     OpenAILLMService = import_provider_service(

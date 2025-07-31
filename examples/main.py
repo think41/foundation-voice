@@ -19,9 +19,9 @@ from twilio.rest import Client as TwilioClient
 from twilio.base.exceptions import TwilioRestException
 from xml.sax.saxutils import escape
 
-from agent_configure.utils.context import contexts
-from agent_configure.utils.tool import tool_config
-from agent_configure.utils.callbacks import custom_callbacks
+from examples.agent_configure.utils.context import contexts
+from examples.agent_configure.utils.tool import tool_config
+from examples.agent_configure.utils.callbacks import custom_callbacks
 from foundation_voice.utils.api_utils import auto_detect_transport
 import uuid
 
@@ -53,6 +53,11 @@ agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
 agent_config_4 = ConfigLoader.load_config(config_path4)
+
+logging.basicConfig(
+    level=logging.DEBUG,  # Change to INFO if you only want info and above
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +189,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         logger.debug("WebSocket connection accepted")
 
-        transport_type, sip_params = auto_detect_transport(websocket)
+        transport_type, sip_params = await auto_detect_transport(websocket)
         logger.info(f"Detected transport type: {transport_type}")
 
         if sip_params:
@@ -230,7 +235,7 @@ async def websocket_endpoint(websocket: WebSocket):
         else:
             logger.info("Processing standard WebSocket connection")
             query_params = dict(websocket.query_params)
-            agent_name = query_params.get("agent_name", "agent2")
+            agent_name = query_params.get("agent_name", "agent3")
             session_id = query_params.get("session_id")
             # agent_name = websocket.query_params.get("agent_name", "agent1")
             # session_id = websocket.query_params.get("session_id")

@@ -55,6 +55,27 @@
           "enable_tool_selection": true,
           "tool_selection_strategy": "highest_confidence"
         }
+      },
+      "preemptive_config": {
+        "response_config": {
+          "default": [
+            "Let me think about that...",
+            "Just a moment...", 
+            "Give me a second...",
+            "I'm working on that..."
+          ],
+          "question": [
+            "That's a great question, let me look that up...",
+            "Interesting question, let me think...",
+            "Let me find that information for you..."
+          ],
+          "calculation": [
+            "Let me calculate that for you...",
+            "Give me a moment to work this out...",
+            "Let me crunch those numbers..."
+          ]
+        },
+        "threshold_ms": 300
       }
     },
     "pipeline": {

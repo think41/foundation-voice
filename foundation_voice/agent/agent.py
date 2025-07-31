@@ -1,13 +1,15 @@
 import sys
 import uuid
+import asyncio  # Add asyncio import for sleep delay
 
 from loguru import logger
 from fastapi import WebSocket
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, List
 
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.utils.tracing.setup import setup_tracing
 from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.pipeline.parallel_pipeline import ParallelPipeline
 from pipecat.processors.transcript_processor import TranscriptProcessor
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.processors.frameworks.rtvi import (
@@ -19,7 +21,6 @@ from pipecat.processors.frameworks.rtvi import (
 from pipecat.observers.loggers.user_bot_latency_log_observer import (
     UserBotLatencyLogObserver,
 )
-
 from foundation_voice.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
 from foundation_voice.utils.function_adapter import FunctionFactory
 from foundation_voice.utils.transport.transport import TransportFactory, TransportType
@@ -35,11 +36,35 @@ from foundation_voice.utils.observers.func_observer import FunctionObserver
 from foundation_voice.utils.observers.call_summary_metrics_observer import (
     CallSummaryMetricsObserver,
 )
-
+from foundation_voice.utils.preemptive_processor.preemptive_processor import (
+    PreemptiveSpeechProcessor
+)
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
+# Configure logging - Change DEBUG to INFO or WARNING to reduce logs
 logger.remove(0)
-logger.add(sys.stderr, level="DEBUG")
+logger.add(sys.stderr, level="INFO")  # Changed from DEBUG to INFO
+
+# Additionally, you can filter out specific modules that are too verbose
+logger.add(
+    sys.stderr, 
+    level="INFO",
+    filter=lambda record: not any(module in record["name"] for module in [
+        "websockets",
+        "webrtc", 
+        "aiortc",
+        "pipecat.transports",
+        "urllib3",
+        "httpx"
+    ])
+)
+
+# Suppress specific third-party library logs
+import logging
+logging.getLogger("websockets").setLevel(logging.WARNING)
+logging.getLogger("aiortc").setLevel(logging.WARNING) 
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 async def create_agent_pipeline(
@@ -119,6 +144,7 @@ async def create_agent_pipeline(
             agent_config,
             data=args,
         )
+                
     except Exception as e:
         logger.error(f"Failed to create LLM service: {e}")
         raise
@@ -153,7 +179,7 @@ async def create_agent_pipeline(
         if kwargs.get("sip_params"):
             if kwargs.get("sip_params").get("call_sid"):
                 call_sid = kwargs.get("sip_params").get("call_sid")
-                logger.debug(f"call_sid: {call_sid}")
+                logger.debug(f"call_sid: {call_sid}")  # Changed from debug to info
                 context_aggregator.assistant().add_messages(
                     [
                         {
@@ -199,8 +225,13 @@ async def create_agent_pipeline(
         transport_type=transport_type.value,  # Use enum value for backward compatibility
         connection=connection,
     )
-
-    # Create pipeline with RTVI processor included
+    #Initializing Preemptive Block
+    preemptive_processor = PreemptiveSpeechProcessor(
+        tts=tts, 
+        threshold_ms=agent_config.get("preemptive_config", {}).get("threshold_ms", 300),
+        filler_config=agent_config.get("preemptive_config", {}).get("response_config", {})
+    )
+    logger.info("Creating pipeline with all components")  # Changed from debug to info
     pipeline = Pipeline(
         [
             transport.input(),
@@ -208,7 +239,10 @@ async def create_agent_pipeline(
             idle_processor,
             transcript.user(),
             context_aggregator.user(),
-            llm,
+            ParallelPipeline(
+                [preemptive_processor],
+                [llm]
+            ),
             tts,
             rtvi,
             transcript.assistant(),
@@ -216,8 +250,6 @@ async def create_agent_pipeline(
             context_aggregator.assistant(),
         ]
     )
-
-    # Register event handlers for all transport types
 
     async def append_to_messages_func(processor, service, arguments):
         messages = arguments.get("messages")
@@ -248,16 +280,19 @@ async def create_agent_pipeline(
 
     # Configure sample rates based on transport type
     # Twilio SIP requires 8kHz, other transports can use higher rates
+
     # if transport_type == TransportType.SIP:
     #     audio_in_sample_rate = 8000   # Twilio requires 8kHz
     #     audio_out_sample_rate = 8000  # Twilio requires 8kHz
     #     logger.debug("Using Twilio SIP sample rates: 8kHz in/out")
+
     # else:
     #     audio_in_sample_rate = 16000   # Higher quality for WebRTC/WebSocket
     #     audio_out_sample_rate = 24000  # Higher quality for WebRTC/WebSocket
     #     logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
 
     # Create pipeline task with transport-appropriate sample rates
+    
     task = PipelineTask(
         pipeline,
         params=PipelineParams(

@@ -98,6 +98,12 @@
         "config": {}
       },
       {
+        "type": "preemptive",
+        "config": {
+          "enabled": true
+        }
+      },
+      {
         "type": "llm",
         "config": {
           "use_tools": true 

@@ -10,7 +10,7 @@ class TranscriptHandler:
         transport,
         session_id: uuid.UUID,
         transport_type: Optional[str] = "smallwebrtc",
-        connection: Optional = None,
+        connection: Optional[any] = None,
     ):
         self._session_id = session_id
         self._transport = transport

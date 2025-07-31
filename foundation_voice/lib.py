@@ -123,7 +123,7 @@ class CaiSDK:
         self._ensure_metadata_and_session_id(kwargs)
 
         try:
-            transport_type_str = request.get("transportType", "").lower
+            transport_type_str = request.get("transportType", "").lower()
             # Convert string to TransportType enum
             try:
                 transport_type = TransportType(transport_type_str)
