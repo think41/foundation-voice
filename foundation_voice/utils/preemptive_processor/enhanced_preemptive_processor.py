@@ -1,864 +1,27 @@
-# import asyncio
-# import time
-# import random
-# from typing import Dict, List, Optional, Any, Callable
-# from dataclasses import dataclass, field
-# from enum import Enum
-
-# from loguru import logger
-# from pipecat.frames.frames import (
-#     Frame,
-#     TextFrame,
-#     TranscriptionFrame,
-#     UserStartedSpeakingFrame,
-#     UserStoppedSpeakingFrame,
-#     LLMFullResponseStartFrame,
-#     LLMFullResponseEndFrame,
-#     LLMMessagesFrame,
-#     BotStartedSpeakingFrame,
-#     BotStoppedSpeakingFrame,
-#     TTSStartedFrame,
-#     TTSStoppedFrame,
-#     TTSSpeakFrame,
-#     BotInterruptionFrame,
-#     CancelFrame,
-#     StartInterruptionFrame,
-#     StopInterruptionFrame,
-#     EndFrame,
-# )
-# from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-
-
-# class PreemptiveState(Enum):
-#     IDLE = "idle"
-#     WAITING = "waiting"
-#     PLAYING = "playing"
-#     CANCELLED = "cancelled"
-
-
-# @dataclass
-# class PreemptiveConfig:
-#     """Configuration for preemptive responses"""
-#     # Global settings
-#     enabled: bool = True
-#     latency_threshold_ms: int = 300
-#     max_preemptive_duration_ms: int = 3000
-    
-#     # Global preemptive phrases
-#     global_phrases: List[str] = field(default_factory=lambda: [
-#         "Let me check that for you...",
-#         "Just a moment...",
-#         "I'm thinking about that...",
-#         "Give me a second...",
-#         "Let me process that...",
-#     ])
-    
-#     # Intent-specific phrases (context-aware)
-#     intent_phrases: Dict[str, List[str]] = field(default_factory=lambda: {
-#         "question": [
-#             "Let me think about that...",
-#             "That's a good question...",
-#             "I need to consider that...",
-#         ],
-#         "request": [
-#             "I'll help you with that...",
-#             "Let me take care of that...",
-#             "Working on that for you...",
-#         ],
-#         "search": [
-#             "Let me search for that...",
-#             "Looking that up...",
-#             "Searching for information...",
-#         ],
-#         "calculation": [
-#             "Let me calculate that...",
-#             "Running the numbers...",
-#             "Computing that for you...",
-#         ],
-#         "default": [
-#             "Just a moment...",
-#             "Processing...",
-#             "One second...",
-#         ]
-#     })
-    
-#     # Fallback behavior
-#     skip_if_quick_response: bool = True
-#     quick_response_threshold_ms: int = 150
-    
-#     # TTS settings for preemptive responses
-#     preemptive_tts_voice: Optional[str] = None
-#     preemptive_tts_speed: float = 1.1  # Slightly faster for fillers
-#     preemptive_tts_volume: float = 0.9  # Slightly quieter
-
-
-# @dataclass
-# class PreemptiveSession:
-#     """Tracks the state of a preemptive response session"""
-#     state: PreemptiveState = PreemptiveState.IDLE
-#     start_time: float = 0.0
-#     phrase_used: Optional[str] = None
-#     intent: Optional[str] = None
-#     preemptive_task: Optional[asyncio.Task] = None
-#     actual_response_started: bool = False
-#     cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
-
-
-# class EnhancedPreemptiveProcessor(FrameProcessor):
-#     """
-#     Enhanced preemptive processor that provides configurable filler phrases
-#     to reduce perceived latency in voice interactions.
-#     """
-    
-#     def __init__(
-#         self,
-#         config: Optional[PreemptiveConfig] = None,
-#         tts_processor: Optional[Any] = None,
-#         intent_classifier: Optional[Callable[[str], str]] = None,
-#         **kwargs
-#     ):
-#         super().__init__(**kwargs)
-#         self.config = config or PreemptiveConfig()
-#         self.tts_processor = tts_processor
-#         self.intent_classifier = intent_classifier or self._default_intent_classifier
-        
-#         # Session tracking
-#         self.current_session: Optional[PreemptiveSession] = None
-#         self.last_user_input: Optional[str] = None
-#         self.user_speaking = False
-#         self.bot_speaking = False
-#         self.waiting_for_llm = False  # Track if we're waiting for LLM response
-        
-#         # Track preemptive phrases to identify them later
-#         self.active_preemptive_phrases: set = set()
-#         self.preemptive_playing = False
-        
-#         # Metrics
-#         self.metrics = {
-#             "preemptive_triggered": 0,
-#             "preemptive_cancelled": 0,
-#             "preemptive_completed": 0,
-#             "avg_trigger_latency": 0.0,
-#             "latency_samples": []
-#         }
-        
-#         logger.info(f"🔧 Enhanced Preemptive Processor initialized with threshold: {self.config.latency_threshold_ms}ms")
-    
-#     def _is_preemptive_tts(self, frame) -> bool:
-#         """Check if a TTS frame is preemptive by examining its text content"""
-#         if not hasattr(frame, 'text') or not frame.text:
-#             return False
-        
-#         # Check if the text matches any of our active preemptive phrases
-#         frame_text = frame.text.strip()
-#         return frame_text in self.active_preemptive_phrases
-    
-#     def _default_intent_classifier(self, text: str) -> str:
-#         """Simple intent classification based on keywords"""
-#         text_lower = text.lower()
-        
-#         # Question patterns
-#         if any(word in text_lower for word in ["what", "how", "why", "when", "where", "who", "?"]):
-#             return "question"
-        
-#         # Request patterns
-#         if any(word in text_lower for word in ["please", "can you", "could you", "help", "do"]):
-#             return "request"
-        
-#         # Search patterns
-#         if any(word in text_lower for word in ["find", "search", "look up", "tell me about"]):
-#             return "search"
-        
-#         # Calculation patterns
-#         if any(word in text_lower for word in ["calculate", "compute", "add", "subtract", "multiply", "divide", "math"]):
-#             return "calculation"
-        
-#         return "default"
-    
-#     def _select_preemptive_phrase(self, intent: str) -> str:
-#         """Select an appropriate preemptive phrase based on intent"""
-#         # Try intent-specific phrases first
-#         if intent in self.config.intent_phrases:
-#             phrases = self.config.intent_phrases[intent]
-#         else:
-#             # Fallback to default intent phrases, then global phrases
-#             phrases = (self.config.intent_phrases.get("default", []) + 
-#                       self.config.global_phrases)
-        
-#         if not phrases:
-#             phrases = ["Just a moment..."]
-        
-#         return random.choice(phrases)
-    
-#     async def _trigger_preemptive_response(self, session: PreemptiveSession):
-#         """Trigger a preemptive response after the configured delay"""
-#         try:
-#             logger.debug(f"⏱️ Waiting {self.config.latency_threshold_ms}ms before triggering preemptive response...")
-            
-#             # Wait for the latency threshold
-#             await asyncio.sleep(self.config.latency_threshold_ms / 1000.0)
-            
-#             # Check if we should still proceed
-#             if (session.cancel_event.is_set() or 
-#                 session.actual_response_started or 
-#                 session.state != PreemptiveState.WAITING):
-#                 logger.debug("❌ Preemptive response cancelled before trigger")
-#                 session.state = PreemptiveState.CANCELLED
-#                 self.metrics["preemptive_cancelled"] += 1
-#                 return
-            
-#             # Select and trigger preemptive phrase
-#             phrase = self._select_preemptive_phrase(session.intent or "default")
-#             session.phrase_used = phrase
-#             session.state = PreemptiveState.PLAYING
-            
-#             # Track this phrase as preemptive
-#             self.active_preemptive_phrases.add(phrase)
-#             self.preemptive_playing = True
-            
-#             logger.info(f"🎯 Triggering preemptive response: '{phrase}' (intent: {session.intent})")
-            
-#             await self.push_frame( TextFrame(role="assistant", content=phrase), FrameDirection.DOWNSTREAM )
-            
-#             # Update metrics
-#             self.metrics["preemptive_triggered"] += 1
-#             trigger_latency = (time.time() - session.start_time) * 1000
-#             self.metrics["latency_samples"].append(trigger_latency)
-            
-#             # Update average latency
-#             if self.metrics["latency_samples"]:
-#                 self.metrics["avg_trigger_latency"] = sum(self.metrics["latency_samples"]) / len(self.metrics["latency_samples"])
-            
-#             logger.info(f"📊 Preemptive triggered! Latency: {trigger_latency:.1f}ms, Total triggered: {self.metrics['preemptive_triggered']}")
-            
-#             # Wait for maximum duration or cancellation
-#             try:
-#                 await asyncio.wait_for(
-#                     session.cancel_event.wait(),
-#                     timeout=self.config.max_preemptive_duration_ms / 1000.0
-#                 )
-#             except asyncio.TimeoutError:
-#                 logger.warning("⚠️ Preemptive response reached maximum duration")
-#                 # Clean up the phrase tracking
-#                 self.active_preemptive_phrases.discard(phrase)
-#                 self.preemptive_playing = False
-            
-#         except asyncio.CancelledError:
-#             logger.debug("❌ Preemptive response task was cancelled")
-#             session.state = PreemptiveState.CANCELLED
-#             self.metrics["preemptive_cancelled"] += 1
-#             # Clean up tracking
-#             if session.phrase_used:
-#                 self.active_preemptive_phrases.discard(session.phrase_used)
-#             self.preemptive_playing = False
-#         except Exception as e:
-#             logger.error(f"💥 Error in preemptive response: {e}")
-#             session.state = PreemptiveState.CANCELLED
-#             # Clean up tracking
-#             if session.phrase_used:
-#                 self.active_preemptive_phrases.discard(session.phrase_used)
-#             self.preemptive_playing = False
-    
-#     async def _start_preemptive_session(self, user_input: str = ""):
-#         """Start a new preemptive response session"""
-#         if not self.config.enabled or self.bot_speaking:
-#             logger.debug(f"🚫 Preemptive session not started - enabled: {self.config.enabled}, bot_speaking: {self.bot_speaking}")
-#             return
-        
-#         # Cancel any existing session
-#         await self._cancel_current_session("new_session")
-        
-#         # Classify intent
-#         intent = self.intent_classifier(user_input) if user_input else "default"
-        
-#         # Create new session
-#         self.current_session = PreemptiveSession(
-#             state=PreemptiveState.WAITING,
-#             start_time=time.time(),
-#             intent=intent
-#         )
-        
-#         # Mark that we're waiting for LLM
-#         self.waiting_for_llm = True
-        
-#         # Start preemptive task
-#         self.current_session.preemptive_task = asyncio.create_task(
-#             self._trigger_preemptive_response(self.current_session)
-#         )
-        
-#         logger.info(f"🚀 Started preemptive session with intent: {intent}, input: '{user_input[:50]}...'")
-    
-#     async def _cancel_current_session(self, reason: str = "new_session"):
-#         """Cancel the current preemptive session"""
-#         if not self.current_session:
-#             return
-        
-#         logger.debug(f"🛑 Cancelling preemptive session: {reason}")
-        
-#         # Set cancel event
-#         self.current_session.cancel_event.set()
-        
-#         # Cancel task
-#         if self.current_session.preemptive_task and not self.current_session.preemptive_task.done():
-#             self.current_session.preemptive_task.cancel()
-#             try:
-#                 await self.current_session.preemptive_task
-#             except asyncio.CancelledError:
-#                 pass
-        
-#         # Send interruption if currently playing
-#         if self.current_session.state == PreemptiveState.PLAYING:
-#             await self.push_frame(BotInterruptionFrame(), FrameDirection.DOWNSTREAM)
-#             logger.debug("🔇 Sent bot interruption frame to stop preemptive TTS")
-        
-#         # Clean up phrase tracking
-#         if self.current_session.phrase_used:
-#             self.active_preemptive_phrases.discard(self.current_session.phrase_used)
-#         self.preemptive_playing = False
-        
-#         # Update metrics
-#         if self.current_session.state == PreemptiveState.PLAYING:
-#             self.metrics["preemptive_completed"] += 1
-        
-#         self.current_session = None
-#         self.waiting_for_llm = False
-    
-#     async def _handle_quick_response(self) -> bool:
-#         """Check if response is quick enough to skip preemptive"""
-#         if not self.config.skip_if_quick_response or not self.current_session:
-#             return False
-        
-#         elapsed_ms = (time.time() - self.current_session.start_time) * 1000
-        
-#         if elapsed_ms < self.config.quick_response_threshold_ms:
-#             logger.debug(f"⚡ Quick response detected ({elapsed_ms:.1f}ms), skipping preemptive")
-#             await self._cancel_current_session("quick_response")
-#             return True
-        
-#         return False
-    
-#     # Frame Processing Methods
-    
-#     async def process_frame(self, frame: Frame, direction: FrameDirection):
-#         """Main frame processing logic"""
-#         # Log frame types for debugging
-#         # Intercept user‐input frames before they go downstream
-#         if direction == FrameDirection.UPSTREAM and isinstance(frame, (TextFrame, TranscriptionFrame)):
-#             text = getattr(frame, "text", None) or getattr(frame, "transcript", "")
-#             self.last_user_input = text
-#             logger.info(f"📝 User input received: '{text}' → starting preemptive")
-#             if not self.user_speaking and not self.bot_speaking:
-#                 await self._start_preemptive_session(text)
-
-#         # 2) Let the base class link this frame downstream/upstream
-#         frame_type = type(frame).__name__
-#         await super().process_frame(frame, direction)
-
-        
-#         # Handle LLM Messages frame (when LLM is about to process)
-#         if isinstance(frame, LLMMessagesFrame) and direction == FrameDirection.DOWNSTREAM:
-#             logger.info("🧠 LLM Messages frame detected - LLM is processing")
-#             if not self.waiting_for_llm and not self.current_session:
-#                 # If no preemptive session started yet, start one now
-#                 await self._start_preemptive_session(self.last_user_input or "")
-        
-#         # Handle LLM response frames
-#         elif isinstance(frame, LLMFullResponseStartFrame):
-#             logger.info("✨ LLM response started - cancelling preemptive")
-#             if self.current_session:
-#                 self.current_session.actual_response_started = True
-                
-#                 # Check for quick response
-#                 if await self._handle_quick_response():
-#                     pass  # Preemptive was cancelled
-#                 else:
-#                     # Cancel preemptive as actual response is ready
-#                     await self._cancel_current_session("actual_response_ready")
-        
-#         # Handle LLM response end - reset state
-#         elif isinstance(frame, LLMFullResponseEndFrame):
-#             logger.debug("🏁 LLM response ended")
-#             if self.current_session:
-#                 await self._cancel_current_session("llm_response_ended")
-        
-#         # Handle Bot/TTS events
-#         elif isinstance(frame, (BotStartedSpeakingFrame, TTSStartedFrame)):
-#             # Check if this might be our preemptive TTS by checking if we're in preemptive mode
-#             # and if there are active preemptive phrases
-#             if self.preemptive_playing and self.active_preemptive_phrases:
-#                 logger.info("🎤 Preemptive TTS started playing")
-#             else:
-#                 logger.info("🎤 Bot started speaking (non-preemptive)")
-#                 self.bot_speaking = True
-#                 await self._cancel_current_session("bot_started_speaking")
-        
-#         elif isinstance(frame, (BotStoppedSpeakingFrame, TTSStoppedFrame)):
-#             # Check if this was our preemptive TTS ending
-#             if self.preemptive_playing and self.active_preemptive_phrases:
-#                 logger.info("🎤 Preemptive TTS finished playing")
-#                 self.preemptive_playing = False
-#                 # Clear the active phrases
-#                 self.active_preemptive_phrases.clear()
-#                 if self.current_session:
-#                     self.current_session.state = PreemptiveState.IDLE
-#             else:
-#                 logger.info("🎤 Bot stopped speaking (non-preemptive)")
-#                 self.bot_speaking = False
-        
-#         # Handle interruption frames
-#         elif isinstance(frame, (BotInterruptionFrame, StartInterruptionFrame, StopInterruptionFrame)):
-#             logger.debug("🚫 Interruption frame received")
-#             await self._cancel_current_session("interruption")
-        
-#         # Handle cancel and end frames
-#         elif isinstance(frame, (CancelFrame, EndFrame)):
-#             logger.debug("🛑 Cancel/End frame received")
-#             await self._cancel_current_session("cancel_or_end_frame")
-        
-#         # Pass frame downstream/upstream
-#         await self.push_frame(frame, direction)
-    
-#     # Utility Methods
-    
-#     def get_metrics(self) -> Dict[str, Any]:
-#         """Get processor metrics"""
-#         return self.metrics.copy()
-    
-#     def reset_metrics(self):
-#         """Reset processor metrics"""
-#         self.metrics = {
-#             "preemptive_triggered": 0,
-#             "preemptive_cancelled": 0,
-#             "preemptive_completed": 0,
-#             "avg_trigger_latency": 0.0,
-#             "latency_samples": []
-#         }
-    
-#     def update_config(self, new_config: PreemptiveConfig):
-#         """Update processor configuration"""
-#         self.config = new_config
-#         logger.info(f"⚙️ Updated preemptive processor config, threshold: {self.config.latency_threshold_ms}ms")
-    
-#     async def cleanup(self):
-#         """Cleanup resources"""
-#         await self._cancel_current_session("cleanup")
-#         logger.info("🧹 Enhanced Preemptive Processor cleaned up")
-
-
-
-
-# """
-# Conservative Preemptive Speech Processor
-
-# This version uses only the most basic frame types that should be available
-# in all Pipecat versions, and relies on timing instead of LLM frame detection.
-# """
-
-# """
-# Fixed Preemptive Speech Processor
-
-# Key fixes:
-# 1. Proper frame handling and flow control
-# 2. Better state management
-# 3. Improved timing logic
-# 4. More robust error handling
-# 5. Direct TTS integration
-# """
-
-# import asyncio
-# import random
-# import time
-# from typing import Dict, List, Optional
-
-# from pipecat.frames.frames import (
-#     Frame,
-#     TextFrame,
-#     TranscriptionFrame,
-#     UserStoppedSpeakingFrame,
-#     LLMFullResponseStartFrame,
-#     LLMFullResponseEndFrame,
-#     BotStartedSpeakingFrame,
-#     BotStoppedSpeakingFrame,
-#     TTSStartedFrame,
-#     TTSStoppedFrame,
-#     EndFrame,
-# )
-# from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
-# from loguru import logger
-
-
-# class PreemptiveSpeechProcessor(FrameProcessor):
-#     def __init__(self, tts, threshold_ms=500, filler_config=None):
-#         super().__init__()
-#         self.tts = tts
-#         self.threshold = threshold_ms / 1000.0  # Convert to seconds
-#         self.filler_config = filler_config or {
-#             "default": [
-#                 "Let me think about that...",
-#                 "Just a moment...", 
-#                 "Give me a second...",
-#                 "I'm working on that...",
-#             ],
-#             "question": [
-#                 "That's a great question, let me look that up...",
-#                 "Interesting question, let me think...",
-#                 "Let me find that information for you...",
-#             ],
-#             "calculation": [
-#                 "Let me calculate that for you...",
-#                 "Give me a moment to work this out...",
-#                 "Let me crunch those numbers...",
-#             ]
-#         }
-        
-#         # State tracking
-#         self._preemptive_task: Optional[asyncio.Task] = None
-#         self._bot_speaking = False
-#         self._llm_responding = False
-#         self._last_user_text = ""
-#         self._user_stopped_time: Optional[float] = None
-#         self._preemptive_triggered = False
-#         self._preemptive_playing = False
-#         self._waiting_for_llm = False
-        
-#         logger.info(f"🎯 PreemptiveSpeechProcessor initialized with {threshold_ms}ms threshold")
-
-#     async def process_frame(self, frame: Frame, direction: FrameDirection):
-#         # Handle the frame first
-#         frame_handled = False
-        
-#         try:
-#             # Track user input and transcription
-#             if isinstance(frame, TranscriptionFrame) and direction == FrameDirection.UPSTREAM:
-#                 self._last_user_text = frame.text
-#                 logger.debug(f"📝 Captured user text: '{self._last_user_text}'")
-                
-#             elif isinstance(frame, UserStoppedSpeakingFrame) and direction == FrameDirection.UPSTREAM:
-#                 await self._handle_user_stopped_speaking()
-                
-#             # Track LLM response lifecycle
-#             elif isinstance(frame, LLMFullResponseStartFrame):
-#                 logger.debug("🧠 LLM response started")
-#                 self._llm_responding = True
-#                 self._waiting_for_llm = False
-#                 await self._cancel_preemptive_if_active()
-                
-#             elif isinstance(frame, LLMFullResponseEndFrame):
-#                 logger.debug("🧠 LLM response ended")
-#                 self._llm_responding = False
-            
-#             # Track bot speaking state
-#             elif isinstance(frame, BotStartedSpeakingFrame):
-#                 logger.debug("🗣️ Bot started speaking")
-#                 self._bot_speaking = True
-                
-#             elif isinstance(frame, BotStoppedSpeakingFrame):
-#                 logger.debug("🗣️ Bot stopped speaking")
-#                 self._bot_speaking = False
-#                 await self._reset_state()
-                
-#             # Track TTS state
-#             elif isinstance(frame, TTSStartedFrame):
-#                 if self._preemptive_triggered and not self._llm_responding:
-#                     self._preemptive_playing = True
-#                     logger.debug("🎵 Preemptive TTS started")
-                    
-#             elif isinstance(frame, TTSStoppedFrame):
-#                 if self._preemptive_playing:
-#                     self._preemptive_playing = False
-#                     logger.debug("🎵 Preemptive TTS stopped")
-            
-#             # Always call super().process_frame() first
-#             await super().process_frame(frame, direction)
-            
-#             # Then push the frame downstream
-#             await self.push_frame(frame, direction)
-#             frame_handled = True
-            
-#         except Exception as e:
-#             logger.error(f"❌ Error processing frame {type(frame).__name__}: {e}")
-#             if not frame_handled:
-#                 # Still try to pass the frame through
-#                 await super().process_frame(frame, direction)
-#                 await self.push_frame(frame, direction)
-
-#     async def _handle_user_stopped_speaking(self):
-#         """Handle when user stops speaking - start preemptive timer"""
-#         current_time = time.time()
-#         self._user_stopped_time = current_time
-        
-#         # Reset state for new interaction
-#         await self._reset_state()
-#         self._waiting_for_llm = True
-        
-#         # Cancel any existing preemptive task
-#         await self._cancel_preemptive_if_active()
-        
-#         # Start new preemptive timer
-#         self._preemptive_task = asyncio.create_task(self._preemptive_timer())
-#         logger.debug(f"⏱️ User stopped speaking, starting preemptive timer (threshold: {self.threshold}s)")
-
-#     async def _reset_state(self):
-#         """Reset preemptive state for new interaction"""
-#         self._preemptive_triggered = False
-#         self._preemptive_playing = False
-#         self._waiting_for_llm = False
-#         logger.debug("🔄 Reset preemptive state")
-
-#     async def _preemptive_timer(self):
-#         """Timer that triggers preemptive response after threshold"""
-#         try:
-#             logger.debug(f"⏳ Preemptive timer started, waiting {self.threshold}s...")
-#             await asyncio.sleep(self.threshold)
-            
-#             # Check if we should still trigger preemptive response
-#             should_trigger = (
-#                 self._waiting_for_llm and
-#                 not self._llm_responding and 
-#                 not self._bot_speaking and 
-#                 not self._preemptive_triggered
-#             )
-            
-#             if should_trigger:
-#                 logger.info("🚀 Triggering preemptive response - LLM taking too long")
-#                 await self._trigger_preemptive()
-#             else:
-#                 logger.debug(f"⏹️ Not triggering preemptive: waiting={self._waiting_for_llm}, llm_responding={self._llm_responding}, bot_speaking={self._bot_speaking}, already_triggered={self._preemptive_triggered}")
-                
-#         except asyncio.CancelledError:
-#             logger.debug("⏹️ Preemptive timer cancelled")
-#         except Exception as e:
-#             logger.error(f"❌ Error in preemptive timer: {e}")
-
-#     async def _trigger_preemptive(self):
-#         """Trigger the preemptive response"""
-#         if self._preemptive_triggered:
-#             logger.debug("⚠️ Preemptive already triggered, skipping")
-#             return
-            
-#         self._preemptive_triggered = True
-        
-#         # Select appropriate phrase
-#         intent = self._infer_intent(self._last_user_text)
-#         phrases = self.filler_config.get(intent, self.filler_config["default"])
-#         phrase = random.choice(phrases)
-        
-#         logger.info(f"✨ Triggering preemptive response: '{phrase}' (intent: {intent})")
-        
-#         try:
-#             # Create and push TextFrame downstream to TTS
-#             text_frame = TextFrame(text=phrase)
-            
-#             # Push frame downstream toward TTS
-#             await self.push_frame(text_frame, FrameDirection.DOWNSTREAM)
-            
-#             logger.info(f"🎯 Preemptive response sent to TTS: '{phrase}'")
-
-#         except Exception as e:
-#             logger.error(f"❌ Error triggering preemptive response: {e}")
-#             self._preemptive_triggered = False  # Reset on error
-
-#     async def _cancel_preemptive_if_active(self):
-#         """Cancel any active preemptive task"""
-#         if self._preemptive_task and not self._preemptive_task.done():
-#             self._preemptive_task.cancel()
-#             logger.debug("🛑 Preemptive task cancelled")
-            
-#         # If preemptive is currently playing, we might want to interrupt it
-#         if self._preemptive_playing:
-#             logger.debug("🛑 Preemptive was playing, marking as interrupted")
-#             self._preemptive_playing = False
-
-#     def _infer_intent(self, text: str) -> str:
-#         """Simple intent detection based on keywords"""
-#         if not text:
-#             return "default"
-            
-#         text_lower = text.lower().strip()
-        
-#         # Question detection
-#         question_indicators = ["what", "how", "why", "when", "where", "who", "which", "can you", "could you", "would you", "do you"]
-#         if text_lower.endswith("?") or any(text_lower.startswith(indicator) for indicator in question_indicators):
-#             return "question"
-            
-#         # Calculation detection  
-#         calc_indicators = ["calculate", "compute", "math", "number", "sum", "total", "add", "subtract", "multiply", "divide"]
-#         if any(indicator in text_lower for indicator in calc_indicators):
-#             return "calculation"
-            
-#         return "default"
-
-#     def get_debug_info(self) -> Dict:
-#         """Get current state for debugging"""
-#         return {
-#             "threshold_ms": self.threshold * 1000,
-#             "bot_speaking": self._bot_speaking,
-#             "llm_responding": self._llm_responding,
-#             "waiting_for_llm": self._waiting_for_llm,
-#             "last_user_text": self._last_user_text,
-#             "preemptive_triggered": self._preemptive_triggered,
-#             "preemptive_playing": self._preemptive_playing,
-#             "has_active_task": self._preemptive_task is not None and not self._preemptive_task.done(),
-#             "user_stopped_time": self._user_stopped_time,
-#         }
-
-#     async def cleanup(self):
-#         """Clean up resources"""
-#         await self._cancel_preemptive_if_active()
-#         await self._reset_state()
-
-
-
-
-# import asyncio
-# from loguru import logger
-# from pipecat.frames.frames import (
-#     LLMMessagesFrame, 
-#     TextFrame, 
-#     TranscriptionFrame, 
-#     StartFrame, 
-#     EndFrame,
-#     AudioRawFrame,
-#     Frame
-# )
-# from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
-# import random
-# import time
-
-# class PreemptiveResponseProcessor(FrameProcessor):
-#     def __init__(self, 
-#                  tts_service,
-#                  *,
-#                  delay_threshold_ms: int = 500,  # Trigger after 500ms of no LLM response
-#                  preemptive_phrases: list = None,
-#                  **kwargs):
-#         """
-#         Processor that generates immediate preemptive responses when user stops speaking,
-#         before the actual LLM response is ready.
-        
-#         Args:
-#             tts_service: TTS service to generate preemptive audio
-#             delay_threshold_ms: Time to wait before triggering preemptive response
-#             preemptive_phrases: List of phrases to use for preemptive responses
-#         """
-#         super().__init__(**kwargs)
-#         self.tts_service = tts_service
-#         self.delay_threshold_ms = delay_threshold_ms
-#         self.preemptive_phrases = preemptive_phrases or [
-#             "Let me check that for you...",
-#             "Just a moment please...",
-#             "I'm thinking about that...",
-#             "Processing your request...",
-#             "Working on that...",
-#         ]
-        
-#         self._user_finished_speaking_time = None
-#         self._llm_response_started = False
-#         self._preemptive_task = None
-#         self._preemptive_sent = False
-        
-#         logger.info(f"🎯 PreemptiveResponseProcessor initialized with {delay_threshold_ms}ms threshold")
-
-#     async def process_frame(self, frame, direction):
-#         # Handle StartFrame to properly initialize the processor
-#         if isinstance(frame, StartFrame):
-#             logger.debug("🚀 PreemptiveResponseProcessor started")
-#             await self.push_frame(frame, direction)
-#             return
-        
-#         # Handle EndFrame to cleanup
-#         if isinstance(frame, EndFrame):
-#             logger.debug("🛑 PreemptiveResponseProcessor ending")
-#             if self._preemptive_task and not self._preemptive_task.done():
-#                 self._preemptive_task.cancel()
-#             await self.push_frame(frame, direction)
-#             return
-        
-#         # Pass through audio frames without processing
-#         if isinstance(frame, AudioRawFrame):
-#             await self.push_frame(frame, direction)
-#             return
-        
-#         # Detect when user finishes speaking (STT produces final transcription)
-#         if isinstance(frame, TranscriptionFrame) and direction == FrameDirection.DOWNSTREAM:
-#             if frame.text.strip():  # Non-empty transcription
-#                 logger.debug(f"🗣️ User transcription: '{frame.text}'")
-#                 self._user_finished_speaking_time = time.time() * 1000  # Convert to ms
-#                 self._llm_response_started = False
-#                 self._preemptive_sent = False
-                
-#                 # Cancel any existing preemptive task
-#                 if self._preemptive_task and not self._preemptive_task.done():
-#                     self._preemptive_task.cancel()
-                
-#                 # Start watching for delayed LLM response
-#                 logger.debug(f"⏰ Starting preemptive watch (threshold: {self.delay_threshold_ms}ms)")
-#                 self._preemptive_task = asyncio.create_task(self._watch_for_delayed_llm())
-
-#         # Detect when LLM starts responding
-#         elif isinstance(frame, LLMMessagesFrame) and direction == FrameDirection.DOWNSTREAM:
-#             logger.debug("🧠 LLM response started")
-#             self._llm_response_started = True
-            
-#             # Cancel preemptive task since LLM is now responding
-#             if self._preemptive_task and not self._preemptive_task.done():
-#                 logger.debug("❌ Cancelling preemptive task - LLM responded")
-#                 self._preemptive_task.cancel()
-
-#         # Detect actual text responses from LLM
-#         elif isinstance(frame, TextFrame) and direction == FrameDirection.DOWNSTREAM:
-#             if not self._llm_response_started:
-#                 logger.debug("📝 LLM text response detected")
-#                 self._llm_response_started = True
-                
-#                 # Cancel preemptive task
-#                 if self._preemptive_task and not self._preemptive_task.done():
-#                     logger.debug("❌ Cancelling preemptive task - LLM text response")
-#                     self._preemptive_task.cancel()
-
-#         # Always forward the frame (except Start/End/Audio which are handled above)
-#         await self.push_frame(frame, direction)
-
-#     async def _watch_for_delayed_llm(self):
-#         """Watch for delayed LLM response and trigger preemptive response if needed"""
-#         try:
-#             # Wait for the threshold period
-#             await asyncio.sleep(self.delay_threshold_ms / 1000.0)
-            
-#             # Check if LLM has started responding
-#             if not self._llm_response_started and not self._preemptive_sent:
-#                 logger.info(f"🚀 Triggering preemptive response after {self.delay_threshold_ms}ms delay")
-#                 await self._send_preemptive_response()
-                
-#         except asyncio.CancelledError:
-#             logger.debug("❌ Preemptive watch cancelled")
-
-#     async def _send_preemptive_response(self):
-#         """Send a preemptive response to fill the silence"""
-#         phrase = random.choice(self.preemptive_phrases)
-#         logger.info(f"🎤 Sending preemptive response: '{phrase}'")
-        
-#         # Create a text frame with the preemptive phrase
-#         preemptive_frame = TextFrame(phrase)
-        
-#         # Send it downstream to TTS
-#         await self.push_frame(preemptive_frame, FrameDirection.DOWNSTREAM)
-        
-#         self._preemptive_sent = True
-
-
 """
-Conservative Preemptive Speech Processor
+Enhanced Preemptive Speech Processor
 
-This version uses only the most basic frame types that should be available
-in all Pipecat versions, and relies on timing instead of LLM frame detection.
+A comprehensive processor that provides configurable preemptive responses
+to reduce perceived latency in voice interactions.
+
+Features:
+- Configurable global and intent-specific phrases
+- Adjustable latency threshold
+- Fallback behavior for quick responses
+- Context-aware intent detection
+- Robust state management
+- Streaming/non-streaming response support
+- Interrupt/cancel mechanisms
 """
 
 import asyncio
 import random
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Callable
+from dataclasses import dataclass, field
+from enum import Enum
 
+from loguru import logger
 from pipecat.frames.frames import (
     Frame,
     TextFrame,
@@ -866,179 +29,625 @@ from pipecat.frames.frames import (
     UserStoppedSpeakingFrame,
     LLMFullResponseStartFrame,
     LLMFullResponseEndFrame,
+    LLMMessagesFrame,
     BotStartedSpeakingFrame,
     BotStoppedSpeakingFrame,
     TTSStartedFrame,
     TTSStoppedFrame,
+    BotInterruptionFrame,
+    CancelFrame,
+    EndFrame,
 )
-from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
-from loguru import logger
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 
-class PreemptiveSpeechProcessor(FrameProcessor):
-    def __init__(self, tts, threshold_ms=300, filler_config=None):
-        super().__init__()
-        self.tts = tts
-        self.threshold = threshold_ms / 1000.0  # Convert to seconds
-        self.filler_config = filler_config or {
-            "default": [
-                "Let me think about that...",
-                "Just a moment...", 
-                "Give me a second...",
-                "I'm working on that...",
-            ],
-            "question": [
-                "That's a great question, let me look that up...",
-                "Interesting question, let me think...",
-                "Let me find that information for you...",
-            ],
-            "calculation": [
-                "Let me calculate that for you...",
-                "Give me a moment to work this out...",
-                "Let me crunch those numbers...",
-            ]
-        }
+class PreemptiveState(Enum):
+    """States for preemptive response lifecycle"""
+    IDLE = "idle"
+    WAITING = "waiting"
+    PLAYING = "playing"
+    CANCELLED = "cancelled"
+    COMPLETED = "completed"
+
+
+@dataclass
+class PreemptiveConfig:
+    """Configuration for preemptive responses"""
+    # Core settings
+    enabled: bool = True
+    latency_threshold_ms: int = 300
+    max_preemptive_duration_ms: int = 4000
+    
+    # Global preemptive phrases (fallback)
+    global_phrases: List[str] = field(default_factory=lambda: [
+        "Let me check that for you...",
+        "Just a moment...",
+        "I'm thinking about that...",
+        "Give me a second...",
+        "Processing your request...",
+    ])
+    
+    # Intent-specific phrases (context-aware)
+    intent_phrases: Dict[str, List[str]] = field(default_factory=lambda: {
+        "question": [
+            "That's a great question, let me think...",
+            "Let me look that up for you...",
+            "I need to consider that carefully...",
+            "Interesting question, give me a moment...",
+        ],
+        "request": [
+            "I'll help you with that right away...",
+            "Let me take care of that for you...",
+            "Working on that request now...",
+            "I'm on it, just a moment...",
+        ],
+        "search": [
+            "Let me search for that information...",
+            "Looking that up now...",
+            "Searching our database...",
+            "Finding that information for you...",
+        ],
+        "calculation": [
+            "Let me calculate that for you...",
+            "Running those numbers now...",
+            "Computing that result...",
+            "Working out the math on that...",
+        ],
+        "greeting": [
+            "Hello! Let me just get ready...",
+            "Hi there! Give me just a moment...",
+            "Nice to meet you! Just getting set up...",
+        ],
+        "complex": [
+            "That's quite involved, let me work through it...",
+            "This will take some careful thought...",
+            "Let me analyze this thoroughly...",
+        ],
+        "default": [
+            "Just a moment please...",
+            "One second...",
+            "Let me process that...",
+        ]
+    })
+    
+    # Fallback behavior
+    skip_if_quick_response: bool = True
+    quick_response_threshold_ms: int = 150
+    
+    # TTS customization for preemptive responses
+    preemptive_tts_voice: Optional[str] = None
+    preemptive_tts_speed: float = 1.05  # Slightly faster
+    preemptive_tts_volume: float = 0.9   # Slightly quieter
+    
+    # Advanced features
+    use_intent_detection: bool = True
+    max_phrase_length: int = 50  # Characters
+    avoid_repetition: bool = True
+    repetition_window: int = 3   # Last N phrases to avoid repeating
+
+
+@dataclass
+class PreemptiveSession:
+    """Tracks state of a preemptive response session"""
+    state: PreemptiveState = PreemptiveState.IDLE
+    start_time: float = 0.0
+    user_input: str = ""
+    detected_intent: str = "default"
+    selected_phrase: Optional[str] = None
+    preemptive_task: Optional[asyncio.Task] = None
+    cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
+    actual_response_started: bool = False
+    quick_response_detected: bool = False
+
+
+class EnhancedPreemptiveProcessor(FrameProcessor):
+    """
+    Enhanced preemptive processor with comprehensive features for
+    reducing perceived latency in voice interactions.
+    """
+    
+    def __init__(
+        self,
+        config: Optional[PreemptiveConfig] = None,
+        tts_processor: Optional[Any] = None,
+        intent_classifier: Optional[Callable[[str], str]] = None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.config = config or PreemptiveConfig()
+        self.tts_processor = tts_processor
+        self.intent_classifier = intent_classifier or self._default_intent_classifier
+        
+        # Session management
+        self.current_session: Optional[PreemptiveSession] = None
+        self.recent_phrases: List[str] = []  # For avoiding repetition
         
         # State tracking
-        self._preemptive_task: Optional[asyncio.Task] = None
-        self._bot_speaking = False
-        self._llm_responding = False
-        self._last_user_text = ""
-        self._user_stopped_time: Optional[float] = None
-        self._preemptive_triggered = False
-        self._preemptive_playing = False
+        self.user_speaking = False
+        self.bot_speaking = False
+        self.llm_processing = False
+        self.preemptive_active = False
         
-        logger.info(f"PreemptiveSpeechProcessor initialized with {threshold_ms}ms threshold")
-
-    async def process_frame(self, frame: Frame, direction: FrameDirection):
-        await super().process_frame(frame, direction)
+        # Metrics and monitoring
+        self.metrics = {
+            "sessions_started": 0,
+            "preemptive_triggered": 0,
+            "preemptive_cancelled": 0,
+            "preemptive_completed": 0,
+            "quick_responses_detected": 0,
+            "avg_trigger_latency": 0.0,
+            "latency_samples": [],
+            "intent_distribution": {},
+            "phrase_usage": {},
+        }
         
-        # Track user input
-        if isinstance(frame, UserStoppedSpeakingFrame):
-            await self._handle_user_stopped_speaking()
-            
-        elif isinstance(frame, TranscriptionFrame) and direction == FrameDirection.UPSTREAM:
-            self._last_user_text = frame.text
-            logger.debug(f"Captured user text: '{self._last_user_text}'")
-        
-        # Track LLM response lifecycle
-        elif isinstance(frame, LLMFullResponseStartFrame):
-            self._llm_responding = True
-            if not self._preemptive_triggered:
-                await self._cancel_preemptive()
-                logger.debug("LLM response started, canceling preemptive")
-                
-        elif isinstance(frame, LLMFullResponseEndFrame):
-            self._llm_responding = False
-        
-        # Track bot speaking state
-        elif isinstance(frame, BotStartedSpeakingFrame):
-            self._bot_speaking = True
-            
-        elif isinstance(frame, BotStoppedSpeakingFrame):
-            self._bot_speaking = False
-            await self._reset_state()
-            
-        # Track TTS state to detect preemptive audio
-        elif isinstance(frame, TTSStartedFrame):
-            if self._preemptive_triggered and not self._llm_responding:
-                self._preemptive_playing = True
-                logger.debug("Preemptive TTS started")
-                
-        elif isinstance(frame, TTSStoppedFrame):
-            if self._preemptive_playing:
-                self._preemptive_playing = False
-                logger.debug("Preemptive TTS stopped")
-            
-        # Pass frame through
-        await self.push_frame(frame, direction)
-
-    async def _handle_user_stopped_speaking(self):
-        """Handle when user stops speaking - start preemptive timer"""
-        self._user_stopped_time = time.time()
-        await self._reset_state()
-        
-        # Cancel any existing preemptive task
-        if self._preemptive_task and not self._preemptive_task.done():
-            self._preemptive_task.cancel()
-            
-        # Start new preemptive timer
-        self._preemptive_task = asyncio.create_task(self._preemptive_timer())
-        logger.debug("User stopped speaking, starting preemptive timer")
-
-    async def _reset_state(self):
-        """Reset preemptive state for new interaction"""
-        self._preemptive_triggered = False
-        self._preemptive_playing = False
-
-    async def _preemptive_timer(self):
-        """Timer that triggers preemptive response after threshold"""
-        try:
-            await asyncio.sleep(self.threshold)
-            
-            # Only trigger if LLM hasn't started and bot isn't speaking
-            if not self._llm_responding and not self._bot_speaking and not self._preemptive_triggered:
-                await self._trigger_preemptive()
-                
-        except asyncio.CancelledError:
-            logger.debug("Preemptive timer cancelled")
-        except Exception as e:
-            logger.error(f"Error in preemptive timer: {e}")
-
-    async def _trigger_preemptive(self):
-        """Trigger the preemptive response"""
-        self._preemptive_triggered = True
-        
-        # Select appropriate phrase
-        intent = self._infer_intent(self._last_user_text)
-        phrases = self.filler_config.get(intent, self.filler_config["default"])
-        phrase = random.choice(phrases)
-        
-        logger.info(f"Triggering preemptive response: '{phrase}' (intent: {intent})")
-        
-        try:
-            # Push TextFrame downstream to TTS
-            text_frame = TextFrame(text=phrase)
-            await self.push_frame(text_frame, FrameDirection.DOWNSTREAM)
-            logger.info(f"Preemptive response generated: {text_frame.text}") 
-            
-        except Exception as e:
-            logger.error(f"Error triggering preemptive response: {e}")
-
-    async def _cancel_preemptive(self):
-        """Cancel any active preemptive task"""
-        if self._preemptive_task and not self._preemptive_task.done():
-            self._preemptive_task.cancel()
-            logger.debug("Preemptive task cancelled")
-
-    def _infer_intent(self, text: str) -> str:
-        """Simple intent detection based on keywords"""
+        logger.info(f"🚀 Enhanced Preemptive Processor initialized")
+        logger.info(f"   Threshold: {self.config.latency_threshold_ms}ms")
+        logger.info(f"   Max duration: {self.config.max_preemptive_duration_ms}ms")
+        logger.info(f"   Intent detection: {self.config.use_intent_detection}")
+    
+    def _default_intent_classifier(self, text: str) -> str:
+        """Enhanced intent classification with more sophisticated patterns"""
         if not text:
             return "default"
-            
-        text_lower = text.lower()
         
-        # Question detection
-        question_indicators = ["what", "how", "why", "when", "where", "who", "?"]
-        if any(indicator in text_lower for indicator in question_indicators):
+        text_lower = text.lower().strip()
+        
+        # Greeting patterns
+        greeting_patterns = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"]
+        if any(pattern in text_lower for pattern in greeting_patterns):
+            return "greeting"
+        
+        # Question patterns (enhanced)
+        question_indicators = [
+            "what", "how", "why", "when", "where", "who", "which", "whom",
+            "can you", "could you", "would you", "will you", "do you", "did you",
+            "is there", "are there", "does", "doesn't", "should", "shouldn't"
+        ]
+        if (text_lower.endswith("?") or 
+            any(text_lower.startswith(indicator) for indicator in question_indicators) or
+            any(f" {indicator} " in f" {text_lower} " for indicator in question_indicators)):
             return "question"
-            
-        # Calculation detection  
-        calc_indicators = ["calculate", "math", "number", "sum", "total", "+", "-", "*", "/"]
+        
+        # Request patterns (enhanced)
+        request_indicators = [
+            "please", "help me", "can you help", "i need", "i want", "i would like",
+            "could you please", "would you mind", "assist me", "support me"
+        ]
+        if any(indicator in text_lower for indicator in request_indicators):
+            return "request"
+        
+        # Search patterns
+        search_indicators = [
+            "find", "search", "look up", "tell me about", "information about",
+            "details on", "show me", "get me", "retrieve"
+        ]
+        if any(indicator in text_lower for indicator in search_indicators):
+            return "search"
+        
+        # Calculation patterns
+        calc_indicators = [
+            "calculate", "compute", "math", "add", "subtract", "multiply", "divide",
+            "sum", "total", "average", "percentage", "convert", "how much", "how many"
+        ]
         if any(indicator in text_lower for indicator in calc_indicators):
             return "calculation"
-            
+        
+        # Complex task patterns
+        complex_indicators = [
+            "analyze", "compare", "evaluate", "explain in detail", "breakdown",
+            "comprehensive", "thorough", "detailed analysis", "step by step"
+        ]
+        if (any(indicator in text_lower for indicator in complex_indicators) or
+            len(text.split()) > 20):  # Long requests are likely complex
+            return "complex"
+        
         return "default"
-
-    def get_debug_info(self) -> Dict:
-        """Get current state for debugging"""
+    
+    def _select_preemptive_phrase(self, intent: str, user_input: str = "") -> str:
+        """Select appropriate preemptive phrase with repetition avoidance"""
+        # Get phrases for the detected intent
+        if intent in self.config.intent_phrases:
+            candidate_phrases = self.config.intent_phrases[intent].copy()
+        else:
+            # Fallback to default intent, then global phrases
+            candidate_phrases = (
+                self.config.intent_phrases.get("default", []) + 
+                self.config.global_phrases
+            ).copy()
+        
+        if not candidate_phrases:
+            candidate_phrases = ["Just a moment..."]
+        
+        # Filter out phrases that are too long
+        candidate_phrases = [
+            phrase for phrase in candidate_phrases 
+            if len(phrase) <= self.config.max_phrase_length
+        ]
+        
+        # Avoid repetition if enabled
+        if self.config.avoid_repetition and self.recent_phrases:
+            available_phrases = [
+                phrase for phrase in candidate_phrases 
+                if phrase not in self.recent_phrases[-self.config.repetition_window:]
+            ]
+            if available_phrases:
+                candidate_phrases = available_phrases
+        
+        # Select phrase
+        selected_phrase = random.choice(candidate_phrases)
+        
+        # Update recent phrases for repetition avoidance
+        if self.config.avoid_repetition:
+            self.recent_phrases.append(selected_phrase)
+            if len(self.recent_phrases) > self.config.repetition_window * 2:
+                self.recent_phrases = self.recent_phrases[-self.config.repetition_window:]
+        
+        # Update metrics
+        self.metrics["phrase_usage"][selected_phrase] = (
+            self.metrics["phrase_usage"].get(selected_phrase, 0) + 1
+        )
+        
+        return selected_phrase
+    
+    async def _start_preemptive_session(self, user_input: str = ""):
+        """Start a new preemptive response session"""
+        if not self.config.enabled:
+            logger.debug("🚫 Preemptive responses disabled")
+            return
+        
+        if self.bot_speaking:
+            logger.debug("🚫 Bot currently speaking, skipping preemptive session")
+            return
+        
+        # Cancel any existing session
+        await self._cancel_current_session("new_session")
+        
+        # Detect intent
+        intent = "default"
+        if self.config.use_intent_detection and user_input:
+            intent = self.intent_classifier(user_input)
+        
+        # Create new session
+        self.current_session = PreemptiveSession(
+            state=PreemptiveState.WAITING,
+            start_time=time.time(),
+            user_input=user_input,
+            detected_intent=intent
+        )
+        
+        # Update metrics
+        self.metrics["sessions_started"] += 1
+        self.metrics["intent_distribution"][intent] = (
+            self.metrics["intent_distribution"].get(intent, 0) + 1
+        )
+        
+        # Start preemptive task
+        self.current_session.preemptive_task = asyncio.create_task(
+            self._preemptive_timer()
+        )
+        
+        logger.info(f"🚀 Started preemptive session")
+        logger.debug(f"   Intent: {intent}")
+        logger.debug(f"   Input: '{user_input[:50]}{'...' if len(user_input) > 50 else ''}'")
+    
+    async def _preemptive_timer(self):
+        """Timer that triggers preemptive response after threshold"""
+        session = self.current_session
+        if not session:
+            return
+        
+        try:
+            logger.debug(f"⏱️ Preemptive timer started ({self.config.latency_threshold_ms}ms)")
+            
+            # Wait for the configured threshold
+            await asyncio.sleep(self.config.latency_threshold_ms / 1000.0)
+            
+            # Check if we should still proceed
+            if (session.cancel_event.is_set() or 
+                session.actual_response_started or 
+                session.state != PreemptiveState.WAITING):
+                logger.debug("❌ Preemptive cancelled before trigger")
+                session.state = PreemptiveState.CANCELLED
+                self.metrics["preemptive_cancelled"] += 1
+                return
+            
+            # Trigger preemptive response
+            await self._trigger_preemptive_response(session)
+            
+        except asyncio.CancelledError:
+            logger.debug("⏹️ Preemptive timer cancelled")
+            session.state = PreemptiveState.CANCELLED
+            self.metrics["preemptive_cancelled"] += 1
+        except Exception as e:
+            logger.error(f"💥 Error in preemptive timer: {e}")
+            session.state = PreemptiveState.CANCELLED
+    
+    async def _trigger_preemptive_response(self, session: PreemptiveSession):
+        """Trigger the actual preemptive response"""
+        if not session or session.state != PreemptiveState.WAITING:
+            return
+        
+        # Select phrase
+        phrase = self._select_preemptive_phrase(
+            session.detected_intent, 
+            session.user_input
+        )
+        session.selected_phrase = phrase
+        session.state = PreemptiveState.PLAYING
+        
+        # Calculate and record latency
+        trigger_latency = (time.time() - session.start_time) * 1000
+        self.metrics["latency_samples"].append(trigger_latency)
+        if self.metrics["latency_samples"]:
+            self.metrics["avg_trigger_latency"] = (
+                sum(self.metrics["latency_samples"]) / len(self.metrics["latency_samples"])
+            )
+        
+        logger.info(f"🎯 Triggering preemptive response: '{phrase}'")
+        logger.debug(f"   Intent: {session.detected_intent}")
+        logger.debug(f"   Latency: {trigger_latency:.1f}ms")
+        
+        try:
+            # Create TextFrame for TTS
+            text_frame = TextFrame(text=phrase)
+            
+            # Mark as preemptive active
+            self.preemptive_active = True
+            self.metrics["preemptive_triggered"] += 1
+            
+            # Send to TTS
+            await self.push_frame(text_frame, FrameDirection.DOWNSTREAM)
+            
+            # Wait for completion or cancellation
+            try:
+                await asyncio.wait_for(
+                    session.cancel_event.wait(),
+                    timeout=self.config.max_preemptive_duration_ms / 1000.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning("⚠️ Preemptive response reached maximum duration")
+                await self._complete_preemptive_session("timeout")
+            
+        except Exception as e:
+            logger.error(f"💥 Error triggering preemptive response: {e}")
+            session.state = PreemptiveState.CANCELLED
+    
+    async def _cancel_current_session(self, reason: str = "unknown"):
+        """Cancel the current preemptive session"""
+        if not self.current_session:
+            return
+        
+        session = self.current_session
+        logger.debug(f"🛑 Cancelling preemptive session: {reason}")
+        
+        # Set cancel event
+        session.cancel_event.set()
+        
+        # Cancel task
+        if session.preemptive_task and not session.preemptive_task.done():
+            session.preemptive_task.cancel()
+            try:
+                await session.preemptive_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Send interruption if currently playing
+        if session.state == PreemptiveState.PLAYING and self.preemptive_active:
+            await self.push_frame(BotInterruptionFrame(), FrameDirection.DOWNSTREAM)
+            logger.debug("🔇 Sent interruption to stop preemptive TTS")
+        
+        # Update state
+        if session.state == PreemptiveState.PLAYING:
+            session.state = PreemptiveState.CANCELLED
+        
+        self.preemptive_active = False
+        self.current_session = None
+    
+    async def _complete_preemptive_session(self, reason: str = "completed"):
+        """Complete the current preemptive session successfully"""
+        if not self.current_session:
+            return
+        
+        session = self.current_session
+        logger.debug(f"✅ Completing preemptive session: {reason}")
+        
+        session.state = PreemptiveState.COMPLETED
+        session.cancel_event.set()
+        
+        self.metrics["preemptive_completed"] += 1
+        self.preemptive_active = False
+        self.current_session = None
+    
+    async def _handle_quick_response(self) -> bool:
+        """Check if response is quick enough to skip preemptive"""
+        if not self.config.skip_if_quick_response or not self.current_session:
+            return False
+        
+        elapsed_ms = (time.time() - self.current_session.start_time) * 1000
+        
+        if elapsed_ms < self.config.quick_response_threshold_ms:
+            logger.debug(f"⚡ Quick response detected ({elapsed_ms:.1f}ms)")
+            self.current_session.quick_response_detected = True
+            self.metrics["quick_responses_detected"] += 1
+            await self._cancel_current_session("quick_response")
+            return True
+        
+        return False
+    
+    # Frame Processing Methods
+    
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        """Main frame processing logic"""
+        
+        # Handle user input frames
+        if isinstance(frame, TranscriptionFrame) and direction == FrameDirection.UPSTREAM:
+            if frame.text and frame.text.strip():
+                logger.debug(f"📝 User transcription: '{frame.text}'")
+                # Start preemptive session for user input
+                if not self.user_speaking and not self.bot_speaking:
+                    await self._start_preemptive_session(frame.text)
+        
+        elif isinstance(frame, UserStoppedSpeakingFrame) and direction == FrameDirection.UPSTREAM:
+            logger.debug("🗣️ User stopped speaking")
+            self.user_speaking = False
+            # If no session started yet from transcription, start one now
+            if not self.current_session:
+                await self._start_preemptive_session()
+        
+        # Handle LLM processing frames
+        elif isinstance(frame, LLMMessagesFrame) and direction == FrameDirection.DOWNSTREAM:
+            logger.debug("🧠 LLM messages frame - processing started")
+            self.llm_processing = True
+            # If no preemptive session yet, start one
+            if not self.current_session:
+                await self._start_preemptive_session()
+        
+        elif isinstance(frame, LLMFullResponseStartFrame):
+            logger.info("✨ LLM response started")
+            self.llm_processing = True
+            
+            if self.current_session:
+                self.current_session.actual_response_started = True
+                
+                # Check for quick response
+                if not await self._handle_quick_response():
+                    # Cancel preemptive as actual response is ready
+                    await self._cancel_current_session("llm_response_ready")
+        
+        elif isinstance(frame, LLMFullResponseEndFrame):
+            logger.debug("🏁 LLM response ended")
+            self.llm_processing = False
+            if self.current_session:
+                await self._complete_preemptive_session("llm_response_ended")
+        
+        # Handle bot speaking state
+        elif isinstance(frame, BotStartedSpeakingFrame):
+            if self.preemptive_active:
+                logger.info("🎤 Preemptive TTS started")
+            else:
+                logger.info("🎤 Bot started speaking (actual response)")
+                self.bot_speaking = True
+                await self._cancel_current_session("bot_started_speaking")
+        
+        elif isinstance(frame, BotStoppedSpeakingFrame):
+            if self.preemptive_active:
+                logger.info("🎤 Preemptive TTS finished")
+                await self._complete_preemptive_session("preemptive_tts_finished")
+            else:
+                logger.info("🎤 Bot stopped speaking")
+                self.bot_speaking = False
+        
+        # Handle TTS frames for finer control
+        elif isinstance(frame, TTSStartedFrame):
+            if self.preemptive_active:
+                logger.debug("🎵 Preemptive TTS audio started")
+        
+        elif isinstance(frame, TTSStoppedFrame):
+            if self.preemptive_active:
+                logger.debug("🎵 Preemptive TTS audio stopped")
+        
+        # Handle interruption and cancellation frames
+        elif isinstance(frame, (BotInterruptionFrame, CancelFrame)):
+            logger.debug("🚫 Interruption/cancel frame received")
+            await self._cancel_current_session("interruption")
+        
+        elif isinstance(frame, EndFrame):
+            logger.debug("🛑 End frame received")
+            await self._cancel_current_session("end_frame")
+        
+        # Always process and forward the frame
+        await super().process_frame(frame, direction)
+        await self.push_frame(frame, direction)
+    
+    # Utility and Management Methods
+    
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get comprehensive processor metrics"""
         return {
-            "threshold_ms": self.threshold * 1000,
-            "bot_speaking": self._bot_speaking,
-            "llm_responding": self._llm_responding,
-            "last_user_text": self._last_user_text,
-            "preemptive_triggered": self._preemptive_triggered,
-            "preemptive_playing": self._preemptive_playing,
-            "has_active_task": self._preemptive_task is not None and not self._preemptive_task.done(),
-            "user_stopped_time": self._user_stopped_time,
+            **self.metrics,
+            "current_session_active": self.current_session is not None,
+            "current_state": self.current_session.state.value if self.current_session else "idle",
+            "preemptive_active": self.preemptive_active,
+            "bot_speaking": self.bot_speaking,
+            "llm_processing": self.llm_processing,
+            "config": {
+                "enabled": self.config.enabled,
+                "threshold_ms": self.config.latency_threshold_ms,
+                "max_duration_ms": self.config.max_preemptive_duration_ms,
+                "use_intent_detection": self.config.use_intent_detection,
+                "avoid_repetition": self.config.avoid_repetition,
+            }
         }
+    
+    def reset_metrics(self):
+        """Reset all metrics"""
+        self.metrics = {
+            "sessions_started": 0,
+            "preemptive_triggered": 0,
+            "preemptive_cancelled": 0,
+            "preemptive_completed": 0,
+            "quick_responses_detected": 0,
+            "avg_trigger_latency": 0.0,
+            "latency_samples": [],
+            "intent_distribution": {},
+            "phrase_usage": {},
+        }
+        self.recent_phrases = []
+        logger.info("📊 Metrics reset")
+    
+    def update_config(self, new_config: PreemptiveConfig):
+        """Update processor configuration"""
+        self.config = new_config
+        logger.info("⚙️ Configuration updated")
+        logger.info(f"   New threshold: {self.config.latency_threshold_ms}ms")
+    
+    def add_phrases(self, intent: str, phrases: List[str]):
+        """Add new phrases for a specific intent"""
+        if intent not in self.config.intent_phrases:
+            self.config.intent_phrases[intent] = []
+        
+        self.config.intent_phrases[intent].extend(phrases)
+        logger.info(f"📝 Added {len(phrases)} phrases for intent '{intent}'")
+    
+    def get_debug_info(self) -> Dict[str, Any]:
+        """Get detailed debug information"""
+        session_info = {}
+        if self.current_session:
+            session_info = {
+                "state": self.current_session.state.value,
+                "start_time": self.current_session.start_time,
+                "user_input": self.current_session.user_input[:100],
+                "detected_intent": self.current_session.detected_intent,
+                "selected_phrase": self.current_session.selected_phrase,
+                "actual_response_started": self.current_session.actual_response_started,
+                "quick_response_detected": self.current_session.quick_response_detected,
+            }
+        
+        return {
+            "processor_state": {
+                "user_speaking": self.user_speaking,
+                "bot_speaking": self.bot_speaking,
+                "llm_processing": self.llm_processing,
+                "preemptive_active": self.preemptive_active,
+            },
+            "current_session": session_info,
+            "recent_phrases": self.recent_phrases[-5:],  # Last 5 phrases
+            "metrics_summary": {
+                "total_sessions": self.metrics["sessions_started"],
+                "success_rate": (
+                    self.metrics["preemptive_completed"] / 
+                    max(1, self.metrics["preemptive_triggered"])
+                ) * 100,
+                "avg_latency": self.metrics["avg_trigger_latency"],
+                "top_intents": dict(
+                    sorted(self.metrics["intent_distribution"].items(), 
+                           key=lambda x: x[1], reverse=True)[:5]
+                ),
+            }
+        }
+    
+    async def cleanup(self):
+        """Clean up resources"""
+        await self._cancel_current_session("cleanup")
+        logger.info("🧹 Enhanced Preemptive Processor cleaned up")

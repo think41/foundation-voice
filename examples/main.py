@@ -235,7 +235,7 @@ async def websocket_endpoint(websocket: WebSocket):
         else:
             logger.info("Processing standard WebSocket connection")
             query_params = dict(websocket.query_params)
-            agent_name = query_params.get("agent_name", "agent1")
+            agent_name = query_params.get("agent_name", "agent3")
             session_id = query_params.get("session_id")
             # agent_name = websocket.query_params.get("agent_name", "agent1")
             # session_id = websocket.query_params.get("session_id")

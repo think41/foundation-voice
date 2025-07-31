@@ -4,11 +4,12 @@ import asyncio  # Add asyncio import for sleep delay
 
 from loguru import logger
 from fastapi import WebSocket
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, List
 
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.utils.tracing.setup import setup_tracing
 from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.pipeline.parallel_pipeline import ParallelPipeline
 from pipecat.processors.transcript_processor import TranscriptProcessor
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.processors.frameworks.rtvi import (
@@ -20,13 +21,6 @@ from pipecat.processors.frameworks.rtvi import (
 from pipecat.observers.loggers.user_bot_latency_log_observer import (
     UserBotLatencyLogObserver,
 )
-from pipecat.frames.frames import (
-    LLMFullResponseStartFrame,
-    LLMMessagesFrame,
-)
-from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-from pipecat.frames.frames import Frame, LLMMessagesFrame, TextFrame
-
 from foundation_voice.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
 from foundation_voice.utils.function_adapter import FunctionFactory
 from foundation_voice.utils.transport.transport import TransportFactory, TransportType
@@ -42,10 +36,9 @@ from foundation_voice.utils.observers.func_observer import FunctionObserver
 from foundation_voice.utils.observers.call_summary_metrics_observer import (
     CallSummaryMetricsObserver,
 )
-from foundation_voice.utils.preemptive_processor.enhanced_preemptive_processor import (
+from foundation_voice.utils.preemptive_processor.preemptive_processor import (
     PreemptiveSpeechProcessor
 )
-from foundation_voice.utils.idle_processor.llm_idle_processor import LLMIidleProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
 # Configure logging - Change DEBUG to INFO or WARNING to reduce logs
@@ -141,7 +134,7 @@ async def create_agent_pipeline(
     ).built_tools
 
     try:
-        logger.info("Creating LLM service from configuration")  # Changed from debug to info
+        logger.debug("Creating LLM service from configuration")
         args = {
             "rtvi": rtvi,
             "contexts": contexts,
@@ -151,32 +144,20 @@ async def create_agent_pipeline(
             agent_config,
             data=args,
         )
-        original_process_frame = llm.process_frame
-        
-        async def delayed_llm_process_frame(frame, direction):
-            # Add 3-second delay before processing LLM requests
-            if isinstance(frame, LLMMessagesFrame) and direction == FrameDirection.DOWNSTREAM:
-                logger.info("🕐 Adding 10-second delay to LLM response for preemptive testing...")
-                await asyncio.sleep(10.0)  # 10-second artificial delay
-
-            return await original_process_frame(frame, direction)
-        
-        # Replace the process_frame method
-        llm.process_frame = delayed_llm_process_frame
                 
     except Exception as e:
         logger.error(f"Failed to create LLM service: {e}")
         raise
 
     try:
-        logger.info("Creating STT service from configuration")  # Changed from debug to info
+        logger.debug("Creating STT service from configuration")
         stt = create_stt_service(agent_config.get("stt", {}))
     except Exception as e:
         logger.error(f"Failed to create STT service: {e}")
         raise
 
     try:
-        logger.info("Creating TTS service from configuration")  # Changed from debug to info
+        logger.debug("Creating TTS service from configuration")
         tts = create_tts_service(agent_config.get("tts", {}))
     except Exception as e:
         logger.error(f"Failed to create TTS service: {e}")
@@ -184,7 +165,7 @@ async def create_agent_pipeline(
 
     context = None
     try:
-        logger.info("Creating context")  # Changed from debug to info
+        logger.debug("Creating context")
         context = create_llm_context(
             agent_config,
             contexts.get(
@@ -198,7 +179,7 @@ async def create_agent_pipeline(
         if kwargs.get("sip_params"):
             if kwargs.get("sip_params").get("call_sid"):
                 call_sid = kwargs.get("sip_params").get("call_sid")
-                logger.info(f"call_sid: {call_sid}")  # Changed from debug to info
+                logger.debug(f"call_sid: {call_sid}")  # Changed from debug to info
                 context_aggregator.assistant().add_messages(
                     [
                         {
@@ -238,89 +219,17 @@ async def create_agent_pipeline(
 
     idle_processor = UserIdleProcessor(tries=2, timeout=10)
 
-    # preemptive_config = PreemptiveConfig(
-    #     enabled=config.get("preemptive", {}).get("enabled", True),
-    #     latency_threshold_ms=config.get("preemptive", {}).get("latency_threshold_ms", 0),  # Shorter for testing
-    #     max_preemptive_duration_ms=config.get("preemptive", {}).get("max_preemptive_duration_ms", 4000),  # Longer for testing
-    #     global_phrases=config.get("preemptive", {}).get("global_phrases", [
-    #         "🔍 Let me check that for you...",
-    #         "⏳ Just a moment please...",
-    #         "🤔 I'm thinking about that...",
-    #         "🧠 Processing your request...",
-    #         "⚡ Working on that...",
-    #     ]),
-    #     intent_phrases=config.get("preemptive", {}).get("intent_phrases", {
-    #         "question": [
-    #             "❓ That's a great question...",
-    #             "🤔 Let me think about that...",
-    #             "🧠 I need to consider that...",
-    #         ],
-    #         "request": [
-    #             "✅ I'll help you with that...",
-    #             "🔧 Working on that for you...",
-    #             "⚡ Taking care of that...",
-    #         ],
-    #         "search": [
-    #             "🔍 Let me search for that...",
-    #             "📊 Looking that up...",
-    #             "🔎 Searching for information...",
-    #         ],
-    #         "calculation": [
-    #             "🧮 Let me calculate that...",
-    #             "📊 Running the numbers...",
-    #             "⚡ Computing that for you...",
-    #         ],
-    #     }),
-    #     skip_if_quick_response=False,  # Disable for testing so preemptive always triggers
-    #     quick_response_threshold_ms=config.get("preemptive", {}).get("quick_response_threshold_ms", 50),
-    # )
-
-    # preemptive_processor = EnhancedPreemptiveProcessor(
-    #     config=preemptive_config,
-    #     tts_processor=tts,  # Pass TTS processor for integration
-    # )
-
     transcript_handler = TranscriptHandler(
         transport=transport,
         session_id=session_id,
         transport_type=transport_type.value,  # Use enum value for backward compatibility
         connection=connection,
     )
-    # preemptive_processor = PreemptiveResponseProcessor(
-    #     tts_service=tts,
-    #     delay_threshold_ms=config.get("preemptive", {}).get("delay_threshold_ms", 500),
-    #     preemptive_phrases=config.get("preemptive", {}).get("phrases", [
-    #         "Let me check that for you...",
-    #         "Just a moment please...",
-    #         "I'm thinking about that...",
-    #         "Processing your request...",
-    #         "Working on that...",
-    #     ])
-    # )
-
-    preemptive_config = {
-        "default": [
-            "Let me think about that...",
-            "Just a moment...", 
-            "Give me a second...",
-            "I'm working on that...",
-        ],
-        "question": [
-            "That's a great question, let me look that up...",
-            "Interesting question, let me think...",
-            "Let me find that information for you...",
-        ],
-        "calculation": [
-            "Let me calculate that for you...",
-            "Give me a moment to work this out...",
-            "Let me crunch those numbers...",
-        ]
-    }
-        
-    preemptive = PreemptiveSpeechProcessor(
+    #Initializing Preemptive Block
+    preemptive_processor = PreemptiveSpeechProcessor(
         tts=tts, 
-        threshold_ms=300,  # 300ms threshold
-        filler_config=preemptive_config
+        threshold_ms=agent_config.get("preemptive_config", {}).get("threshold_ms", 300),
+        filler_config=agent_config.get("preemptive_config", {}).get("response_config", {})
     )
     logger.info("Creating pipeline with all components")  # Changed from debug to info
     pipeline = Pipeline(
@@ -329,11 +238,11 @@ async def create_agent_pipeline(
             stt,
             idle_processor,
             transcript.user(),
-            #preemptive_processor,
             context_aggregator.user(),
-            #LLMIidleProcessor(tries=2, timeout=0.2),
-            preemptive,
-            llm,
+            ParallelPipeline(
+                [preemptive_processor],
+                [llm]
+            ),
             tts,
             rtvi,
             transcript.assistant(),
@@ -341,8 +250,6 @@ async def create_agent_pipeline(
             context_aggregator.assistant(),
         ]
     )
-
-    # Register event handlers for all transport types
 
     async def append_to_messages_func(processor, service, arguments):
         messages = arguments.get("messages")
@@ -373,16 +280,19 @@ async def create_agent_pipeline(
 
     # Configure sample rates based on transport type
     # Twilio SIP requires 8kHz, other transports can use higher rates
+
     # if transport_type == TransportType.SIP:
     #     audio_in_sample_rate = 8000   # Twilio requires 8kHz
     #     audio_out_sample_rate = 8000  # Twilio requires 8kHz
     #     logger.debug("Using Twilio SIP sample rates: 8kHz in/out")
+
     # else:
     #     audio_in_sample_rate = 16000   # Higher quality for WebRTC/WebSocket
     #     audio_out_sample_rate = 24000  # Higher quality for WebRTC/WebSocket
     #     logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
 
     # Create pipeline task with transport-appropriate sample rates
+    
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
@@ -403,12 +313,6 @@ async def create_agent_pipeline(
         ),
         observers=task_observers,
     )
-
-    @rtvi.event_handler("bot_stopped_speaking")
-    async def on_bot_stopped_speaking(rtvi):
-        logger.info("🛑 Received 'bot_stopped_speaking' event. Cancelling pipeline task.")
-        await task.cancel()
-
 
     metadata_without_transcript = {}
     if metadata:
