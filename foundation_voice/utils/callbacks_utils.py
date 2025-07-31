@@ -20,7 +20,7 @@ def save_conversation_data(data):
 
     try:
         logger.info("Starting to save conversation data")
-        sessionid = data.get("sessionid") or data.get("metrics", {}).get("sessionid")
+        sessionid = data.get("session_id") or data.get("metrics", {}).get("session_id")
         if not sessionid:
             from datetime import datetime
 
