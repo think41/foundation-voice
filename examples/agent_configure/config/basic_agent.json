@@ -75,7 +75,7 @@
             "Let me crunch those numbers..."
           ]
         },
-        "threshold_ms": 4000
+        "threshold_ms": 300
       }
     },
     "pipeline": {
