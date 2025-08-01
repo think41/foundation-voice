@@ -217,10 +217,7 @@ class TransportFactory:
             if not stream_sid or not call_sid:
                 raise ValueError(
                     "stream_sid and call_sid are required for SIP transport"
-                )
-                raise ValueError(
-                    "stream_sid and call_sid are required for SIP transport"
-                )
+                )                
 
             serializer = TwilioFrameSerializer(
                 stream_sid=stream_sid,
