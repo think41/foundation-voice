@@ -14,6 +14,7 @@ from foundation_voice.utils.transport.connection_manager import (
 from foundation_voice.utils.helpers.daily_helpers import create_room
 
 
+
 class CaiSDK:
     def __init__(
         self, agent_func: Optional[Callable] = None, agent_config: Optional[dict] = None
