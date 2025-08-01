@@ -160,9 +160,7 @@ class CaiSDK:
                 if not room_url:
                     room_url, _ = create_room()
 
-                url, token = await connection_manager.handle_daily_connection(
-                    room_url
-                )
+                url, token = await connection_manager.handle_daily_connection(room_url)
                 kwargs.update(
                     {
                         "room_url": url,
