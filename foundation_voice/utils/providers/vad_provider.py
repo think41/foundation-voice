@@ -21,7 +21,7 @@ def create_vad_analyzer(vad_config: Dict[str, Any]) -> Optional[Any]:
     """
     vad_provider = vad_config.get("provider", "silero")
     params_config = vad_config.get("params", {})
-
+    
     vad_params = VADParams(**params_config) if params_config else VADParams()
 
     # Dictionary mapping providers to their analyzer creation functions
