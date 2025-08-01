@@ -150,14 +150,15 @@ async def create_agent_pipeline(
     try:
         logger.debug("Creating context")
         context = create_llm_context(
-            agent_config, 
-            contexts.get(agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}),
+            agent_config,
+            contexts.get(
+                agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}
+            ),
             tools,
-            metadata
+            metadata,
         )
 
         context_aggregator = llm.create_context_aggregator(context)
-
 
         if kwargs.get("sip_params"):
             if kwargs.get("sip_params").get("call_sid"):
@@ -185,9 +186,15 @@ async def create_agent_pipeline(
             if isinstance(previous_messages, list):
                 # Add previous messages to the context
                 for message in previous_messages:
-                    if isinstance(message, dict) and "role" in message and "content" in message:
+                    if (
+                        isinstance(message, dict)
+                        and "role" in message
+                        and "content" in message
+                    ):
                         context_aggregator.user().add_messages([message])
-                logger.info(f"Restored {len(previous_messages)} messages from previous session")
+                logger.info(
+                    f"Restored {len(previous_messages)} messages from previous session"
+                )
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise
@@ -272,9 +279,9 @@ async def create_agent_pipeline(
         "enable_tracing": config.get("pipeline", {}).get("enable_tracing", False),
         "enable_turn_tracking": True,
         "conversation_id": "customer-123",
-    }   
+    }
 
-# Only add sample rates if they exist in config
+    # Only add sample rates if they exist in config
     pipeline_config = config.get("pipeline", {})
     if "sample_rate_in" in pipeline_config:
         pipeline_params["audio_in_sample_rate"] = pipeline_config["sample_rate_in"]
@@ -396,11 +403,7 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.CLIENT_CONNECTED.value)
         async def on_client_connected(transport, client):
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
-            data = {
-                "client": client,
-                "metadata": metadata,
-                "session_id": session_id
-            }
+            data = {"client": client, "metadata": metadata, "session_id": session_id}
             await callback(data)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
 
@@ -412,11 +415,10 @@ async def create_agent_pipeline(
             await task.cancel()
 
     if transport_type in [TransportType.LIVEKIT, TransportType.LIVEKIT_SIP]:
+
         @transport.event_handler("on_participant_connected")
         async def on_participant_connected(transport, participant):
             logger.info(f"Participant connected, {participant}")
-
-
 
         @transport.event_handler("on_first_participant_joined")
         async def on_first_participant_joined(transport, participant):
@@ -425,7 +427,7 @@ async def create_agent_pipeline(
             data = {
                 "participant": participant,
                 "metadata": metadata,
-                "session_id": session_id
+                "session_id": session_id,
             }
             await callback(data)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
@@ -436,13 +438,17 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()
             # Get metrics from the observer
-            metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
+            metrics = (
+                call_metrics_observer.get_metrics_summary()
+                if call_metrics_observer
+                else None
+            )
 
             data = {
                 "transcript": end_transcript,
                 "metrics": metrics,
                 "metadata": metadata,
-                "session_id": session_id
+                "session_id": session_id,
             }
 
             await callback(data)
@@ -457,6 +463,7 @@ async def create_agent_pipeline(
                 # Always ensure the task is cancelled
                 transport.cleanup()
                 from .cleanup import cleanup
+
                 await cleanup(transport_type, connection, room_url, session_id, task)
 
         @transport.event_handler("on_disconnected")
@@ -465,13 +472,17 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()
             # Get metrics from the observer
-            metrics = call_metrics_observer.get_metrics_summary() if call_metrics_observer else None
+            metrics = (
+                call_metrics_observer.get_metrics_summary()
+                if call_metrics_observer
+                else None
+            )
 
             data = {
                 "transcript": end_transcript,
                 "metrics": metrics,
                 "metadata": metadata,
-                "session_id": session_id
+                "session_id": session_id,
             }
 
             await callback(data)
@@ -485,8 +496,7 @@ async def create_agent_pipeline(
             finally:
                 # Always ensure the task is cancelled
                 from .cleanup import cleanup
+
                 await cleanup(transport_type, connection, room_url, session_id, task)
-
-
 
     return task, transport

@@ -1,6 +1,7 @@
 import os
 import time
 import random
+import asyncio
 
 from livekit import api
 from livekit.api import (
@@ -8,16 +9,19 @@ from livekit.api import (
     CreateSIPOutboundTrunkRequest,
     CreateSIPDispatchRuleRequest,
     CreateSIPParticipantRequest,
-    ListSIPInboundTrunkRequest, 
+    ListSIPInboundTrunkRequest,
     ListSIPOutboundTrunkRequest,
     ListSIPDispatchRuleRequest,
     SIPDispatchRule,
-    SIPInboundTrunkInfo, 
+    SIPInboundTrunkInfo,
     SIPOutboundTrunkInfo,
     SIPDispatchRuleIndividual,
     DeleteRoomRequest,
     DeleteSIPTrunkRequest,
     DeleteSIPDispatchRuleRequest,
+    ListRoomsRequest,
+    ListParticipantsRequest,
+    RoomParticipantIdentity,
 )
 from google.protobuf.json_format import MessageToDict
 
@@ -25,6 +29,7 @@ from loguru import logger
 from typing import Optional, override
 
 from foundation_voice.custom_plugins.services.sip.base_service import SIPService, Stream
+
 
 class LiveKitSIPService(SIPService):
     def __init__(self):
@@ -36,23 +41,17 @@ class LiveKitSIPService(SIPService):
             api_key=os.getenv("LIVEKIT_API_KEY"),
             api_secret=os.getenv("LIVEKIT_API_SECRET"),
             url=os.getenv("LIVEKIT_API_URL"),
-        )   
+        )
 
-    async def create_trunk(
-        self, 
-        stream: Stream,
-        name: str,
-        **kwargs
-    ):
+    async def create_trunk(self, stream: Stream, name: str, **kwargs):
         trunk = None
-        try: 
-            
+        try:
             if stream == Stream.INBOUND:
                 trunk_info = SIPInboundTrunkInfo(
                     name=name,
                     numbers=kwargs.get("numbers"),
                 )
-            
+
                 request = CreateSIPInboundTrunkRequest(
                     trunk=trunk_info,
                 )
@@ -63,8 +62,12 @@ class LiveKitSIPService(SIPService):
 
                 # Check if 'individual_room_rule' already exists
                 existing_rule = next(
-                    (item for item in rules.get("items", []) if item.get("name") == "individual_room_rule"),
-                    None
+                    (
+                        item
+                        for item in rules.get("items", [])
+                        if item.get("name") == "individual_room_rule"
+                    ),
+                    None,
                 )
 
                 if existing_rule:
@@ -74,7 +77,7 @@ class LiveKitSIPService(SIPService):
 
                 trunk = {
                     "trunk": MessageToDict(trunk, preserving_proto_field_name=True),
-                    "rule": rule
+                    "rule": rule,
                 }
 
             elif stream == Stream.OUTBOUND:
@@ -101,22 +104,20 @@ class LiveKitSIPService(SIPService):
 
         except Exception as err:
             logger.error(f"Error creating trunk: {err}")
-            raise err       
-
+            raise err
 
     @override
-    async def update_trunk(
-        self, 
-        stream: Stream,
-        trunk_id: str, 
-        **fields
-    ):
-        try: 
+    async def update_trunk(self, stream: Stream, trunk_id: str, **fields):
+        try:
             if stream == Stream.INBOUND:
-                trunk = await self.lkapi.sip.update_sip_inbound_trunk_fields(trunk_id=trunk_id, **fields)
+                trunk = await self.lkapi.sip.update_sip_inbound_trunk_fields(
+                    trunk_id=trunk_id, **fields
+                )
 
             elif stream == Stream.OUTBOUND:
-                trunk = await self.lkapi.sip.update_sip_outbound_trunk_fields(trunk_id=trunk_id, **fields)
+                trunk = await self.lkapi.sip.update_sip_outbound_trunk_fields(
+                    trunk_id=trunk_id, **fields
+                )
 
             return MessageToDict(trunk, preserving_proto_field_name=True)
 
@@ -124,10 +125,9 @@ class LiveKitSIPService(SIPService):
             logger.error(f"Error updating trunk: {err}")
             raise err
 
-    
     @override
     async def delete_trunk(self, trunk_id: str):
-        try: 
+        try:
             request = DeleteSIPTrunkRequest(sip_trunk_id=trunk_id)
             await self.lkapi.sip.delete_sip_trunk(request)
             return {"message": "Trunk deleted"}
@@ -135,7 +135,6 @@ class LiveKitSIPService(SIPService):
         except Exception as err:
             logger.error(f"Error deleting trunk: {err}")
             raise err
-
 
     @override
     async def list_trunks(self, stream: Stream):
@@ -154,19 +153,15 @@ class LiveKitSIPService(SIPService):
             logger.error(f"Error listing trunks: {err}")
             raise
 
-
-    async def create_rule(
-        self,
-        **kwargs
-    ):
-        try: 
+    async def create_rule(self, **kwargs):
+        try:
             req = CreateSIPDispatchRuleRequest(
                 name=kwargs.get("name", "individual_room_rule"),
                 rule=SIPDispatchRule(
                     dispatch_rule_individual=SIPDispatchRuleIndividual(
                         room_prefix=kwargs.get("room_prefix", "call-"),
                     )
-                )
+                ),
             )
             rule = await self.lkapi.sip.create_sip_dispatch_rule(req)
             return MessageToDict(rule, preserving_proto_field_name=True)
@@ -175,9 +170,8 @@ class LiveKitSIPService(SIPService):
             logger.error(f"Error creating rule: {err}")
             raise
 
-    
     async def delete_rule(self, rule_id: str):
-        try: 
+        try:
             req = DeleteSIPDispatchRuleRequest(sip_dispatch_rule_id=rule_id)
             await self.lkapi.sip.delete_sip_dispatch_rule(req)
             return {"message": "Rule deleted"}
@@ -186,9 +180,8 @@ class LiveKitSIPService(SIPService):
             logger.error(f"Error deleting rule: {err}")
             raise
 
-    
     async def list_rules(self):
-        try: 
+        try:
             req = ListSIPDispatchRuleRequest()
             rules = await self.lkapi.sip.list_sip_dispatch_rule(req)
             return MessageToDict(rules, preserving_proto_field_name=True)
@@ -197,7 +190,6 @@ class LiveKitSIPService(SIPService):
             logger.error(f"Error listing rules: {err}")
             raise
 
-    
     async def create_dispatch(
         self,
         trunk_id: str,
@@ -208,9 +200,10 @@ class LiveKitSIPService(SIPService):
         krisp_enabled: Optional[bool] = False,
         wait_until_answered: Optional[bool] = True,
     ):
-        try: 
-            
-            logger.info(f"Creating dispatch for trunk_id: {trunk_id}, phone_number: {phone_number}, room_name: {room_name}")
+        try:
+            logger.info(
+                f"Creating dispatch for trunk_id: {trunk_id}, phone_number: {phone_number}, room_name: {room_name}"
+            )
 
             await self.lkapi.sip.create_sip_participant(
                 CreateSIPParticipantRequest(
@@ -220,14 +213,13 @@ class LiveKitSIPService(SIPService):
                     participant_identity=participant_identity,
                     participant_name=participant_name,
                     krisp_enabled=krisp_enabled,
-                    wait_until_answered=wait_until_answered
+                    wait_until_answered=wait_until_answered,
                 )
             )
             return {"message": "Call dispatched"}
-        
+
         except Exception as err:
             raise err
-            
 
     # Transfer call service
     async def transfer_call(
@@ -250,7 +242,7 @@ class LiveKitSIPService(SIPService):
                 participant_identity=participant_identity,
                 participant_name=participant_name,
                 krisp_enabled=krisp_enabled,
-                wait_until_answered=True
+                wait_until_answered=True,
             )
 
             # Step 2: Poll until participant joins
@@ -260,35 +252,43 @@ class LiveKitSIPService(SIPService):
                 room_data = await self.get_room_data(room_name)
                 participants = room_data.get("participants", {}).get("participants", [])
                 for participant in participants:
-                    if participant.get("identity") == participant_identity and participant.get("state") == "ACTIVE":
-                        logger.info(f"Participant {participant_identity} has joined the room.")
+                    if (
+                        participant.get("identity") == participant_identity
+                        and participant.get("state") == "ACTIVE"
+                    ):
+                        logger.info(
+                            f"Participant {participant_identity} has joined the room."
+                        )
                         return {"message": "Participant joined"}
 
                 await asyncio.sleep(2)  # small delay between polls
 
-            raise TimeoutError(f"Participant {participant_identity} did not join within {wait_timeout} seconds.")
+            raise TimeoutError(
+                f"Participant {participant_identity} did not join within {wait_timeout} seconds."
+            )
 
         except Exception as err:
             logger.error(f"Error transferring call: {err}")
             raise err
 
     async def get_room_data(self, room_name: str):
-        try: 
+        try:
             req = ListRoomsRequest(names=[room_name])
             rooms = await self.lkapi.room.list_rooms(req)
 
-            req = ListParticipantsRequest(room=room_name) 
+            req = ListParticipantsRequest(room=room_name)
             participants = await self.lkapi.room.list_participants(req)
 
             return {
                 "rooms": MessageToDict(rooms, preserving_proto_field_name=True),
-                "participants": MessageToDict(participants, preserving_proto_field_name=True)
+                "participants": MessageToDict(
+                    participants, preserving_proto_field_name=True
+                ),
             }
-        
+
         except Exception as err:
             logger.error(f"Error getting room data: {err}")
             raise err
-            
 
     async def remove_participant(self, room_name: str, identity: str):
         try:
@@ -300,10 +300,8 @@ class LiveKitSIPService(SIPService):
             raise err
 
     async def leave_room(self, room_name: str):
-        try: 
-            await self.lkapi.room.delete_room(
-                DeleteRoomRequest(room=room_name)
-            )
+        try:
+            await self.lkapi.room.delete_room(DeleteRoomRequest(room=room_name))
             return {"message": "Room left"}
         except Exception as err:
             logger.error(f"Error leaving room: {err}")

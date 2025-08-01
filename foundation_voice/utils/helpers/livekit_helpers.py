@@ -5,7 +5,9 @@ from livekit import api
 from loguru import logger
 
 
-def generate_token(room_name: str, participant_name: str, api_key: str, api_secret: str) -> str:
+def generate_token(
+    room_name: str, participant_name: str, api_key: str, api_secret: str
+) -> str:
     token = api.AccessToken(api_key, api_secret)
     token.with_identity(participant_name).with_name(participant_name).with_grants(
         api.VideoGrants(
@@ -15,19 +17,13 @@ def generate_token(room_name: str, participant_name: str, api_key: str, api_secr
     )
     return token.to_jwt()
 
+
 def generate_token_with_agent(
-    room_name: str, 
-    participant_name: str, 
-    api_key: str, 
-    api_secret: str
+    room_name: str, participant_name: str, api_key: str, api_secret: str
 ) -> str:
     token = api.AccessToken(api_key, api_secret)
     token.with_identity(participant_name).with_name(participant_name).with_grants(
-        api.VideoGrants(
-            room_join=True,
-            room=room_name,
-            agent=True
-        )
+        api.VideoGrants(room_join=True, room=room_name, agent=True)
     )
     return token.to_jwt()
 
@@ -60,16 +56,16 @@ def configure_livekit() -> None:
 
     token = generate_token_with_agent(
         room_name=room_name,
-        participant_name="agent", 
+        participant_name="agent",
         api_key=api_key,
-        api_secret=api_secret
+        api_secret=api_secret,
     )
 
     user_token = generate_token(
         room_name=room_name,
-        participant_name="user", 
+        participant_name="user",
         api_key=api_key,
-        api_secret=api_secret
+        api_secret=api_secret,
     )
 
     logger.info(f"User token: {user_token}")
@@ -81,9 +77,9 @@ def configure_livekit_sip(room_name: str) -> None:
     room_name, url, api_key, api_secret = get_token(room_name)
     token = generate_token_with_agent(
         room_name=room_name,
-        participant_name="agent",  
+        participant_name="agent",
         api_key=api_key,
-        api_secret=api_secret
+        api_secret=api_secret,
     )
 
     return url, room_name, token
