@@ -9,6 +9,7 @@ import os
 from foundation_voice.utils.api_utils import _raise_missing_api_key
 from foundation_voice.utils.provider_utils import import_provider_service
 
+
 # Imports for type hinting, actual service imports are in helper functions
 from pipecat.services.llm_service import LLMService
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
@@ -21,12 +22,15 @@ DEFAULT_PROMPT = "You are a helpful LLM in a WebRTC call. Your goal is to demons
 DEFAULT_INITIAL_GREETING = "Hello. How can I help you today?"
 
 
+
 def _create_openai_llm_service(llm_config: Dict[str, Any]) -> LLMService:
     """Create an OpenAI LLM service."""
     OpenAILLMService = import_provider_service(
         "pipecat.services.openai.llm", "OpenAILLMService", "openai"
     )
     return OpenAILLMService(
+        api_key=os.getenv("OPENAI_API_KEY")
+        or _raise_missing_api_key("OpenAI", "OPENAI_API_KEY"),
         api_key=os.getenv("OPENAI_API_KEY")
         or _raise_missing_api_key("OpenAI", "OPENAI_API_KEY"),
         model=llm_config.get("model", "gpt-4o-mini"),
@@ -36,8 +40,15 @@ def _create_openai_llm_service(llm_config: Dict[str, Any]) -> LLMService:
 def _create_openai_agent_plugin_service(
     llm_config: Dict[str, Any], data: Dict[str, Any]
 ) -> LLMService:
+
+def _create_openai_agent_plugin_service(
+    llm_config: Dict[str, Any], data: Dict[str, Any]
+) -> LLMService:
     """Create an OpenAI Agent Plugin service."""
     OpenAIAgentPlugin = import_provider_service(
+        "foundation_voice.custom_plugins.services.openai_agents.llm",
+        "OpenAIAgentPlugin",
+        "openai_agents",
         "foundation_voice.custom_plugins.services.openai_agents.llm",
         "OpenAIAgentPlugin",
         "openai_agents",
@@ -47,9 +58,14 @@ def _create_openai_agent_plugin_service(
         or _raise_missing_api_key(
             "OpenAI", "OPENAI_API_KEY"
         ),  # Assuming agent plugin uses OPENAI_API_KEY
+        api_key=os.getenv("OPENAI_API_KEY")
+        or _raise_missing_api_key(
+            "OpenAI", "OPENAI_API_KEY"
+        ),  # Assuming agent plugin uses OPENAI_API_KEY
         agent_config=llm_config.get("agent_config"),
         data=data,
     )
+
 
 
 def _create_cerebras_llm_service(llm_config: Dict[str, Any]) -> LLMService:
@@ -60,8 +76,11 @@ def _create_cerebras_llm_service(llm_config: Dict[str, Any]) -> LLMService:
     return CerebrasLLMService(
         api_key=os.getenv("CEREBRAS_API_KEY")
         or _raise_missing_api_key("Cerebras", "CEREBRAS_API_KEY"),
+        api_key=os.getenv("CEREBRAS_API_KEY")
+        or _raise_missing_api_key("Cerebras", "CEREBRAS_API_KEY"),
         model=llm_config.get("model", "llama3.1-8b"),
     )
+
 
 
 def _create_groq_llm_service(llm_config: Dict[str, Any]) -> LLMService:
@@ -72,8 +91,11 @@ def _create_groq_llm_service(llm_config: Dict[str, Any]) -> LLMService:
     return GroqLLMService(
         api_key=os.getenv("GROQ_API_KEY")
         or _raise_missing_api_key("Groq", "GROQ_API_KEY"),
+        api_key=os.getenv("GROQ_API_KEY")
+        or _raise_missing_api_key("Groq", "GROQ_API_KEY"),
         model=llm_config.get("model", "llama3.1-8b"),
     )
+
 
 
 def create_llm_service(
@@ -108,6 +130,9 @@ def create_llm_service(
         logger.warning(
             f"Unsupported LLM provider: '{llm_provider}'. Defaulting to 'openai'."
         )
+        logger.warning(
+            f"Unsupported LLM provider: '{llm_provider}'. Defaulting to 'openai'."
+        )
         provider_factory = llm_provider_factories["openai"]
     llm = provider_factory()
 
@@ -126,6 +151,9 @@ def create_llm_service(
                         logger.warning(
                             f"Tool '{tool_name}' is configured but its 'function' is missing or not callable."
                         )
+                        logger.warning(
+                            f"Tool '{tool_name}' is configured but its 'function' is missing or not callable."
+                        )
         else:
             logger.warning(
                 f"LLM provider '{llm_provider}' is configured with tools, "
@@ -138,12 +166,18 @@ def create_llm_service(
             GuardrailedLLMService,
         )
 
+        from foundation_voice.custom_plugins.services.guardrailed_cerebras.guardrail_llm import (
+            GuardrailedLLMService,
+        )
+
         guardrail_llm = GuardrailedLLMService(
             llm,
             guardrails=guardrails,
             prompt=agent_config.get("prompt", DEFAULT_PROMPT),
             api_key=os.getenv("CEREBRAS_API_KEY"),
+            api_key=os.getenv("CEREBRAS_API_KEY"),
         )
+
 
         # Register tools with the guardrailed LLM service as well
         configured_tools = llm_config.get("tools")
@@ -157,7 +191,13 @@ def create_llm_service(
                             guardrail_llm.register_function(
                                 tool_name, function_to_register
                             )
+                            guardrail_llm.register_function(
+                                tool_name, function_to_register
+                            )
                         else:
+                            logger.warning(
+                                f"Tool '{tool_name}' is configured but its 'function' is missing or not callable."
+                            )
                             logger.warning(
                                 f"Tool '{tool_name}' is configured but its 'function' is missing or not callable."
                             )
@@ -165,7 +205,10 @@ def create_llm_service(
                 logger.warning(
                     "GuardrailedLLMService is configured with tools, "
                     "but the service instance does not support 'register_function'. Tools will not be registered."
+                    "GuardrailedLLMService is configured with tools, "
+                    "but the service instance does not support 'register_function'. Tools will not be registered."
                 )
+
 
         return guardrail_llm
 
@@ -215,6 +258,7 @@ def create_llm_context(
 
     llm_provider = agent_config["llm"]["provider"]
 
+
     req_tools = agent_config.get("llm", {}).get("tools", None)
 
     if llm_provider in ["openai", "cerebras", "groq"]:
@@ -230,6 +274,9 @@ def create_llm_context(
                         schemas.append(value["schema"])
 
                 if not schemas:
+                    logger.error(
+                        "No valid schemas found in tools for OpenAI LLM context"
+                    )
                     logger.error(
                         "No valid schemas found in tools for OpenAI LLM context"
                     )
@@ -250,6 +297,10 @@ def create_llm_context(
             AgentChatContext,
         )
 
+        from foundation_voice.custom_plugins.processors.aggregators.agent_context import (
+            AgentChatContext,
+        )
+
         logger.debug("Creating OpenAI Agent LLM context")
         try:
             config = agent_config.get("llm", {}).get("agent_config", {})
@@ -263,3 +314,4 @@ def create_llm_context(
         except Exception as e:
             logger.error(f"Failed to create OpenAI Agent LLM context: {e}")
             raise
+

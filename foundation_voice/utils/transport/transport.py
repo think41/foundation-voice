@@ -17,6 +17,7 @@ from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 class TransportType(Enum):
     """Enum defining all supported transport types"""
 
+
     WEBSOCKET = "websocket"
     WEBRTC = "webrtc"
     DAILY = "daily"
@@ -100,6 +101,12 @@ class TransportFactory:
         logger.debug(
             f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}"
         )
+        logger.debug(
+            f"TransportFactory: Creating transport type: {transport_type.value}"
+        )
+        logger.debug(
+            f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}"
+        )
         logger.debug(f"TransportFactory: Additional kwargs: {list(kwargs.keys())}")
 
         vad_config = kwargs.get("vad_config", {})
@@ -119,6 +126,9 @@ class TransportFactory:
 
         elif transport_type == TransportType.WEBRTC:
             try:
+                from pipecat.transports.network.webrtc_connection import (
+                    SmallWebRTCConnection,
+                )
                 from pipecat.transports.network.webrtc_connection import (
                     SmallWebRTCConnection,
                 )
@@ -150,6 +160,10 @@ class TransportFactory:
         elif transport_type == TransportType.DAILY:
             logger.debug("TransportFactory: Creating Daily transport")
             try:
+                from pipecat.transports.services.daily import (
+                    DailyTransport,
+                    DailyParams,
+                )
                 from pipecat.transports.services.daily import (
                     DailyTransport,
                     DailyParams,
@@ -196,8 +210,14 @@ class TransportFactory:
             logger.debug(
                 f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}"
             )
+            logger.debug(
+                f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}"
+            )
 
             if not stream_sid or not call_sid:
+                raise ValueError(
+                    "stream_sid and call_sid are required for SIP transport"
+                )
                 raise ValueError(
                     "stream_sid and call_sid are required for SIP transport"
                 )
