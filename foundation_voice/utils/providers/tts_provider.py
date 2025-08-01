@@ -29,7 +29,6 @@ def _create_cartesia_tts_service(tts_config: Dict[str, Any]) -> Any:
     )
 
 
-
 def _create_openai_tts_service(tts_config: Dict[str, Any]) -> Any:
     OpenAITTSService = import_provider_service(
         "pipecat.services.openai.tts", "OpenAITTSService", "openai"
@@ -46,7 +45,6 @@ def _create_openai_tts_service(tts_config: Dict[str, Any]) -> Any:
     )
 
 
-
 def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
     DeepgramTTSService = import_provider_service(
         "pipecat.services.deepgram.tts", "DeepgramTTSService", "deepgram"
@@ -54,8 +52,8 @@ def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
     api_key = os.getenv("DEEPGRAM_API_KEY") or _raise_missing_api_key(
         "Deepgram TTS", "DEEPGRAM_API_KEY"
     )
-    if tts_config.get("sample_rate", None) is not None:
-        logger.debug(f"tts config: {tts_config}")
+
+    logger.debug(f"tts config: {tts_config}")
 
     return DeepgramTTSService(
         api_key=api_key,
@@ -67,24 +65,18 @@ def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
         voice=tts_config.get("voice", "aura-asteria-en"),
     )
 
+
 def _create_smallestai_tts_service(tts_config: Dict[str, Any]) -> Any:
     SmallestTTSService = import_provider_service(
         "foundation_voice.custom_plugins.services.smallest.tts",
         "SmallestTTSService",
         "smallestai",
-        "foundation_voice.custom_plugins.services.smallest.tts",
-        "SmallestTTSService",
-        "smallestai",
-    )
-    api_key = os.getenv("SMALLESTAI_API_KEY") or _raise_missing_api_key(
-        "SmallestAI TTS", "SMALLEST_AI_API_KEY"
     )
     api_key = os.getenv("SMALLESTAI_API_KEY") or _raise_missing_api_key(
         "SmallestAI TTS", "SMALLEST_AI_API_KEY"
     )
     return SmallestTTSService(
         api_key=api_key,
-        model=tts_config.get("model", "lightning-v2"),  # Retain original default
         model=tts_config.get("model", "lightning-v2"),  # Retain original default
         voice_id=tts_config.get("voice_id", None),
         speed=float(tts_config.get("speed", 1.0)),
@@ -98,20 +90,13 @@ def _create_elevenlabs_tts_service(tts_config: Dict[str, Any]) -> Any:
     api_key = os.getenv("ELEVENLABS_API_KEY") or _raise_missing_api_key(
         "ElevenLabs TTS", "ELEVENLABS_API_KEY"
     )
-    api_key = os.getenv("ELEVENLABS_API_KEY") or _raise_missing_api_key(
-        "ElevenLabs TTS", "ELEVENLABS_API_KEY"
-    )
     return ElevenLabsTTSService(
         api_key=api_key,
         voice_id=tts_config.get(
             "voice_id", "YOUR_DEFAULT_ELEVENLABS_VOICE_ID"
         ),  # Recommended: Configure this in your agent_config.json
-        voice_id=tts_config.get(
-            "voice_id", "YOUR_DEFAULT_ELEVENLABS_VOICE_ID"
-        ),  # Recommended: Configure this in your agent_config.json
         model=tts_config.get("model", "eleven_turbo_v2"),
     )
-
 
 
 def create_tts_service(tts_config: Dict[str, Any]) -> Any:
@@ -125,7 +110,6 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
         TTS service instance
     """
     tts_provider = tts_config.get("provider", "cartesia")  # Default provider
-    tts_provider = tts_config.get("provider", "cartesia")  # Default provider
 
     # Dictionary mapping providers to their service creation helper functions
     tts_provider_factories = {
@@ -138,10 +122,6 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
 
     # Get the factory function for the selected provider
     # If the provider is not found, default to cartesia's factory as per original logic
-    provider_factory = tts_provider_factories.get(
-        tts_provider, _create_cartesia_tts_service
-    )
-
     provider_factory = tts_provider_factories.get(
         tts_provider, _create_cartesia_tts_service
     )

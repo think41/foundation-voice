@@ -14,7 +14,6 @@ from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.utils.transport.session_manager import session_manager
 
 
-
 async def run_agent(
     transport_type: TransportType,
     config: Dict[str, Any],
@@ -90,7 +89,6 @@ async def run_agent(
         runner = PipelineRunner()
         await runner.run(task)
 
-
     except Exception as e:
         logger.error(f"Error running agent: {e}")
         raise
@@ -99,4 +97,3 @@ async def run_agent(
             await cleanup(transport_type, connection, room_url, session_id, task)
         except Exception as cleanup_error:
             logger.error(f"Error during cleanup: {cleanup_error}")
-
