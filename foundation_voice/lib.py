@@ -130,131 +130,130 @@ class CaiSDK:
             except ValueError:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
 
-            match transport_type:
-                case TransportType.WEBSOCKET:
+            if transport_type == TransportType.WEBSOCKET:
+                return {
+                    "session_id": kwargs["session_id"],
+                    "websocket_url": f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}",
+                }
+
+            elif transport_type == TransportType.WEBRTC:
+                if "sdp" in request and "type" in request:
+                    # Handle WebRTC offer
+                    offer = WebRTCOffer(
+                        sdp=request["sdp"],
+                        type=request["type"],
+                        session_id=request.get("session_id"),
+                        restart_pc=request.get("restart_pc", False),
+                        agent_name=request.get("agent_name"),
+                    )
+
+                    await self.webrtc_endpoint(offer, agent, **kwargs)
+                else:
+                    # Return WebRTC UI details
                     return {
-                        "session_id": kwargs["session_id"],
-                        "websocket_url": f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}",
+                        "offer_url": "/api/connect",  # Use same endpoint for offers
+                        "webrtc_ui_url": "/webrtc",
                     }
 
-                case TransportType.WEBRTC:
-                    if "sdp" in request and "type" in request:
-                        # Handle WebRTC offer
-                        offer = WebRTCOffer(
-                            sdp=request["sdp"],
-                            type=request["type"],
-                            session_id=request.get("session_id"),
-                            restart_pc=request.get("restart_pc", False),
-                            agent_name=request.get("agent_name"),
-                        )
+            elif transport_type == TransportType.DAILY:
+                room_url = request.get("room_url")
+                if not room_url:
+                    room_url, _ = create_room()
 
-                        await self.webrtc_endpoint(offer, agent, **kwargs)
-                    else:
-                        # Return WebRTC UI details
-                        return {
-                            "offer_url": "/api/connect",  # Use same endpoint for offers
-                            "webrtc_ui_url": "/webrtc",
-                        }
-
-                case TransportType.DAILY:
-                    room_url = request.get("room_url")
-                    if not room_url:
-                        room_url, _ = create_room()
-
-                    url, token = await connection_manager.handle_daily_connection(
-                        room_url
-                    )
-                    kwargs.update(
-                        {
-                            "room_url": url,
-                            "token": token,
-                        }
-                    )
-                    args = self.create_args(
-                        transport_type=transport_type,
-                        connection=url,
-                        agent=agent,
-                        **kwargs,
-                    )
-                    logger.info(f"Connect handler called with kwargs: {kwargs}")
-                    return {
+                url, token = await connection_manager.handle_daily_connection(
+                    room_url
+                )
+                kwargs.update(
+                    {
                         "room_url": url,
                         "token": token,
-                        "background_task_args": {
-                            "func": run_agent,
-                            **args,
-                        },
                     }
+                )
+                args = self.create_args(
+                    transport_type=transport_type,
+                    connection=url,
+                    agent=agent,
+                    **kwargs,
+                )
+                logger.info(f"Connect handler called with kwargs: {kwargs}")
+                return {
+                    "room_url": url,
+                    "token": token,
+                    "background_task_args": {
+                        "func": run_agent,
+                        **args,
+                    },
+                }
 
-                case TransportType.LIVEKIT:
-                    (
-                        url,
-                        user_token,
-                        room_name,
-                        token,
-                    ) = await connection_manager.handle_livekit_connection()
-                    kwargs.update(
-                        {
-                            "room_url": url,
-                            "user_token": user_token,
-                            "room_name": room_name,
-                            "agent_token": token,
-                        }
-                    )
-                    args = self.create_args(
-                        transport_type=transport_type,
-                        connection=url,
-                        agent=agent,
-                        **kwargs,
-                    )
-                    logger.info(f"Connect handler called with kwargs: {kwargs}")
-                    return {
+            elif transport_type == TransportType.LIVEKIT:
+                (
+                    url,
+                    user_token,
+                    room_name,
+                    token,
+                ) = await connection_manager.handle_livekit_connection()
+                kwargs.update(
+                    {
                         "room_url": url,
-                        "token": user_token,
+                        "user_token": user_token,
                         "room_name": room_name,
-                        "background_task_args": {
-                            "func": run_agent,
-                            **args,
-                        },
+                        "agent_token": token,
                     }
+                )
+                args = self.create_args(
+                    transport_type=transport_type,
+                    connection=url,
+                    agent=agent,
+                    **kwargs,
+                )
+                logger.info(f"Connect handler called with kwargs: {kwargs}")
+                return {
+                    "room_url": url,
+                    "token": user_token,
+                    "room_name": room_name,
+                    "background_task_args": {
+                        "func": run_agent,
+                        **args,
+                    },
+                }
 
-                case TransportType.LIVEKIT_SIP:
-                    (
-                        url,
-                        room_name,
-                        agent_token,
-                    ) = await connection_manager.handle_livekit_sip_connection(
-                        request.get("room_name")
-                    )
-                    kwargs.update(
-                        {
-                            "room_url": url,
-                            "room_name": room_name,
-                            "agent_token": agent_token,
-                        }
-                    )
-
-                    args = self.create_args(
-                        transport_type=transport_type,
-                        connection=url,
-                        agent=agent,
-                        **kwargs,
-                    )
-                    return {
+            elif transport_type == TransportType.LIVEKIT_SIP:
+                (
+                    url,
+                    room_name,
+                    agent_token,
+                ) = await connection_manager.handle_livekit_sip_connection(
+                    request.get("room_name")
+                )
+                kwargs.update(
+                    {
                         "room_url": url,
-                        "token": agent_token,
                         "room_name": room_name,
-                        "background_task_args": {
-                            "func": run_agent,
-                            **args,
-                        },
+                        "agent_token": agent_token,
                     }
+                )
 
-                case _:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Unsupported transport type: {transport_type_str}",
-                    )
+                args = self.create_args(
+                    transport_type=transport_type,
+                    connection=url,
+                    agent=agent,
+                    **kwargs,
+                )
+                return {
+                    "room_url": url,
+                    "token": agent_token,
+                    "room_name": room_name,
+                    "background_task_args": {
+                        "func": run_agent,
+                        **args,
+                    },
+                }
+
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported transport type: {transport_type_str}",
+                )
 
         except Exception as e:
             raise HTTPException(
