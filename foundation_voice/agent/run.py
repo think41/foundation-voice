@@ -14,6 +14,7 @@ from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.utils.transport.session_manager import session_manager
 
 
+
 async def run_agent(
     transport_type: TransportType,
     config: Dict[str, Any],
@@ -35,6 +36,15 @@ async def run_agent(
         existing_session = session_manager.get_daily_room_session(room_url)
         if existing_session:
             logger.info(f"Bot already exists in Daily room: {room_url}")
+            return
+
+    if (
+        transport_type == TransportType.LIVEKIT_SIP
+        or transport_type == TransportType.LIVEKIT
+    ) and room_url:
+        existing_session = session_manager.get_livekit_room_session(room_url)
+        if existing_session:
+            logger.info(f"Bot already exists in Livekit room: {room_url}")
             return
 
     if transport_type == TransportType.WEBRTC and isinstance(
@@ -62,16 +72,24 @@ async def run_agent(
 
     try:
         if transport_type == TransportType.DAILY:
-            await session_manager.add_session(session_id, task, daily_room_url=room_url)
+            await session_manager.add_session(session_id, task, room_data=room_url)
         elif transport_type == TransportType.WEBRTC and isinstance(
             connection, SmallWebRTCConnection
         ):
             await session_manager.add_webrtc_session(session_id, task)
+        elif (
+            transport_type == TransportType.LIVEKIT
+            or transport_type == TransportType.LIVEKIT_SIP
+        ):
+            await session_manager.add_session(
+                session_id, task, room_data=kwargs.get("room_name")
+            )
         else:
             await session_manager.add_session(session_id, task)
 
         runner = PipelineRunner()
         await runner.run(task)
+
 
     except Exception as e:
         logger.error(f"Error running agent: {e}")
@@ -81,3 +99,4 @@ async def run_agent(
             await cleanup(transport_type, connection, room_url, session_id, task)
         except Exception as cleanup_error:
             logger.error(f"Error during cleanup: {cleanup_error}")
+

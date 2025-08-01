@@ -1,10 +1,16 @@
-from typing import Dict, Tuple, Optional
-from loguru import logger
 import os
-import aiohttp
+
+from loguru import logger
+from typing import Dict, Tuple, Optional
+
 from pydantic import BaseModel
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
-from ..daily_helpers import get_token
+
+from foundation_voice.utils.helpers.daily_helpers import get_token
+from foundation_voice.utils.helpers.livekit_helpers import (
+    configure_livekit,
+    configure_livekit_sip,
+)
 
 
 class WebRTCOffer(BaseModel):
@@ -43,7 +49,7 @@ class ConnectionManager:
         return answer, connection
 
     async def handle_daily_connection(
-        self, session: aiohttp.ClientSession, room_url: Optional[str] = None
+        self, room_url: Optional[str] = None
     ) -> tuple[str, str]:
         """Handle Daily.co connection setup."""
         if not room_url:
@@ -58,6 +64,19 @@ class ConnectionManager:
         # Get token using our helper function
         token = get_token(room_url)
         return room_url, token
+
+    async def handle_livekit_connection(self) -> tuple[str, str, str]:
+        """Handle LiveKit connection setup."""
+        # Get token using our helper function
+        url, user_token, room_name, agent_token = configure_livekit()
+        return url, user_token, room_name, agent_token
+
+    async def handle_livekit_sip_connection(
+        self, room_name: str
+    ) -> tuple[str, str, str]:
+        """Handle LiveKit SIP connection setup."""
+        url, room_name, token = configure_livekit_sip(room_name)
+        return url, room_name, token
 
 
 # Create global instance

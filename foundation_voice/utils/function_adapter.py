@@ -3,11 +3,13 @@ from loguru import logger
 
 from typing import Callable, Dict, get_type_hints, Union
 
+
 try:
     from agents import function_tool
 except ImportError:
     function_tool = None
 
+from pipecat.services.llm_service import FunctionCallParams
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 
 
@@ -28,6 +30,9 @@ class FunctionAdapter:
         return function_tool(
             name_override=self.name, description_override=self.description
         )(self.func)
+        return function_tool(
+            name_override=self.name, description_override=self.description
+        )(self.func)
 
     def to_function_schema(self):
         properties = {}
@@ -39,7 +44,11 @@ class FunctionAdapter:
                 logger.warning(
                     "Context parameter not allowed for llm functions. Skipping function"
                 )
+                logger.warning(
+                    "Context parameter not allowed for llm functions. Skipping function"
+                )
                 return None
+
 
             annotation = self.annotations.get(param_name, str)
 
@@ -48,8 +57,12 @@ class FunctionAdapter:
             properties[param_name] = {
                 "type": json_type,
                 "description": f"{param_name} parameter",
+                "description": f"{param_name} parameter",
             }
 
+            if param.default is inspect.Parameter.empty and not self._is_optional(
+                annotation
+            ):
             if param.default is inspect.Parameter.empty and not self._is_optional(
                 annotation
             ):
@@ -60,37 +73,50 @@ class FunctionAdapter:
             description=self.description,
             properties=properties,
             required=required,
+            required=required,
         )
 
         return {"schema": schema, "function": self._wrap_function()}
 
+
     def _wrap_function(self):
-        async def wrapped_function(
-            function_name, tool_call_id, args, llm, context, result_callback
-        ):
+        async def wrapped_function(params: FunctionCallParams):
             try:
                 if inspect.iscoroutinefunction(self.func):
-                    result = await self.func(**args)
+                    result = await self.func(
+                        **params.arguments,
+                        llm=params.llm,
+                        result_callback=params.result_callback,
+                    )
                 else:
-                    result = self.func(**args)
+                    result = self.func(
+                        **params.arguments,
+                        llm=params.llm,
+                        result_callback=params.result_callback,
+                    )
 
-                await result_callback(result)
+                await params.result_callback(result)
 
             except Exception as e:
                 logger.error(f"Failed to execute function {self.name}: {e}")
-                await result_callback({"error": str(e)})
+                await params.result_callback({"error": str(e)})
 
         return wrapped_function
 
     def _is_optional(self, annotation):
         origin = getattr(annotation, "__origin__", None)
+        origin = getattr(annotation, "__origin__", None)
         if origin is Union:
+            return getattr(annotation, "__origin__", None) is Union and type(
+                None
+            ) in getattr(annotation, "__args__", [])
             return getattr(annotation, "__origin__", None) is Union and type(
                 None
             ) in getattr(annotation, "__args__", [])
         return False
 
     def _python_type_to_json_type(self, annotation) -> str:
+        origin = getattr(annotation, "__origin__", None)
         origin = getattr(annotation, "__origin__", None)
         base = origin or annotation
 
@@ -100,6 +126,7 @@ class FunctionAdapter:
             float: "number",
             bool: "boolean",
             list: "array",
+            dict: "object",
             dict: "object",
         }
 
@@ -118,6 +145,7 @@ class FunctionFactory:
             for name, func in self.functions.items():
                 tools[name] = FunctionAdapter(func).to_tool_schema()
             return tools
+
 
         elif self.provider in ["openai", "cerebras", "groq"]:
             functions_dt = {}

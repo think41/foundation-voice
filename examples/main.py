@@ -1,6 +1,7 @@
 import os
-import argparse
 import json
+import uuid
+import argparse
 
 from dotenv import load_dotenv
 from typing import Optional
@@ -23,7 +24,10 @@ from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 from foundation_voice.utils.api_utils import auto_detect_transport
-import uuid
+from foundation_voice.routers import agent_router
+from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
+    router as sip_router,
+)
 
 # Load environment variables
 load_dotenv()
@@ -91,6 +95,7 @@ defined_agents = {
         "callbacks": custom_callbacks,
     },
     "agent4": {"config": agent_config_4},
+    "agent4": {"config": agent_config_4},
 }
 
 metadata = {
@@ -99,6 +104,19 @@ metadata = {
         {"role": "user", "content": "my name is shubham"},
     ]
 }
+    "transcript": [
+        {"role": "assistant", "content": "Hi there!"},
+        {"role": "user", "content": "my name is shubham"},
+    ]
+}
+
+app.include_router(
+    sip_router,
+    prefix="/sip",
+)
+
+app.state.cai_sdk = cai_sdk
+app.state.defined_agents = defined_agents
 
 
 @app.get(
@@ -110,6 +128,9 @@ metadata = {
 )
 async def index():
     return {"message": "welcome to cai"}
+
+
+app.include_router(agent_router.router, prefix="/api/v1")
 
 
 @app.post("/api/sip")
@@ -124,6 +145,10 @@ async def handle_sip_webhook(request: Request, agent_name: str = Query("agent1")
     twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
+        <Stream url="{escape(websocket_url)}">
+            <Parameter name="agent_name" value="{agent_name}" />
+            <Parameter name="session_id" value="{uuid.uuid4()}" />
+        </Stream>
         <Stream url="{escape(websocket_url)}">
             <Parameter name="agent_name" value="{agent_name}" />
             <Parameter name="session_id" value="{uuid.uuid4()}" />
@@ -184,7 +209,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         logger.debug("WebSocket connection accepted")
 
-        transport_type, sip_params = auto_detect_transport(websocket)
+        transport_type, sip_params = await auto_detect_transport(websocket)
         logger.info(f"Detected transport type: {transport_type}")
 
         if sip_params:
@@ -269,6 +294,7 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close(code=1008, reason=str(e))
     except Exception as e:
         logger.error(f"WebSocket endpoint error: {e}", exc_info=True)
+        logger.error(f"WebSocket endpoint error: {e}", exc_info=True)
         if not websocket.client_state.DISCONNECTED:
             await websocket.close(code=1011, reason="Server Error")
 
@@ -292,6 +318,9 @@ async def webrtc_endpoint(
     response = await cai_sdk.webrtc_endpoint(
         offer, agent, session_id=offer.session_id, metadata=parsed_metadata
     )
+    response = await cai_sdk.webrtc_endpoint(
+        offer, agent, session_id=offer.session_id, metadata=parsed_metadata
+    )
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
@@ -307,6 +336,9 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     session_id = request.get("session_id")
 
     # response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)
+    response = await cai_sdk.connect_handler(
+        request, agent, session_id=session_id, metadata=metadata
+    )
     response = await cai_sdk.connect_handler(
         request, agent, session_id=session_id, metadata=metadata
     )
@@ -326,6 +358,7 @@ async def get_sessions():
     active_session_ids = list(session_manager.active_sessions.keys())
     return {
         "active_sessions_count": len(active_session_ids),
+        "active_session_ids": active_session_ids,
         "active_session_ids": active_session_ids,
     }
 
