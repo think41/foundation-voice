@@ -61,7 +61,6 @@ def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
         )
 
 
-
 def _create_smallestai_tts_service(tts_config: Dict[str, Any]) -> Any:
     SmallestTTSService = import_provider_service(
         "foundation_voice.custom_plugins.services.smallest.tts",
