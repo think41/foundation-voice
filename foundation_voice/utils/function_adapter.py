@@ -72,23 +72,22 @@ class FunctionAdapter:
                     result = await self.func(
                         **params.arguments,
                         llm=params.llm,
-                        result_callback=params.result_callback
+                        result_callback=params.result_callback,
                     )
                 else:
                     result = self.func(
                         **params.arguments,
                         llm=params.llm,
-                        result_callback=params.result_callback
+                        result_callback=params.result_callback,
                     )
 
                 await params.result_callback(result)
-                
+
             except Exception as e:
                 logger.error(f"Failed to execute function {self.name}: {e}")
                 await params.result_callback({"error": str(e)})
 
         return wrapped_function
-        
 
     def _is_optional(self, annotation):
         origin = getattr(annotation, "__origin__", None)

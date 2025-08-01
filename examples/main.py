@@ -25,7 +25,9 @@ from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 from foundation_voice.utils.api_utils import auto_detect_transport
 from foundation_voice.routers import agent_router
-from foundation_voice.custom_plugins.services.sip.livekitSIP.router import router as sip_router
+from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
+    router as sip_router,
+)
 
 # Load environment variables
 load_dotenv()
@@ -92,9 +94,7 @@ defined_agents = {
         "tool_dict": tool_config,
         "callbacks": custom_callbacks,
     },
-    "agent4": {
-        "config": agent_config_4
-    }
+    "agent4": {"config": agent_config_4},
 }
 
 metadata = {
@@ -111,6 +111,7 @@ app.include_router(
 
 app.state.cai_sdk = cai_sdk
 app.state.defined_agents = defined_agents
+
 
 @app.get(
     "/",

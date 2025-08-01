@@ -1,6 +1,7 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 
+
 class SIPService(ABC):
     def __init__(self):
         self._api = None
@@ -11,7 +12,7 @@ class SIPService(ABC):
     @abstractmethod
     async def create_trunk(self):
         pass
-    
+
     def update_trunk(self, trunk_id: str):
         pass
 

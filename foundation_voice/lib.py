@@ -9,7 +9,7 @@ from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.utils.transport.sip_detection import SIPDetector
 from foundation_voice.utils.transport.connection_manager import (
     WebRTCOffer,
-    connection_manager
+    connection_manager,
 )
 from foundation_voice.utils.helpers.daily_helpers import create_room
 
@@ -130,11 +130,11 @@ class CaiSDK:
             except ValueError:
                 return {"error": f"Unsupported transport type: {transport_type_str}"}
 
-            match(transport_type):
+            match transport_type:
                 case TransportType.WEBSOCKET:
                     return {
-                        'session_id': kwargs['session_id'],
-                        'websocket_url': f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}"
+                        "session_id": kwargs["session_id"],
+                        "websocket_url": f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}",
                     }
 
                 case TransportType.WEBRTC:
@@ -145,7 +145,7 @@ class CaiSDK:
                             type=request["type"],
                             session_id=request.get("session_id"),
                             restart_pc=request.get("restart_pc", False),
-                            agent_name=request.get("agent_name")
+                            agent_name=request.get("agent_name"),
                         )
 
                         await self.webrtc_endpoint(offer, agent, **kwargs)
@@ -161,11 +161,15 @@ class CaiSDK:
                     if not room_url:
                         room_url, _ = create_room()
 
-                    url, token = await connection_manager.handle_daily_connection(room_url)
-                    kwargs.update({
-                        "room_url": url,
-                        "token": token,
-                    })
+                    url, token = await connection_manager.handle_daily_connection(
+                        room_url
+                    )
+                    kwargs.update(
+                        {
+                            "room_url": url,
+                            "token": token,
+                        }
+                    )
                     args = self.create_args(
                         transport_type=transport_type,
                         connection=url,
@@ -181,20 +185,27 @@ class CaiSDK:
                             **args,
                         },
                     }
-                
+
                 case TransportType.LIVEKIT:
-                    url, user_token, room_name, token = await connection_manager.handle_livekit_connection()
-                    kwargs.update({
-                        "room_url": url,
-                        "user_token": user_token,
-                        "room_name": room_name,
-                        "agent_token": token,
-                    })
+                    (
+                        url,
+                        user_token,
+                        room_name,
+                        token,
+                    ) = await connection_manager.handle_livekit_connection()
+                    kwargs.update(
+                        {
+                            "room_url": url,
+                            "user_token": user_token,
+                            "room_name": room_name,
+                            "agent_token": token,
+                        }
+                    )
                     args = self.create_args(
                         transport_type=transport_type,
                         connection=url,
                         agent=agent,
-                        **kwargs
+                        **kwargs,
                     )
                     logger.info(f"Connect handler called with kwargs: {kwargs}")
                     return {
@@ -204,36 +215,48 @@ class CaiSDK:
                         "background_task_args": {
                             "func": run_agent,
                             **args,
-                        }
+                        },
                     }
 
                 case TransportType.LIVEKIT_SIP:
-                    url, room_name, agent_token = await connection_manager.handle_livekit_sip_connection(request.get("room_name"))
-                    kwargs.update({
-                        "room_url": url,
-                        "room_name": room_name,
-                        "agent_token": agent_token,
-                    })
+                    (
+                        url,
+                        room_name,
+                        agent_token,
+                    ) = await connection_manager.handle_livekit_sip_connection(
+                        request.get("room_name")
+                    )
+                    kwargs.update(
+                        {
+                            "room_url": url,
+                            "room_name": room_name,
+                            "agent_token": agent_token,
+                        }
+                    )
 
                     args = self.create_args(
                         transport_type=transport_type,
                         connection=url,
                         agent=agent,
-                        **kwargs
+                        **kwargs,
                     )
                     return {
                         "room_url": url,
                         "token": agent_token,
                         "room_name": room_name,
-
                         "background_task_args": {
                             "func": run_agent,
                             **args,
-                        }
+                        },
                     }
 
                 case _:
-                    raise HTTPException(status_code=400, detail=f"Unsupported transport type: {transport_type_str}")
-                
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unsupported transport type: {transport_type_str}",
+                    )
+
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to establish connection: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to establish connection: {str(e)}"
+            )
