@@ -1,10 +1,11 @@
 import os
 import logfire
-
+from logfire import ConsoleOptions
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
+from foundation_voice.utils.metrics_context import create_token_usage_processor
 from agents import (
     Agent,
     Runner,
@@ -31,6 +32,8 @@ class AgentFactory:
         self._config = config
         self._context = context
         self._user_defined_tools = user_defined_tools
+        self.token_usage = {"total_input_tokens": 0, "total_output_tokens": 0}
+        self._token_usage_processor = None
         self._setup()
 
     def _setup(self):
@@ -63,10 +66,14 @@ class AgentFactory:
             print("Logfire token not found in .env file. Tracing will be disabled.")
             return
 
+        # Create a token usage processor that will track token metrics
+        self._token_usage_processor = create_token_usage_processor(self.token_usage)
+
         logfire.configure(
             service_name="agent_handler",
             token=token,
-            console=False,
+            console=ConsoleOptions(),
+            additional_span_processors=[self._token_usage_processor],
         )
         logfire.instrument_openai_agents()
 

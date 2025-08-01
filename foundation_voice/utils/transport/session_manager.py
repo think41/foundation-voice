@@ -9,14 +9,15 @@ class SessionManager:
     def __init__(self):
         self.active_sessions: Dict[str, "PipelineTask"] = {}
         self.daily_room_sessions: Dict[str, "PipelineTask"] = {}
+        self.livekit_room_sessions: Dict[str, "PipelineTask"] = {}
         self.webrtc_sessions: Dict[str, "PipelineTask"] = {}
 
     async def add_session(
-        self, session_id: str, task: "PipelineTask", daily_room_url: str = None
+        self, session_id: str, task: "PipelineTask", room_data: str = None
     ):
         self.active_sessions[session_id] = task
-        if daily_room_url:
-            self.daily_room_sessions[daily_room_url] = task
+        if room_data:
+            self.daily_room_sessions[room_data] = task
 
     async def remove_session(self, session_id: str):
         """Remove session and clean up all related references."""
@@ -41,6 +42,9 @@ class SessionManager:
 
     def get_daily_room_session(self, room_url: str) -> Optional["PipelineTask"]:
         return self.daily_room_sessions.get(room_url)
+
+    def get_livekit_room_session(self, room_name: str) -> Optional["PipelineTask"]:
+        return self.livekit_room_sessions.get(room_name)
 
     def get_webrtc_session(self, pc_id: str) -> Optional["PipelineTask"]:
         return self.webrtc_sessions.get(pc_id)

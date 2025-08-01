@@ -37,6 +37,15 @@ async def run_agent(
             logger.info(f"Bot already exists in Daily room: {room_url}")
             return
 
+    if (
+        transport_type == TransportType.LIVEKIT_SIP
+        or transport_type == TransportType.LIVEKIT
+    ) and room_url:
+        existing_session = session_manager.get_livekit_room_session(room_url)
+        if existing_session:
+            logger.info(f"Bot already exists in Livekit room: {room_url}")
+            return
+
     if transport_type == TransportType.WEBRTC and isinstance(
         connection, SmallWebRTCConnection
     ):
@@ -62,11 +71,18 @@ async def run_agent(
 
     try:
         if transport_type == TransportType.DAILY:
-            await session_manager.add_session(session_id, task, daily_room_url=room_url)
+            await session_manager.add_session(session_id, task, room_data=room_url)
         elif transport_type == TransportType.WEBRTC and isinstance(
             connection, SmallWebRTCConnection
         ):
             await session_manager.add_webrtc_session(session_id, task)
+        elif (
+            transport_type == TransportType.LIVEKIT
+            or transport_type == TransportType.LIVEKIT_SIP
+        ):
+            await session_manager.add_session(
+                session_id, task, room_data=kwargs.get("room_name")
+            )
         else:
             await session_manager.add_session(session_id, task)
 

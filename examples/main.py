@@ -1,6 +1,7 @@
 import os
-import argparse
 import json
+import uuid
+import argparse
 
 from dotenv import load_dotenv
 from typing import Optional
@@ -23,7 +24,10 @@ from agent_configure.utils.context import contexts
 from agent_configure.utils.tool import tool_config
 from agent_configure.utils.callbacks import custom_callbacks
 from foundation_voice.utils.api_utils import auto_detect_transport
-import uuid
+from foundation_voice.routers import agent_router
+from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
+    router as sip_router,
+)
 
 # Load environment variables
 load_dotenv()
@@ -100,6 +104,14 @@ metadata = {
     ]
 }
 
+app.include_router(
+    sip_router,
+    prefix="/sip",
+)
+
+app.state.cai_sdk = cai_sdk
+app.state.defined_agents = defined_agents
+
 
 @app.get(
     "/",
@@ -110,6 +122,9 @@ metadata = {
 )
 async def index():
     return {"message": "welcome to cai"}
+
+
+app.include_router(agent_router.router, prefix="/api/v1")
 
 
 @app.post("/api/sip")
@@ -184,7 +199,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         logger.debug("WebSocket connection accepted")
 
-        transport_type, sip_params = auto_detect_transport(websocket)
+        transport_type, sip_params = await auto_detect_transport(websocket)
         logger.info(f"Detected transport type: {transport_type}")
 
         if sip_params:

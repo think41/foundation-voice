@@ -1,8 +1,7 @@
 import uuid
-import aiohttp
 
 from loguru import logger
-from fastapi import WebSocket
+from fastapi import WebSocket, HTTPException
 from typing import Any, Dict, Optional, Callable
 
 from foundation_voice.agent.run import run_agent
@@ -12,7 +11,7 @@ from foundation_voice.utils.transport.connection_manager import (
     WebRTCOffer,
     connection_manager,
 )
-from foundation_voice.utils.daily_helpers import create_room
+from foundation_voice.utils.helpers.daily_helpers import create_room
 
 
 class CaiSDK:
@@ -121,9 +120,10 @@ class CaiSDK:
 
     async def connect_handler(self, request: dict, agent: dict, **kwargs):
         self._ensure_metadata_and_session_id(kwargs)
-
+        logger.debug(request.get("transportType"))
         try:
-            transport_type_str = request.get("transportType", "").lower
+            transport_type_str = request.get("transportType", "").lower()
+
             # Convert string to TransportType enum
             try:
                 transport_type = TransportType(transport_type_str)
@@ -137,7 +137,6 @@ class CaiSDK:
                 }
 
             elif transport_type == TransportType.WEBRTC:
-                # Check if this is a WebRTC offer
                 if "sdp" in request and "type" in request:
                     # Handle WebRTC offer
                     offer = WebRTCOffer(
@@ -157,39 +156,104 @@ class CaiSDK:
                     }
 
             elif transport_type == TransportType.DAILY:
-                # Create a new room if not provided
                 room_url = request.get("room_url")
                 if not room_url:
                     room_url, _ = create_room()
 
-                async with aiohttp.ClientSession() as session:
-                    url, token = await connection_manager.handle_daily_connection(
-                        session, room_url
-                    )
-                    kwargs.update(
-                        {
-                            "room_url": url,
-                            "token": token,
-                        }
-                    )
-                    args = self.create_args(
-                        transport_type=transport_type,
-                        connection=url,
-                        agent=agent,
-                        **kwargs,
-                    )
-                    logger.info(f"Connect handler called with kwargs: {kwargs}")
-                    return {
+                url, token = await connection_manager.handle_daily_connection(room_url)
+                kwargs.update(
+                    {
                         "room_url": url,
                         "token": token,
-                        "background_task_args": {
-                            "func": run_agent,
-                            **args,
-                        },
                     }
+                )
+                args = self.create_args(
+                    transport_type=transport_type,
+                    connection=url,
+                    agent=agent,
+                    **kwargs,
+                )
+                logger.info(f"Connect handler called with kwargs: {kwargs}")
+                return {
+                    "room_url": url,
+                    "token": token,
+                    "background_task_args": {
+                        "func": run_agent,
+                        **args,
+                    },
+                }
+
+            elif transport_type == TransportType.LIVEKIT:
+                (
+                    url,
+                    user_token,
+                    room_name,
+                    token,
+                ) = await connection_manager.handle_livekit_connection()
+                kwargs.update(
+                    {
+                        "room_url": url,
+                        "user_token": user_token,
+                        "room_name": room_name,
+                        "agent_token": token,
+                    }
+                )
+                args = self.create_args(
+                    transport_type=transport_type,
+                    connection=url,
+                    agent=agent,
+                    **kwargs,
+                )
+                logger.info(f"Connect handler called with kwargs: {kwargs}")
+                return {
+                    "room_url": url,
+                    "token": user_token,
+                    "room_name": room_name,
+                    "background_task_args": {
+                        "func": run_agent,
+                        **args,
+                    },
+                }
+
+            elif transport_type == TransportType.LIVEKIT_SIP:
+                (
+                    url,
+                    room_name,
+                    agent_token,
+                ) = await connection_manager.handle_livekit_sip_connection(
+                    request.get("room_name")
+                )
+                kwargs.update(
+                    {
+                        "room_url": url,
+                        "room_name": room_name,
+                        "agent_token": agent_token,
+                    }
+                )
+
+                args = self.create_args(
+                    transport_type=transport_type,
+                    connection=url,
+                    agent=agent,
+                    **kwargs,
+                )
+                return {
+                    "room_url": url,
+                    "token": agent_token,
+                    "room_name": room_name,
+                    "background_task_args": {
+                        "func": run_agent,
+                        **args,
+                    },
+                }
 
             else:
-                return {"error": f"Unsupported transport type: {transport_type_str}"}
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported transport type: {transport_type_str}",
+                )
 
         except Exception as e:
-            return {"error": f"Failed to establish connection: {str(e)}"}
+            raise HTTPException(
+                status_code=500, detail=f"Failed to establish connection: {str(e)}"
+            )

@@ -23,6 +23,7 @@ from pipecat.observers.loggers.user_bot_latency_log_observer import (
 from foundation_voice.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
 from foundation_voice.utils.function_adapter import FunctionFactory
 from foundation_voice.utils.transport.transport import TransportFactory, TransportType
+from foundation_voice.utils.inhouse_tools.tools import inhouse_tools
 from foundation_voice.utils.idle_processor.user_idle_processor import UserIdleProcessor
 from foundation_voice.utils.transcripts.transcript_handler import TranscriptHandler
 from foundation_voice.utils.providers.stt_provider import create_stt_service
@@ -35,8 +36,15 @@ from foundation_voice.utils.observers.func_observer import FunctionObserver
 from foundation_voice.utils.observers.call_summary_metrics_observer import (
     CallSummaryMetricsObserver,
 )
+from foundation_voice.utils.callbacks_utils import save_conversation_data
 
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from pipecat.processors.filters.stt_mute_filter import (
+    STTMuteConfig,
+    STTMuteFilter,
+    STTMuteStrategy,
+)
+
 
 logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
@@ -103,6 +111,7 @@ async def create_agent_pipeline(
         **kwargs,
     )
 
+    tool_dict.update(inhouse_tools)
     tools = FunctionFactory(
         provider=agent_config.get("llm", {}).get("provider", "openai"),
         functions=tool_dict,
@@ -146,6 +155,7 @@ async def create_agent_pipeline(
                 agent_config.get("llm", {}).get("agent_config", {}).get("context"), {}
             ),
             tools,
+            metadata,
         )
 
         context_aggregator = llm.create_context_aggregator(context)
@@ -181,7 +191,7 @@ async def create_agent_pipeline(
                         and "role" in message
                         and "content" in message
                     ):
-                        context_aggregator.user().add_message(message)
+                        context_aggregator.user().add_messages([message])
                 logger.info(
                     f"Restored {len(previous_messages)} messages from previous session"
                 )
@@ -199,11 +209,14 @@ async def create_agent_pipeline(
         transport_type=transport_type.value,  # Use enum value for backward compatibility
         connection=connection,
     )
-
+    stt_mute_filter = STTMuteFilter(
+        config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE})
+    )
     # Create pipeline with RTVI processor included
     pipeline = Pipeline(
         [
             transport.input(),
+            stt_mute_filter,
             stt,
             idle_processor,
             transcript.user(),
@@ -239,7 +252,7 @@ async def create_agent_pipeline(
     rtvi.register_action(append_to_messages)
 
     # Create observers
-    call_metrics_observer = CallSummaryMetricsObserver()
+    call_metrics_observer = CallSummaryMetricsObserver(llm=llm)
     task_observers = [
         UserBotLatencyLogObserver(),
         call_metrics_observer,
@@ -258,24 +271,26 @@ async def create_agent_pipeline(
     #     logger.debug(f"Using standard sample rates: {audio_in_sample_rate}Hz in, {audio_out_sample_rate}Hz out")
 
     # Create pipeline task with transport-appropriate sample rates
+
+    pipeline_params = {
+        "allow_interruptions": True,
+        "enable_metrics": True,
+        "enable_usage_metrics": True,
+        "enable_tracing": config.get("pipeline", {}).get("enable_tracing", False),
+        "enable_turn_tracking": True,
+        "conversation_id": "customer-123",
+    }
+
+    # Only add sample rates if they exist in config
+    pipeline_config = config.get("pipeline", {})
+    if "sample_rate_in" in pipeline_config:
+        pipeline_params["audio_in_sample_rate"] = pipeline_config["sample_rate_in"]
+    if "sample_rate_out" in pipeline_config:
+        pipeline_params["audio_out_sample_rate"] = pipeline_config["sample_rate_out"]
+
     task = PipelineTask(
         pipeline,
-        params=PipelineParams(
-            audio_in_sample_rate=config.get("pipeline", {}).get(
-                "sample_rate_in", 16000
-            ),
-            audio_out_sample_rate=config.get("pipeline", {}).get(
-                "sample_rate_out", 24000
-            ),
-            allow_interruptions=True,
-            enable_metrics=True,
-            enable_usage_metrics=True,
-            enable_tracing=config.get("pipeline", {}).get(
-                "enable_tracing", False
-            ),  # Enable tracing for this task
-            enable_turn_tracking=True,  # Enable turn tracking for this task
-            conversation_id="customer-123",
-        ),
+        params=PipelineParams(**pipeline_params),
         observers=task_observers,
     )
 
@@ -325,6 +340,7 @@ async def create_agent_pipeline(
             }
 
             await callback(data)
+            save_conversation_data(data)
 
             try:
                 # Only try to log metrics if the observer exists
@@ -370,6 +386,7 @@ async def create_agent_pipeline(
             }
 
             await callback(data)
+            save_conversation_data(data)
 
             try:
                 # Only try to log metrics if the observer exists
@@ -396,5 +413,90 @@ async def create_agent_pipeline(
         async def on_client_closed(transport, client):
             logger.info("Client clicked on disconnect. Ending Pipeline task")
             await task.cancel()
+
+    if transport_type in [TransportType.LIVEKIT, TransportType.LIVEKIT_SIP]:
+
+        @transport.event_handler("on_participant_connected")
+        async def on_participant_connected(transport, participant):
+            logger.info(f"Participant connected, {participant}")
+
+        @transport.event_handler("on_first_participant_joined")
+        async def on_first_participant_joined(transport, participant):
+            logger.info(f"First participant joined, {participant}")
+            callback = callbacks.get_callback(AgentEvent.FIRST_PARTICIPANT_JOINED)
+            data = {
+                "participant": participant,
+                "metadata": metadata,
+                "session_id": session_id,
+            }
+            await callback(data)
+            await task.queue_frames([context_aggregator.user().get_context_frame()])
+
+        @transport.event_handler("on_participant_disconnected")
+        async def on_participant_disconnected(transport, participant):
+            logger.info(f"Participant disconnected, {participant}")
+            callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
+            end_transcript = transcript_handler.get_all_messages()
+            # Get metrics from the observer
+            metrics = (
+                call_metrics_observer.get_metrics_summary()
+                if call_metrics_observer
+                else None
+            )
+
+            data = {
+                "transcript": end_transcript,
+                "metrics": metrics,
+                "metadata": metadata,
+                "session_id": session_id,
+            }
+
+            await callback(data)
+
+            try:
+                # Only try to log metrics if the observer exists
+                if call_metrics_observer:
+                    await call_metrics_observer._log_summary()
+            except Exception as e:
+                logger.error(f"Error generating metrics summary: {e}")
+            finally:
+                # Always ensure the task is cancelled
+                transport.cleanup()
+                from .cleanup import cleanup
+
+                await cleanup(transport_type, connection, room_url, session_id, task)
+
+        @transport.event_handler("on_disconnected")
+        async def on_disconnected(transport):
+            logger.info("Disconnected from room")
+            callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
+            end_transcript = transcript_handler.get_all_messages()
+            # Get metrics from the observer
+            metrics = (
+                call_metrics_observer.get_metrics_summary()
+                if call_metrics_observer
+                else None
+            )
+
+            data = {
+                "transcript": end_transcript,
+                "metrics": metrics,
+                "metadata": metadata,
+                "session_id": session_id,
+            }
+
+            await callback(data)
+
+            try:
+                # Only try to log metrics if the observer exists
+                if call_metrics_observer:
+                    await call_metrics_observer._log_summary()
+            except Exception as e:
+                logger.error(f"Error generating metrics summary: {e}")
+            finally:
+                # Always ensure the task is cancelled
+                from .cleanup import cleanup
+
+                await cleanup(transport_type, connection, room_url, session_id, task)
 
     return task, transport
