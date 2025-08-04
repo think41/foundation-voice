@@ -95,15 +95,9 @@ defined_agents = {
         "callbacks": custom_callbacks,
     },
     "agent4": {"config": agent_config_4},
-    "agent4": {"config": agent_config_4},
 }
 
 metadata = {
-    "transcript": [
-        {"role": "assistant", "content": "Hi there!"},
-        {"role": "user", "content": "my name is shubham"},
-    ]
-}
     "transcript": [
         {"role": "assistant", "content": "Hi there!"},
         {"role": "user", "content": "my name is shubham"},
@@ -318,9 +312,6 @@ async def webrtc_endpoint(
     response = await cai_sdk.webrtc_endpoint(
         offer, agent, session_id=offer.session_id, metadata=parsed_metadata
     )
-    response = await cai_sdk.webrtc_endpoint(
-        offer, agent, session_id=offer.session_id, metadata=parsed_metadata
-    )
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
@@ -336,9 +327,6 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     session_id = request.get("session_id")
 
     # response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)
-    response = await cai_sdk.connect_handler(
-        request, agent, session_id=session_id, metadata=metadata
-    )
     response = await cai_sdk.connect_handler(
         request, agent, session_id=session_id, metadata=metadata
     )
@@ -358,7 +346,6 @@ async def get_sessions():
     active_session_ids = list(session_manager.active_sessions.keys())
     return {
         "active_sessions_count": len(active_session_ids),
-        "active_session_ids": active_session_ids,
         "active_session_ids": active_session_ids,
     }
 

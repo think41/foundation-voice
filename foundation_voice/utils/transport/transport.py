@@ -17,7 +17,6 @@ from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 class TransportType(Enum):
     """Enum defining all supported transport types"""
 
-
     WEBSOCKET = "websocket"
     WEBRTC = "webrtc"
     DAILY = "daily"
@@ -65,7 +64,6 @@ def get_fastapi_websocket_transport(
             **(extra_params or {}),
         ),
     )
-
 
 
 class TransportFactory:
@@ -129,9 +127,6 @@ class TransportFactory:
                 from pipecat.transports.network.webrtc_connection import (
                     SmallWebRTCConnection,
                 )
-                from pipecat.transports.network.webrtc_connection import (
-                    SmallWebRTCConnection,
-                )
                 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
             except ImportError as e:
                 logger.error(
@@ -160,10 +155,6 @@ class TransportFactory:
         elif transport_type == TransportType.DAILY:
             logger.debug("TransportFactory: Creating Daily transport")
             try:
-                from pipecat.transports.services.daily import (
-                    DailyTransport,
-                    DailyParams,
-                )
                 from pipecat.transports.services.daily import (
                     DailyTransport,
                     DailyParams,
@@ -210,14 +201,8 @@ class TransportFactory:
             logger.debug(
                 f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}"
             )
-            logger.debug(
-                f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}"
-            )
 
             if not stream_sid or not call_sid:
-                raise ValueError(
-                    "stream_sid and call_sid are required for SIP transport"
-                )
                 raise ValueError(
                     "stream_sid and call_sid are required for SIP transport"
                 )

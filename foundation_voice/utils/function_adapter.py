@@ -49,7 +49,6 @@ class FunctionAdapter:
                 )
                 return None
 
-
             annotation = self.annotations.get(param_name, str)
 
             json_type = self._python_type_to_json_type(annotation)
@@ -57,12 +56,8 @@ class FunctionAdapter:
             properties[param_name] = {
                 "type": json_type,
                 "description": f"{param_name} parameter",
-                "description": f"{param_name} parameter",
             }
 
-            if param.default is inspect.Parameter.empty and not self._is_optional(
-                annotation
-            ):
             if param.default is inspect.Parameter.empty and not self._is_optional(
                 annotation
             ):
@@ -73,11 +68,9 @@ class FunctionAdapter:
             description=self.description,
             properties=properties,
             required=required,
-            required=required,
         )
 
         return {"schema": schema, "function": self._wrap_function()}
-
 
     def _wrap_function(self):
         async def wrapped_function(params: FunctionCallParams):
@@ -105,18 +98,13 @@ class FunctionAdapter:
 
     def _is_optional(self, annotation):
         origin = getattr(annotation, "__origin__", None)
-        origin = getattr(annotation, "__origin__", None)
         if origin is Union:
-            return getattr(annotation, "__origin__", None) is Union and type(
-                None
-            ) in getattr(annotation, "__args__", [])
             return getattr(annotation, "__origin__", None) is Union and type(
                 None
             ) in getattr(annotation, "__args__", [])
         return False
 
     def _python_type_to_json_type(self, annotation) -> str:
-        origin = getattr(annotation, "__origin__", None)
         origin = getattr(annotation, "__origin__", None)
         base = origin or annotation
 
@@ -126,7 +114,6 @@ class FunctionAdapter:
             float: "number",
             bool: "boolean",
             list: "array",
-            dict: "object",
             dict: "object",
         }
 
@@ -145,7 +132,6 @@ class FunctionFactory:
             for name, func in self.functions.items():
                 tools[name] = FunctionAdapter(func).to_tool_schema()
             return tools
-
 
         elif self.provider in ["openai", "cerebras", "groq"]:
             functions_dt = {}

@@ -37,10 +37,8 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Error removing session {session_id}: {e}")
 
-
     def get_session(self, session_id: str) -> Optional["PipelineTask"]:
         return self.active_sessions.get(session_id)
-
 
     def get_daily_room_session(self, room_url: str) -> Optional["PipelineTask"]:
         return self.daily_room_sessions.get(room_url)
@@ -51,11 +49,9 @@ class SessionManager:
     def get_webrtc_session(self, pc_id: str) -> Optional["PipelineTask"]:
         return self.webrtc_sessions.get(pc_id)
 
-
     async def add_webrtc_session(self, pc_id: str, task: "PipelineTask"):
         self.webrtc_sessions[pc_id] = task
         self.active_sessions[pc_id] = task
-
 
     async def remove_webrtc_session(self, pc_id: str):
         """Remove WebRTC session and clean up all related references."""
@@ -74,4 +70,3 @@ class SessionManager:
 
 # Create a global session manager instance
 session_manager = SessionManager()
-

@@ -8,11 +8,6 @@ from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
 )
-from pipecat.frames.frames import (
-    MetricsFrame,
-    BotStartedSpeakingFrame,
-    UserStoppedSpeakingFrame,
-)
 from pipecat.metrics.metrics import (
     TTFBMetricsData,
     ProcessingMetricsData,
@@ -82,13 +77,11 @@ class CallSummaryMetricsObserver(BaseObserver):
             "call_duration": time.time() - self._call_start_time,
             "avg_userbot_latency": None,
             "userbot_latency_samples": len(self._userbot_latencies),
-            "userbot_latency_samples": len(self._userbot_latencies),
         }
 
         # Calculate averages if we have data
         if self._ttfb_values:
             metrics["avg_ttfb"] = sum(self._ttfb_values) / len(self._ttfb_values)
-
 
         if self._processing_times:
             metrics["avg_processing_time"] = sum(self._processing_times) / len(
@@ -125,13 +118,9 @@ class CallSummaryMetricsObserver(BaseObserver):
             metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(
                 self._userbot_latencies
             )
-            metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(
-                self._userbot_latencies
-            )
 
         return metrics
 
-    async def on_push_frame(self, metric_data: FramePushed):
     async def on_push_frame(self, metric_data: FramePushed):
         """
         Process incoming frames to collect metrics.
@@ -182,18 +171,12 @@ class CallSummaryMetricsObserver(BaseObserver):
                     )
                     self._total_tts_characters += data.value
 
-
         # Track userbot latency (time between user stops speaking and bot starts speaking)
         if metric_data.direction != FrameDirection.DOWNSTREAM:
             return
 
-
         if isinstance(metric_data.frame, UserStoppedSpeakingFrame):
             self._user_stopped_time = time.time()
-        elif (
-            isinstance(metric_data.frame, BotStartedSpeakingFrame)
-            and self._user_stopped_time is not None
-        ):
         elif (
             isinstance(metric_data.frame, BotStartedSpeakingFrame)
             and self._user_stopped_time is not None
@@ -206,7 +189,6 @@ class CallSummaryMetricsObserver(BaseObserver):
     async def _log_summary(self):
         """Log a summary of all collected metrics."""
         metrics = self.get_metrics_summary()
-
 
         logger.info("\n" + "=" * 50)
         logger.info("CALL METRICS SUMMARY")
@@ -246,7 +228,6 @@ class CallSummaryMetricsObserver(BaseObserver):
 
         logger.info(f"• Call Duration: {metrics['call_duration']:.2f} seconds")
 
-
         if metrics["avg_userbot_latency"] is not None:
             logger.info(
                 f"• Average Userbot Latency: {metrics['avg_userbot_latency']:.3f} seconds ({metrics['userbot_latency_samples']} samples)"
@@ -256,6 +237,5 @@ class CallSummaryMetricsObserver(BaseObserver):
             )
         else:
             logger.info("• Average Userbot Latency: No data")
-
 
         logger.info("=" * 50 + "\n")
