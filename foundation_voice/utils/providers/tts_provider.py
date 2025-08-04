@@ -56,10 +56,10 @@ def _create_deepgram_tts_service(tts_config: Dict[str, Any]) -> Any:
     logger.debug(f"tts config: {tts_config}")
 
     return DeepgramTTSService(
-        api_key=api_key,        
+        api_key=api_key,
         voice=tts_config.get("voice", "aura-asteria-en"),
-        encoding=tts_config.get("encoding", "linear16"),        
-        sample_rate=tts_config.get("sample_rate", 24000),                
+        encoding=tts_config.get("encoding", "linear16"),
+        sample_rate=tts_config.get("sample_rate", 24000),
     )
 
 
