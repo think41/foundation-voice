@@ -58,9 +58,7 @@ class CaiSDK:
 
         # 2. Try SIP detection (simple pattern-based approach)
         client_ip = websocket.client.host if websocket.client else "unknown"
-        headers = dict(websocket.headers) if hasattr(websocket, "headers") else {}
-
-        headers = dict(websocket.headers) if hasattr(websocket, "headers") else {}
+        headers = dict(websocket.headers) if hasattr(websocket, "headers") else {}        
 
         if SIPDetector.detect_sip_connection(client_ip, headers, query_params):
             sip_params = await SIPDetector.handle_sip_handshake(websocket)
@@ -99,8 +97,7 @@ class CaiSDK:
                 transport_type=transport_type,
                 connection=websocket,
                 agent=agent,
-                **kwargs,
-                **kwargs,
+                **kwargs,                
             )
 
             await self.agent_func(
@@ -118,7 +115,6 @@ class CaiSDK:
             transport_type=TransportType.WEBRTC,
             connection=connection,
             agent=agent,
-            **kwargs,
             **kwargs,
         )
         response = {
