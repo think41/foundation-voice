@@ -25,8 +25,6 @@ class CaiSDK:
         """Ensure metadata and session_id are present in kwargs with default values."""
         kwargs.setdefault("metadata", {})
         kwargs.setdefault("session_id", str(uuid.uuid4()))
-        kwargs.setdefault("metadata", {})
-        kwargs.setdefault("session_id", str(uuid.uuid4()))
 
     def create_args(
         self,
@@ -100,7 +98,6 @@ class CaiSDK:
                 connection=websocket,
                 agent=agent,
                 **kwargs,
-                **kwargs,
             )
 
             await self.agent_func(
@@ -118,7 +115,6 @@ class CaiSDK:
             transport_type=TransportType.WEBRTC,
             connection=connection,
             agent=agent,
-            **kwargs,
             **kwargs,
         )
         response = {
