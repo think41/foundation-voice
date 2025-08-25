@@ -19,8 +19,6 @@ class CaiSDK:
     def __init__(
         self, agent_func: Optional[Callable] = None, agent_config: Optional[dict] = None
     ):
-        self, agent_func: Optional[Callable] = None, agent_config: Optional[dict] = None
-    ):
         self.agent_func = agent_func or run_agent
         self.agent_config = agent_config or {}
 
