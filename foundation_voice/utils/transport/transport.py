@@ -234,7 +234,7 @@ class TransportFactory:
             # SIP transport configuration optimized for Twilio
             return transport
 
-        elif transport_type == TransportType.LIVEKIT | TransportType.LIVEKIT_SIP:
+        elif transport_type in (TransportType.LIVEKIT, TransportType.LIVEKIT_SIP):
             logger.debug("Creating LiveKit transport")
             try:
                 from pipecat.transports.services.livekit import LiveKitParams
