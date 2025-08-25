@@ -1,5 +1,5 @@
 import json
-from typing import override
+from typing_extensions import override
 
 from pipecat.transports.services.livekit import (
     LiveKitTransport as _OGLiveKitTransport,
