@@ -13,3 +13,4 @@ openai-agents>=0.0.12
 ruff>=0.8.6
 twilio>=9.6.3
 opentelemetry-exporter-otlp>=1.34.1
+foundation-voice[livekit]
