@@ -62,7 +62,7 @@ class AgentCallbacks:
         """
         return self._callbacks[event]
 
-    async def _default_client_connected(self, client: Dict[str, Any]):
+    async def _default_client_connected(self, data: Dict[str, Any]):
         """Default implementation for client connected event"""
         pass
 
