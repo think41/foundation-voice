@@ -100,7 +100,7 @@ class CallSummaryMetricsObserver(BaseObserver):
                 "input_tokens": self._llm_usage.get("prompt_tokens", 0),
                 "output_tokens": self._llm_usage.get("completion_tokens", 0),
             }
-        elif hasattr(self.llm._client.agents, "token_usage"):
+        elif hasattr(self.llm._client, "agents") and hasattr(self.llm._client.agents, "token_usage"):
             # Handle OpenAIAgentPlugin case where token usage is tracked in the AgentFactory
             usage = self.llm._client.agents.token_usage
             metrics["llm_token_usage"] = {
