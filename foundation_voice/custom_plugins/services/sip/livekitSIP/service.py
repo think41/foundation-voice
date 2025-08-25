@@ -26,7 +26,8 @@ from livekit.api import (
 from google.protobuf.json_format import MessageToDict
 
 from loguru import logger
-from typing import Optional, override
+from typing import Optional
+from typing_extensions import override
 
 from foundation_voice.custom_plugins.services.sip.base_service import SIPService, Stream
 
