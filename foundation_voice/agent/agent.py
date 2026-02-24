@@ -191,18 +191,6 @@ async def create_agent_pipeline(
                         },
                     ]
                 )
-                context_aggregator.assistant().add_messages(
-                    [
-                        {
-                            "role": "assistant",
-                            "content": f'The call sid is "{call_sid}", use it only when needed.',
-                        },
-                        {
-                            "role": "assistant",
-                            "content": f'The session_id is "{session_id}", use it only when needed.',
-                        },
-                    ]
-                )
         else:
             call_sid = None
 
@@ -239,7 +227,7 @@ async def create_agent_pipeline(
         connection=connection,
     )
     stt_mute_filter = STTMuteFilter(
-        config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE})
+        config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_DURING_USER_SPEECH})
     )
     # Create pipeline with RTVI processor included
     pipeline = Pipeline(
@@ -290,7 +278,6 @@ async def create_agent_pipeline(
     task_observers = [
         UserBotLatencyLogObserver(),
         call_metrics_observer,
-        FunctionObserver(rtvi=rtvi),
         FunctionObserver(rtvi=rtvi),
     ]
 
