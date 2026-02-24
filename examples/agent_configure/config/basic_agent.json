@@ -9,7 +9,10 @@
         "type": "webrtc"
       },
       "vad": {
-        "provider": "silerio"
+        "provider": "silero",
+        "params": {
+          "stop_secs": 0.3
+        }
       },
       "stt": {
         "provider": "deepgram"
@@ -21,6 +24,7 @@
             "start_agent": "intro_agent",
             "logfire_trace": true,
             "triage": true,
+            "model": "gpt-4o-mini",
             "agents": {
                 "intro_agent": {
                     "name": "intro_agent",

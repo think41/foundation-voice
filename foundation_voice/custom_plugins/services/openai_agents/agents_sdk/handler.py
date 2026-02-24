@@ -42,7 +42,32 @@ class AgentHandler:
             raise ValueError(f"Agent {agent_name} not found")
 
         user_input = messages[-1].get("content")
-        buffer = []
+        has_guardrails = bool(messages[-1].get("role") == "user" and guardrails)
+
+        # Fast path: no guardrails — yield chunks immediately as they stream in
+        if not has_guardrails:
+            try:
+                async for chunk in Runner.run_streamed(
+                    agent, messages, context=context
+                ).stream_events():
+                    if chunk.type == "raw_response_event" and isinstance(
+                        chunk.data, ResponseTextDeltaEvent
+                    ):
+                        yield chunk
+                    elif chunk.type == "run_item_stream_event":
+                        item = chunk.item
+                        if item.type == "tool_call_item":
+                            yield create_tool_call_chunk(agent.name, item)
+                        elif item.type == "tool_call_output_item":
+                            yield create_tool_call_output_chunk(item)
+                    elif chunk.type == "agent_updated_stream_event":
+                        yield create_agent_updated_chunk(agent, chunk)
+            except Exception as e:
+                yield create_error_chunk(e)
+            return
+
+        # Guardrail path: run guardrails concurrently with streaming, buffer until safe to yield
+        queue = asyncio.Queue()
         cancel_event = asyncio.Event()
 
         async def stream_agent():
@@ -55,46 +80,42 @@ class AgentHandler:
                     if chunk.type == "raw_response_event" and isinstance(
                         chunk.data, ResponseTextDeltaEvent
                     ):
-                        buffer.append(chunk)
+                        await queue.put(chunk)
                     elif chunk.type == "run_item_stream_event":
                         item = chunk.item
                         if item.type == "tool_call_item":
-                            buffer.append(create_tool_call_chunk(agent.name, item))
+                            await queue.put(create_tool_call_chunk(agent.name, item))
                         elif item.type == "tool_call_output_item":
-                            buffer.append(create_tool_call_output_chunk(item))
+                            await queue.put(create_tool_call_output_chunk(item))
                     elif chunk.type == "agent_updated_stream_event":
-                        buffer.append(create_agent_updated_chunk(agent, chunk))
+                        await queue.put(create_agent_updated_chunk(agent, chunk))
             except Exception as e:
-                buffer.append(create_error_chunk(e))
+                await queue.put(create_error_chunk(e))
+            finally:
+                await queue.put(None)  # sentinel
 
         agent_task = asyncio.create_task(stream_agent())
 
-        # Guardrail evaluation only for user input
-        if messages[-1].get("role") == "user" and guardrails:
-            results = await asyncio.gather(
-                *[
-                    self._run_guardrail(gr, agent, user_input, context)
-                    for gr in guardrails
-                ]
-            )
+        results = await asyncio.gather(
+            *[self._run_guardrail(gr, agent, user_input, context) for gr in guardrails]
+        )
 
-            for name, result in results:
-                if result and result.tripwire_triggered:
-                    cancel_event.set()
-                    agent_task.cancel()
-                    try:
-                        await agent_task
-                    except asyncio.CancelledError:
-                        pass
-                    yield create_guardrail_chunk(name, result)
-                    return
+        for name, result in results:
+            if result and result.tripwire_triggered:
+                cancel_event.set()
+                agent_task.cancel()
+                try:
+                    await agent_task
+                except asyncio.CancelledError:
+                    pass
+                yield create_guardrail_chunk(name, result)
+                return
 
-        # Wait for agent to finish processing
-        while not agent_task.done():
-            await asyncio.sleep(0.01)
-
-        # Yield all buffered output
-        for chunk in buffer:
+        # Guardrails passed — drain the queue
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
             yield chunk
 
     @staticmethod

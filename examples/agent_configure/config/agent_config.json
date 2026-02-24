@@ -7,7 +7,10 @@
       "type": "daily-webrtc"
     },
     "vad": {
-      "provider": "silerio"
+      "provider": "silero",
+      "params": {
+        "stop_secs": 0.3
+      }
     },
     "stt": {
       "provider": "deepgram",
