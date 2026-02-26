@@ -211,7 +211,7 @@ async def create_agent_pipeline(
         connection=connection,
     )
     stt_mute_filter = STTMuteFilter(
-        config=STTMuteConfig(strategies={STTMuteStrategy.ALWAYS})
+        config=STTMuteConfig(strategies={STTMuteStrategy.FUNCTION_CALL})
     )
     # Create pipeline with RTVI processor included
     pipeline = Pipeline(
