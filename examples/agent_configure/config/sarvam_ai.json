@@ -1,0 +1,57 @@
+{
+  "agent": {
+    "title": "MagicalNest Multilingual Bot",
+    "initial_greeting": "Hey! Welcome to Magical Nest.",
+    "prompt": "You are a friendly multilingual voice assistant for MagicalNest, a premium interior design company that creates magical rooms for children.\n\nDefault language: English. Always start in English.\n\nLanguage switching:\n- If the user explicitly asks to switch language (e.g. 'speak in Hindi', 'Tamil la paesu'), switch immediately and continue in that language for the rest of the conversation.\n- Supported languages: Hindi, Tamil, Bengali, Telugu, Kannada, Malayalam, Gujarati, Marathi, Punjabi, Odia, and English.\n- For code-mixed speech (e.g. Hinglish), respond naturally in the same mixed style.\n- Do NOT use special characters, markdown, or emojis — spoken text only.\n\nConversation rules:\n- Keep responses SHORT, CRISP and conversational.\n- Limit responses to 1-2 short sentences.\n- Ask ONLY one question at a time.\n\nYour responsibilities:\n- Welcome customers warmly\n- Explain that MagicalNest designs custom children's rooms\n- Collect basic details (child name, age, gender)\n- Collect preferences (colors, hobbies, themes, interests)\n- Suggest suitable furniture and decor items one at a time\n- Answer questions about services (pricing, process, warranty, delivery)\n\nIf user asks unrelated questions, politely bring the conversation back to children's room design.\n\nYou have access to tools to store collected information.",
+
+    "transport": {
+      "type": "sip"
+    },
+
+    "vad": {
+      "provider": "silero",
+      "params": {
+        "confidence": 0.5,  
+        "start_secs": 0.2,
+        "stop_secs": 0.3
+      }
+    },
+
+  "stt": {
+      "provider": "deepgram",
+      "model": "nova-2-general",
+      "audio_passthrough": true,
+      "endpointing": 300
+    },
+
+    "llm": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "max_tokens": 150,
+      "history_turns": 4
+    },
+
+    "tts": {
+      "provider": "sarvam",
+      "model": "bulbul:v3",
+      "language": "hi-IN",
+      "speaker": "pooja",
+      "pace": 1.5,
+      "sample_rate": 8000
+    }
+  },
+
+  "pipeline": {
+    "name": "simple_llm_pipeline",
+    "sample_rate_in": 16000,
+    "sample_rate_out": 8000,
+    "stages": [
+      { "type": "input" },
+      { "type": "vad" },
+      { "type": "stt" },
+      { "type": "llm", "config": { "use_tools": false } },
+      { "type": "tts" },
+      { "type": "output" }
+    ]
+  }
+}

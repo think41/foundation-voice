@@ -6,6 +6,7 @@ from fastapi import WebSocket
 from typing import Optional, Union, Dict, Any
 
 from pipecat.serializers.twilio import TwilioFrameSerializer
+from foundation_voice.custom_plugins.serializers.twilio_hangup_serializer import TwilioHangupSerializer
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
@@ -199,7 +200,7 @@ class TransportFactory:
                     "stream_sid and call_sid are required for SIP transport"
                 )
 
-            serializer = TwilioFrameSerializer(
+            serializer = TwilioHangupSerializer(
                 stream_sid=stream_sid,
                 call_sid=call_sid,
                 account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),

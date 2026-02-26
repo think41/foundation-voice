@@ -47,6 +47,22 @@ def _create_openai_service(stt_config: Dict[str, Any]) -> Any:
     )
 
 
+def _create_sarvam_service(stt_config: Dict[str, Any]) -> Any:
+    """Create a Sarvam AI STT service (Saarika) using pipecat's built-in service."""
+    SarvamSTTService = import_provider_service(
+        "pipecat.services.sarvam.stt",
+        "SarvamSTTService",
+        "sarvam",
+    )
+    return SarvamSTTService(
+        api_key=os.getenv("SARVAM_API_KEY")
+        or _raise_missing_api_key("Sarvam STT", "SARVAM_API_KEY"),
+        model=stt_config.get("model", "saarika:v2.5"),
+        sample_rate=stt_config.get("sample_rate", 16000),
+        input_audio_codec=stt_config.get("input_audio_codec", "wav"),
+    )
+
+
 def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     """
     Create an STT service based on configuration.
@@ -63,6 +79,7 @@ def create_stt_service(stt_config: Dict[str, Any]) -> Any:
     stt_provider_factories = {
         "deepgram": _create_deepgram_service,
         "openai": _create_openai_service,
+        "sarvam": _create_sarvam_service,
     }
 
     # Get the factory function for the selected provider

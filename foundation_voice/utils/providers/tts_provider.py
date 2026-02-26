@@ -78,6 +78,41 @@ def _create_smallestai_tts_service(tts_config: Dict[str, Any]) -> Any:
     )
 
 
+def _create_sarvam_tts_service(tts_config: Dict[str, Any]) -> Any:
+    SarvamTTSService = import_provider_service(
+        "pipecat.services.sarvam.tts",
+        "SarvamTTSService",
+        "sarvam",
+    )
+    from pipecat.transcriptions.language import Language
+
+    # Map BCP-47 string → pipecat Language enum
+    language_map = {
+        "hi-IN": Language.HI, "ta-IN": Language.TA, "bn-IN": Language.BN,
+        "te-IN": Language.TE, "kn-IN": Language.KN, "ml-IN": Language.ML,
+        "gu-IN": Language.GU, "mr-IN": Language.MR, "pa-IN": Language.PA,
+        "en-IN": Language.EN, "od-IN": Language.OR,
+    }
+    lang_code = tts_config.get("language", "hi-IN")
+    language = language_map.get(lang_code, Language.HI)
+
+    model = tts_config.get("model", "bulbul:v2")
+    params_kwargs = {"language": language}
+    if model in ("bulbul:v3", "bulbul:v3-beta"):
+        params_kwargs["temperature"] = float(tts_config.get("temperature", 0.6))
+    else:
+        params_kwargs["pace"] = float(tts_config.get("pace", 1.0))
+
+    return SarvamTTSService(
+        api_key=os.getenv("SARVAM_API_KEY")
+        or _raise_missing_api_key("Sarvam TTS", "SARVAM_API_KEY"),
+        model=model,
+        voice_id=tts_config.get("speaker", "anushka"),
+        sample_rate=tts_config.get("sample_rate", 16000),
+        params=SarvamTTSService.InputParams(**params_kwargs),
+    )
+
+
 def _create_elevenlabs_tts_service(tts_config: Dict[str, Any]) -> Any:
     ElevenLabsTTSService = import_provider_service(
         "pipecat.services.elevenlabs.tts", "ElevenLabsTTSService", "elevenlabs"
@@ -113,6 +148,7 @@ def create_tts_service(tts_config: Dict[str, Any]) -> Any:
         "deepgram": _create_deepgram_tts_service,
         "smallestai": _create_smallestai_tts_service,
         "elevenlabs": _create_elevenlabs_tts_service,
+        "sarvam": _create_sarvam_tts_service,
     }
 
     # Get the factory function for the selected provider
