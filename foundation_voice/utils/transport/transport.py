@@ -6,7 +6,9 @@ from fastapi import WebSocket
 from typing import Optional, Union, Dict, Any
 
 from pipecat.serializers.twilio import TwilioFrameSerializer
-from foundation_voice.custom_plugins.serializers.twilio_hangup_serializer import TwilioHangupSerializer
+from foundation_voice.custom_plugins.serializers.twilio_hangup_serializer import (
+    TwilioHangupSerializer,
+)
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection

@@ -25,7 +25,9 @@ class TwilioHangupSerializer(TwilioFrameSerializer):
         message = json.loads(data)
 
         if message.get("event") == "stop":
-            logger.info("Twilio 'stop' event received — caller hung up. Ending pipeline.")
+            logger.info(
+                "Twilio 'stop' event received — caller hung up. Ending pipeline."
+            )
             return EndFrame()
 
         return await super().deserialize(data)

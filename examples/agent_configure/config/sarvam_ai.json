@@ -11,7 +11,7 @@
     "vad": {
       "provider": "silero",
       "params": {
-        "confidence": 0.5,  
+        "confidence": 0.5,
         "start_secs": 0.2,
         "stop_secs": 0.3
       }

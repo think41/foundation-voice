@@ -88,10 +88,17 @@ def _create_sarvam_tts_service(tts_config: Dict[str, Any]) -> Any:
 
     # Map BCP-47 string → pipecat Language enum
     language_map = {
-        "hi-IN": Language.HI, "ta-IN": Language.TA, "bn-IN": Language.BN,
-        "te-IN": Language.TE, "kn-IN": Language.KN, "ml-IN": Language.ML,
-        "gu-IN": Language.GU, "mr-IN": Language.MR, "pa-IN": Language.PA,
-        "en-IN": Language.EN, "od-IN": Language.OR,
+        "hi-IN": Language.HI,
+        "ta-IN": Language.TA,
+        "bn-IN": Language.BN,
+        "te-IN": Language.TE,
+        "kn-IN": Language.KN,
+        "ml-IN": Language.ML,
+        "gu-IN": Language.GU,
+        "mr-IN": Language.MR,
+        "pa-IN": Language.PA,
+        "en-IN": Language.EN,
+        "od-IN": Language.OR,
     }
     lang_code = tts_config.get("language", "hi-IN")
     language = language_map.get(lang_code, Language.HI)

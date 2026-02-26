@@ -10,7 +10,7 @@ Response: base64-encoded PCM audio
 """
 
 import base64
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
 import aiohttp
 from loguru import logger
@@ -29,8 +29,17 @@ SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 
 # Supported language codes for Bulbul
 SUPPORTED_LANGUAGES = {
-    "hi-IN", "bn-IN", "ta-IN", "te-IN", "gu-IN",
-    "kn-IN", "ml-IN", "mr-IN", "pa-IN", "od-IN", "en-IN",
+    "hi-IN",
+    "bn-IN",
+    "ta-IN",
+    "te-IN",
+    "gu-IN",
+    "kn-IN",
+    "ml-IN",
+    "mr-IN",
+    "pa-IN",
+    "od-IN",
+    "en-IN",
 }
 
 
@@ -117,8 +126,12 @@ class SarvamTTSService(TTSService):
                 ) as response:
                     if response.status != 200:
                         error_text = await response.text()
-                        logger.error(f"Sarvam TTS error {response.status}: {error_text}")
-                        yield ErrorFrame(f"Sarvam TTS error {response.status}: {error_text}")
+                        logger.error(
+                            f"Sarvam TTS error {response.status}: {error_text}"
+                        )
+                        yield ErrorFrame(
+                            f"Sarvam TTS error {response.status}: {error_text}"
+                        )
                         return
 
                     result = await response.json()

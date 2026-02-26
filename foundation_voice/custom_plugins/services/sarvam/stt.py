@@ -34,7 +34,9 @@ try:
     from websockets.protocol import State
 except ModuleNotFoundError as e:
     logger.error(f"Exception: {e}")
-    logger.error("In order to use Sarvam STT, please install websockets: pip install websockets")
+    logger.error(
+        "In order to use Sarvam STT, please install websockets: pip install websockets"
+    )
     raise Exception(f"Missing module: {e}")
 
 SARVAM_STT_WS_URL = "wss://api.sarvam.ai/speech-to-text/ws"
@@ -114,7 +116,7 @@ class SarvamSTTService(WebsocketSTTService):
         if self._websocket and self._websocket.state is State.OPEN:
             while len(self._audio_buffer) >= self._chunk_size_bytes:
                 chunk = bytes(self._audio_buffer[: self._chunk_size_bytes])
-                self._audio_buffer = self._audio_buffer[self._chunk_size_bytes:]
+                self._audio_buffer = self._audio_buffer[self._chunk_size_bytes :]
                 await self._websocket.send(chunk)
 
         yield None
@@ -133,7 +135,9 @@ class SarvamSTTService(WebsocketSTTService):
             await self.start_processing_metrics()
 
     @traced_stt
-    async def _trace_transcription(self, transcript: str, is_final: bool, language: str):
+    async def _trace_transcription(
+        self, transcript: str, is_final: bool, language: str
+    ):
         pass
 
     async def _connect(self):
@@ -162,7 +166,7 @@ class SarvamSTTService(WebsocketSTTService):
 
             ws_url = self._build_ws_url()
 
-            logger.debug(f"Connecting to Sarvam STT WebSocket")
+            logger.debug("Connecting to Sarvam STT WebSocket")
             self._websocket = await websocket_connect(ws_url)
             await self._call_event_handler("on_connected")
             logger.debug("Connected to Sarvam STT WebSocket")
@@ -203,13 +207,17 @@ class SarvamSTTService(WebsocketSTTService):
                         await self.stop_processing_metrics()
                         await self._trace_transcription(transcript, True, language)
                         await self.push_frame(
-                            TranscriptionFrame(transcript, self._user_id, time_now_iso8601(), language)
+                            TranscriptionFrame(
+                                transcript, self._user_id, time_now_iso8601(), language
+                            )
                         )
                         logger.debug(f"Sarvam STT final: [{transcript}]")
                     else:
                         await self._trace_transcription(transcript, False, language)
                         await self.push_frame(
-                            InterimTranscriptionFrame(transcript, self._user_id, time_now_iso8601(), language)
+                            InterimTranscriptionFrame(
+                                transcript, self._user_id, time_now_iso8601(), language
+                            )
                         )
             elif msg_type == "speech_start":
                 logger.debug("Sarvam STT: speech started")
