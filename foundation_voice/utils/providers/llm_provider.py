@@ -246,9 +246,9 @@ def create_llm_context(
 
     if llm_provider in ["openai", "cerebras", "groq"]:
         max_history_turns = agent_config.get("llm", {}).get("history_turns", 6)
-        context_cls = lambda **kw: HistoryLimitedContext(
-            max_history_turns=max_history_turns, **kw
-        )
+
+        def context_cls(**kw):
+            return HistoryLimitedContext(max_history_turns=max_history_turns, **kw)
 
         if req_tools is not None:
             try:
