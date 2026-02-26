@@ -38,6 +38,7 @@ class HistoryLimitedContext(OpenAILLMContext):
             conv_msgs = conv_msgs[-max_conv:]
         return system_msgs + conv_msgs
 
+
 load_dotenv()
 
 DEFAULT_PROMPT = "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way."

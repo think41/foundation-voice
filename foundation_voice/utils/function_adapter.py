@@ -127,7 +127,9 @@ class FunctionFactory:
                 try:
                     tools[name] = FunctionAdapter(func).to_tool_schema()
                 except Exception as e:
-                    logger.warning(f"Skipping tool '{name}' for openai_agents provider (schema error): {e}")
+                    logger.warning(
+                        f"Skipping tool '{name}' for openai_agents provider (schema error): {e}"
+                    )
             return tools
 
         elif self.provider in ["openai", "cerebras", "groq"]:

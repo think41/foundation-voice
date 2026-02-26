@@ -119,7 +119,9 @@ class TransportFactory:
                 from pipecat.transports.smallwebrtc.connection import (
                     SmallWebRTCConnection,
                 )
-                from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
+                from pipecat.transports.smallwebrtc.transport import (
+                    SmallWebRTCTransport,
+                )
             except ImportError as e:
                 logger.error(
                     "The 'small_webrtc' package, required for WebRTC transport, was not found. "
