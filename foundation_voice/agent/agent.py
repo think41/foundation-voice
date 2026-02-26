@@ -8,8 +8,9 @@ from typing import Optional, Union, Dict, Any
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.utils.tracing.setup import setup_tracing
 from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.frames.frames import LLMRunFrame
 from pipecat.processors.transcript_processor import TranscriptProcessor
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.processors.frameworks.rtvi import (
     RTVIConfig,
     RTVIProcessor,
@@ -210,7 +211,7 @@ async def create_agent_pipeline(
         connection=connection,
     )
     stt_mute_filter = STTMuteFilter(
-        config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_DURING_USER_SPEECH})
+        config=STTMuteConfig(strategies={STTMuteStrategy.ALWAYS})
     )
     # Create pipeline with RTVI processor included
     pipeline = Pipeline(
@@ -236,7 +237,7 @@ async def create_agent_pipeline(
         messages = arguments.get("messages")
         _run_immediately = arguments.get("run_immediately")
         context_aggregator.user().add_messages(messages)
-        await task.queue_frames([context_aggregator.user().get_context_frame()])
+        await task.queue_frames([LLMRunFrame()])
         return True
 
     append_to_messages = RTVIAction(
@@ -317,7 +318,7 @@ async def create_agent_pipeline(
         async def on_client_connected(rtvi):
             logger.info("Daily client ready")
             await rtvi.set_bot_ready()
-            await task.queue_frames([context_aggregator.user().get_context_frame()])
+            await task.queue_frames([LLMRunFrame()])
 
         @transport.event_handler(AgentEvent.PARTICIPANT_LEFT.value)
         async def on_participant_left(transport, participant, reason):
@@ -405,7 +406,7 @@ async def create_agent_pipeline(
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
             data = {"client": client, "metadata": metadata, "session_id": session_id}
             await callback(data)
-            await task.queue_frames([context_aggregator.user().get_context_frame()])
+            await task.queue_frames([LLMRunFrame()])
 
     if transport_type == TransportType.WEBRTC:
 
@@ -430,7 +431,7 @@ async def create_agent_pipeline(
                 "session_id": session_id,
             }
             await callback(data)
-            await task.queue_frames([context_aggregator.user().get_context_frame()])
+            await task.queue_frames([LLMRunFrame()])
 
         @transport.event_handler("on_participant_disconnected")
         async def on_participant_disconnected(transport, participant):

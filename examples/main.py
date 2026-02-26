@@ -4,6 +4,9 @@ import uuid
 import argparse
 
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from typing import Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, BackgroundTasks, Query, Request
@@ -28,9 +31,6 @@ from foundation_voice.routers import agent_router
 from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
     router as sip_router,
 )
-
-# Load environment variables
-load_dotenv()
 
 # Initialize the SDK - it handles all complexity internally
 cai_sdk = CaiSDK()
@@ -212,14 +212,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 logger.info(
                     f"Processing SIP connection with custom parameters{sip_params}"
                 )
-                agent_name = sip_params.get("agent_name", "agent1")
-                session_id = sip_params.get("session_id")
+                custom_params = sip_params.get("customParameters", {})
+                agent_name = custom_params.get("agent_name", "agent1")
+                session_id = custom_params.get("session_id")
                 if not session_id:
                     logger.warning(
                         "No session_id provided in SIP params, generating new one"
                     )
                     session_id = str(uuid.uuid4())
-                sip_params = sip_params.pop("customParameters")
 
             metadata = {"session_id": session_id}
             try:

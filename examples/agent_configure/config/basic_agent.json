@@ -11,7 +11,7 @@
       "vad": {
         "provider": "silero",
         "params": {
-          "stop_secs": 0.3
+          "stop_secs": 0.4
         }
       },
       "stt": {
@@ -24,7 +24,7 @@
             "start_agent": "intro_agent",
             "logfire_trace": true,
             "triage": true,
-            "model": "gpt-4o-mini",
+            "model": "gpt-4.1-mini",
             "agents": {
                 "intro_agent": {
                     "name": "intro_agent",
@@ -48,7 +48,9 @@
         }
       },
       "tts": {
-        "provider": "deepgram"
+        "provider": "elevenlabs",
+        "voice_id": "21m00Tcm4TlvDq8ikWAM",
+        "model": "eleven_turbo_v2"
       },
       "mcp": { 
         "type": "llm_orchestrator",

@@ -5,7 +5,7 @@ from fastapi import WebSocket
 from typing import Optional, Union, Dict, Any
 
 from pipecat.pipeline.runner import PipelineRunner
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
 from foundation_voice.agent.cleanup import cleanup
 from foundation_voice.agent.agent import AgentCallbacks

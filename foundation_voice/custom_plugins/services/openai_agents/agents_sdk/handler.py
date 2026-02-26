@@ -95,28 +95,55 @@ class AgentHandler:
                 await queue.put(None)  # sentinel
 
         agent_task = asyncio.create_task(stream_agent())
+        pending_guardrails = {
+            asyncio.create_task(self._run_guardrail(gr, agent, user_input, context))
+            for gr in guardrails
+        }
 
-        results = await asyncio.gather(
-            *[self._run_guardrail(gr, agent, user_input, context) for gr in guardrails]
-        )
+        # Stream chunks immediately while guardrails run concurrently.
+        # Cancel and yield guardrail chunk only if a tripwire is triggered.
+        stream_done = False
+        while not stream_done:
+            queue_task = asyncio.create_task(queue.get())
+            done, _ = await asyncio.wait(
+                {queue_task} | pending_guardrails,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
 
-        for name, result in results:
-            if result and result.tripwire_triggered:
-                cancel_event.set()
-                agent_task.cancel()
+            # Check any completed guardrails for tripwires
+            for gt in done & pending_guardrails:
+                pending_guardrails.discard(gt)
                 try:
-                    await agent_task
-                except asyncio.CancelledError:
-                    pass
-                yield create_guardrail_chunk(name, result)
-                return
+                    name, result = gt.result()
+                    if result and result.tripwire_triggered:
+                        queue_task.cancel()
+                        cancel_event.set()
+                        agent_task.cancel()
+                        try:
+                            await agent_task
+                        except asyncio.CancelledError:
+                            pass
+                        for remaining in pending_guardrails:
+                            remaining.cancel()
+                        yield create_guardrail_chunk(name, result)
+                        return
+                except Exception as e:
+                    logger.error(f"Guardrail task error: {e}")
 
-        # Guardrails passed — drain the queue
-        while True:
-            chunk = await queue.get()
-            if chunk is None:
-                break
-            yield chunk
+            # Yield chunk if queue_task completed
+            if queue_task in done:
+                chunk = queue_task.result()
+                if chunk is None:
+                    stream_done = True
+                else:
+                    yield chunk
+            else:
+                # Guardrail completed but queue not ready yet — cancel and re-loop
+                queue_task.cancel()
+
+        # Stream done — wait for any remaining guardrails
+        if pending_guardrails:
+            await asyncio.gather(*pending_guardrails, return_exceptions=True)
 
     @staticmethod
     async def _run_guardrail(guardrail, agent, user_input, context):

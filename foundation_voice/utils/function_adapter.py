@@ -124,7 +124,10 @@ class FunctionFactory:
         if self.provider == "openai_agents":
             tools = {}
             for name, func in self.functions.items():
-                tools[name] = FunctionAdapter(func).to_tool_schema()
+                try:
+                    tools[name] = FunctionAdapter(func).to_tool_schema()
+                except Exception as e:
+                    logger.warning(f"Skipping tool '{name}' for openai_agents provider (schema error): {e}")
             return tools
 
         elif self.provider in ["openai", "cerebras", "groq"]:

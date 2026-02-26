@@ -26,9 +26,9 @@
       ]
     },
     "tts": {
-      "provider": "smallestai",
-      "voice_id": "emily",
-      "speed": "1.0"
+      "provider": "elevenlabs",
+      "voice_id": "21m00Tcm4TlvDq8ikWAM",
+      "model": "eleven_turbo_v2"
     },
     "mcp": { 
       "type": "llm_orchestrator",

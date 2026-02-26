@@ -27,6 +27,7 @@ def _create_deepgram_service(stt_config: Dict[str, Any]) -> Any:
         live_options=LiveOptions(
             model=stt_config.get("model", "nova-2-general"),
             language=stt_config.get("language", "en-us"),
+            endpointing=stt_config.get("endpointing", 400),
         ),
         audio_passthrough=stt_config.get("audio_passthrough", False),
     )

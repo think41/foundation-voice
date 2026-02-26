@@ -4,7 +4,7 @@ from loguru import logger
 from typing import Dict, Tuple, Optional
 
 from pydantic import BaseModel
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
 from foundation_voice.utils.helpers.daily_helpers import get_token
 from foundation_voice.utils.helpers.livekit_helpers import (

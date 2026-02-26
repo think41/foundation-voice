@@ -8,8 +8,7 @@ from typing import Optional, Union, Dict, Any
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.transports.base_transport import TransportParams
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
-from pipecat.audio.filters.noisereduce_filter import NoisereduceFilter
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
 from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 
@@ -33,7 +32,7 @@ def get_fastapi_websocket_transport(
 ):
     try:
         from fastapi import WebSocket
-        from pipecat.transports.network.fastapi_websocket import (
+        from pipecat.transports.websocket.fastapi import (
             FastAPIWebsocketTransport,
             FastAPIWebsocketParams,
         )
@@ -58,7 +57,6 @@ def get_fastapi_websocket_transport(
             serializer=serializer,
             audio_in_enabled=True,
             audio_out_enabled=True,
-            audio_in_filter=NoisereduceFilter(),
             add_wav_header=False,
             vad_analyzer=vad_analyzer,
             **(extra_params or {}),
@@ -118,10 +116,10 @@ class TransportFactory:
 
         elif transport_type == TransportType.WEBRTC:
             try:
-                from pipecat.transports.network.webrtc_connection import (
+                from pipecat.transports.smallwebrtc.connection import (
                     SmallWebRTCConnection,
                 )
-                from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
+                from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
             except ImportError as e:
                 logger.error(
                     "The 'small_webrtc' package, required for WebRTC transport, was not found. "
@@ -141,7 +139,6 @@ class TransportFactory:
                 params=TransportParams(
                     audio_in_enabled=True,
                     audio_out_enabled=True,
-                    audio_in_filter=NoisereduceFilter(),
                     vad_analyzer=vad_analyzer,
                 ),
             )
@@ -177,9 +174,8 @@ class TransportFactory:
                 params=DailyParams(
                     audio_out_enabled=True,
                     transcription_enabled=True,
-                    vad_enabled=True,
+                    audio_in_enabled=True,
                     vad_analyzer=vad_analyzer,
-                    audio_in_filter=NoisereduceFilter(),
                 ),
             )
 
@@ -219,10 +215,6 @@ class TransportFactory:
                 connection=connection,
                 serializer=serializer,
                 vad_analyzer=vad_analyzer,
-                extra_params={
-                    "vad_enabled": True,
-                    "vad_audio_passthrough": True,
-                },
             )
 
             # SIP transport configuration optimized for Twilio
@@ -266,7 +258,7 @@ class TransportFactory:
                 params=LiveKitParams(
                     audio_out_enabled=True,
                     transcription_enabled=True,
-                    vad_enabled=True,
+                    audio_in_enabled=True,
                     vad_analyzer=vad_analyzer,
                 ),
             )

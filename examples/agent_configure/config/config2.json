@@ -44,9 +44,9 @@
         ]
       },
       "tts": {
-        "provider": "openai",
-        "voice": "echo",
-        "api_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "provider": "elevenlabs",
+        "voice_id": "21m00Tcm4TlvDq8ikWAM",
+        "model": "eleven_turbo_v2"
       },
       "mcp": {
         "type": "llm_orchestrator",
