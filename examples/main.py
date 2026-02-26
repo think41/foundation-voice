@@ -2,33 +2,32 @@ import os
 import json
 import uuid
 import argparse
-
-from dotenv import load_dotenv
-
-load_dotenv()
-
+import logging
 from typing import Optional
+from xml.sax.saxutils import escape
+
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from foundation_voice.utils.transport.session_manager import session_manager
-from foundation_voice.utils.transport.connection_manager import WebRTCOffer
-import logging
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from foundation_voice.lib import CaiSDK
-from foundation_voice.utils.config_loader import ConfigLoader
 from starlette.responses import HTMLResponse
 from twilio.rest import Client as TwilioClient
 from twilio.base.exceptions import TwilioRestException
-from xml.sax.saxutils import escape
 
-from agent_configure.utils.context import contexts
-from agent_configure.utils.tool import tool_config
-from agent_configure.utils.callbacks import custom_callbacks
-from foundation_voice.utils.api_utils import auto_detect_transport
-from foundation_voice.routers import agent_router
-from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
+load_dotenv()
+
+from agent_configure.utils.context import contexts  # noqa: E402
+from agent_configure.utils.tool import tool_config  # noqa: E402
+from agent_configure.utils.callbacks import custom_callbacks  # noqa: E402
+from foundation_voice.utils.transport.session_manager import session_manager  # noqa: E402
+from foundation_voice.utils.transport.connection_manager import WebRTCOffer  # noqa: E402
+from foundation_voice.lib import CaiSDK  # noqa: E402
+from foundation_voice.utils.config_loader import ConfigLoader  # noqa: E402
+from foundation_voice.utils.api_utils import auto_detect_transport  # noqa: E402
+from foundation_voice.routers import agent_router  # noqa: E402
+from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (  # noqa: E402
     router as sip_router,
 )
 
