@@ -98,7 +98,7 @@ defined_agents = {
         "callbacks": custom_callbacks,
     },
     "agent4": {"config": agent_config_4},
-"sarvam_agent": {
+    "sarvam_agent": {
         "config": agent_config_sarvam,
         "contexts": contexts,
         "tool_dict": tool_config,
