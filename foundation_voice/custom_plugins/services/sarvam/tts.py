@@ -125,12 +125,9 @@ class SarvamTTSService(TTSService):
                 json=payload,
                 headers=headers,
             ) as response:
-
                 if response.status != 200:
                     error_text = await response.text()
-                    logger.error(
-                        f"Sarvam TTS error {response.status}: {error_text}"
-                    )
+                    logger.error(f"Sarvam TTS error {response.status}: {error_text}")
                     yield ErrorFrame(
                         f"Sarvam TTS error {response.status}: {error_text}"
                     )

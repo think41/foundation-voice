@@ -30,7 +30,6 @@ SARVAM_STT_WS_URL = "wss://api.sarvam.ai/speech-to-text/ws"
 
 
 class SarvamSTTService(WebsocketSTTService):
-
     def __init__(
         self,
         *,
@@ -66,9 +65,7 @@ class SarvamSTTService(WebsocketSTTService):
 
     async def start(self, frame: StartFrame):
         await super().start(frame)
-        self._chunk_size_bytes = int(
-            self._chunk_size_ms * self._sample_rate * 2 / 1000
-        )
+        self._chunk_size_bytes = int(self._chunk_size_ms * self._sample_rate * 2 / 1000)
         await self._connect()
 
     async def stop(self, frame: EndFrame):
