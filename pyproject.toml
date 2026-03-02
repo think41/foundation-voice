@@ -23,8 +23,8 @@ dependencies = [
     "fastapi>=0.115.6",
     "loguru>=0.7.0",
     "mcp>=1.10.1",
-    "pipecat-ai==0.0.72", # Core pipecat library with version
-    "pipecat-ai[silero,noisereduce]==0.0.72", # Core pipecat library with version
+    "pipecat-ai==0.0.98", # Core pipecat library with version
+    "pipecat-ai[silero,noisereduce]==0.0.98", # Core pipecat library with version
     "pydantic-ai[logfire]>=0.0.51",
     "python-dotenv>=1.0.1",
     "ruff>=0.8.6",
@@ -37,25 +37,25 @@ dependencies = [
 # Provider-specific extras. Users can install what they need.
 # e.g., pip install .[openai,deepgram]
 
-openai = ["pipecat-ai[openai]>=0.0.71"]
+openai = ["pipecat-ai[openai]>=0.0.98"]
 
 openai-agents = ["openai-agents>=0.0.12"]
 
-deepgram = ["pipecat-ai[deepgram]>=0.0.71"]
+deepgram = ["pipecat-ai[deepgram]>=0.0.98"]
 
-cartesia = ["pipecat-ai[cartesia]>=0.0.71"]
+cartesia = ["pipecat-ai[cartesia]>=0.0.98"]
 
-daily = ["pipecat-ai[daily]>=0.0.71"]
+daily = ["pipecat-ai[daily]>=0.0.98"]
 
-webrtc = ["pipecat-ai[webrtc]>=0.0.71", "pipecat-ai-small-webrtc-prebuilt>=0.5.0"]
+webrtc = ["pipecat-ai[webrtc]>=0.0.98", "pipecat-ai-small-webrtc-prebuilt>=0.5.0"]
 
 smallestai = ["smallestai>=3.1.0"]
 
 twilio = ["twilio"]
 
-groq = ["pipecat-ai[groq]>=0.0.71"]
+groq = ["pipecat-ai[groq]>=0.0.98"]
 
-elevenlabs = ["pipecat-ai[elevenlabs]>=0.0.71"]
+elevenlabs = ["pipecat-ai[elevenlabs]>=0.0.98"]
 
 livekit = ["livekit>=1.0.11", "livekit-api>=1.0.3", "livekit-protocol>=1.0.4", "tenacity>=9.1.2"]
 

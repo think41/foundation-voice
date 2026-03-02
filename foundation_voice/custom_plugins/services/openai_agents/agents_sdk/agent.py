@@ -41,7 +41,7 @@ class AgentFactory:
             self._traceSetup()
 
         agent_config = self._config.get("agents", {})
-        self._model = self._config.get("model", "gpt-4o-mini")
+        self._model = self._config.get("model", "gpt-4.1-mini")
         input_guardrails = self._setup_input_guardrails(
             self._config.get("guardrails", {})
         )

@@ -30,14 +30,14 @@ class SIPDetector:
         """Handle SIP handshake by checking for Twilio's specific message pattern"""
         try:
             # Get first message with timeout
-            first_message = await asyncio.wait_for(websocket.receive_text(), timeout=10)
+            first_message = await asyncio.wait_for(websocket.receive_text(), timeout=3)
             data = json.loads(first_message)
 
             # Check for Twilio's "connected" event with protocol field
             if data.get("event") == "connected" and "protocol" in data:
                 # Get start event with call details
                 start_message = await asyncio.wait_for(
-                    websocket.receive_text(), timeout=10
+                    websocket.receive_text(), timeout=3
                 )
                 start_data = json.loads(start_message)
 

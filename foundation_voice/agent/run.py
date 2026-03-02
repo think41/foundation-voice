@@ -5,14 +5,13 @@ from fastapi import WebSocket
 from typing import Optional, Union, Dict, Any
 
 from pipecat.pipeline.runner import PipelineRunner
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
 from foundation_voice.agent.cleanup import cleanup
 from foundation_voice.agent.agent import AgentCallbacks
 from foundation_voice.agent.agent import create_agent_pipeline
 from foundation_voice.utils.transport.transport import TransportType
 from foundation_voice.utils.transport.session_manager import session_manager
-
 
 
 async def run_agent(
@@ -90,7 +89,6 @@ async def run_agent(
         runner = PipelineRunner()
         await runner.run(task)
 
-
     except Exception as e:
         logger.error(f"Error running agent: {e}")
         raise
@@ -99,4 +97,3 @@ async def run_agent(
             await cleanup(transport_type, connection, room_url, session_id, task)
         except Exception as cleanup_error:
             logger.error(f"Error during cleanup: {cleanup_error}")
-

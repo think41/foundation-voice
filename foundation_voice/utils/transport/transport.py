@@ -6,17 +6,18 @@ from fastapi import WebSocket
 from typing import Optional, Union, Dict, Any
 
 from pipecat.serializers.twilio import TwilioFrameSerializer
+from foundation_voice.custom_plugins.serializers.twilio_hangup_serializer import (
+    TwilioHangupSerializer,
+)
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.transports.base_transport import TransportParams
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
-from pipecat.audio.filters.noisereduce_filter import NoisereduceFilter
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
 from foundation_voice.utils.providers.vad_provider import create_vad_analyzer
 
 
 class TransportType(Enum):
     """Enum defining all supported transport types"""
-
 
     WEBSOCKET = "websocket"
     WEBRTC = "webrtc"
@@ -34,7 +35,7 @@ def get_fastapi_websocket_transport(
 ):
     try:
         from fastapi import WebSocket
-        from pipecat.transports.network.fastapi_websocket import (
+        from pipecat.transports.websocket.fastapi import (
             FastAPIWebsocketTransport,
             FastAPIWebsocketParams,
         )
@@ -59,13 +60,11 @@ def get_fastapi_websocket_transport(
             serializer=serializer,
             audio_in_enabled=True,
             audio_out_enabled=True,
-            audio_in_filter=NoisereduceFilter(),
             add_wav_header=False,
             vad_analyzer=vad_analyzer,
             **(extra_params or {}),
         ),
     )
-
 
 
 class TransportFactory:
@@ -101,12 +100,6 @@ class TransportFactory:
         logger.debug(
             f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}"
         )
-        logger.debug(
-            f"TransportFactory: Creating transport type: {transport_type.value}"
-        )
-        logger.debug(
-            f"TransportFactory: Connection type: {type(connection).__name__ if connection else 'None'}"
-        )
         logger.debug(f"TransportFactory: Additional kwargs: {list(kwargs.keys())}")
 
         vad_config = kwargs.get("vad_config", {})
@@ -126,13 +119,12 @@ class TransportFactory:
 
         elif transport_type == TransportType.WEBRTC:
             try:
-                from pipecat.transports.network.webrtc_connection import (
+                from pipecat.transports.smallwebrtc.connection import (
                     SmallWebRTCConnection,
                 )
-                from pipecat.transports.network.webrtc_connection import (
-                    SmallWebRTCConnection,
+                from pipecat.transports.smallwebrtc.transport import (
+                    SmallWebRTCTransport,
                 )
-                from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
             except ImportError as e:
                 logger.error(
                     "The 'small_webrtc' package, required for WebRTC transport, was not found. "
@@ -152,7 +144,6 @@ class TransportFactory:
                 params=TransportParams(
                     audio_in_enabled=True,
                     audio_out_enabled=True,
-                    audio_in_filter=NoisereduceFilter(),
                     vad_analyzer=vad_analyzer,
                 ),
             )
@@ -160,10 +151,6 @@ class TransportFactory:
         elif transport_type == TransportType.DAILY:
             logger.debug("TransportFactory: Creating Daily transport")
             try:
-                from pipecat.transports.services.daily import (
-                    DailyTransport,
-                    DailyParams,
-                )
                 from pipecat.transports.services.daily import (
                     DailyTransport,
                     DailyParams,
@@ -192,9 +179,8 @@ class TransportFactory:
                 params=DailyParams(
                     audio_out_enabled=True,
                     transcription_enabled=True,
-                    vad_enabled=True,
+                    audio_in_enabled=True,
                     vad_analyzer=vad_analyzer,
-                    audio_in_filter=NoisereduceFilter(),
                 ),
             )
 
@@ -210,19 +196,13 @@ class TransportFactory:
             logger.debug(
                 f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}"
             )
-            logger.debug(
-                f"TransportFactory: SIP params - stream_sid: {stream_sid}, call_sid: {call_sid}"
-            )
 
             if not stream_sid or not call_sid:
                 raise ValueError(
                     "stream_sid and call_sid are required for SIP transport"
                 )
-                raise ValueError(
-                    "stream_sid and call_sid are required for SIP transport"
-                )
 
-            serializer = TwilioFrameSerializer(
+            serializer = TwilioHangupSerializer(
                 stream_sid=stream_sid,
                 call_sid=call_sid,
                 account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),
@@ -240,10 +220,6 @@ class TransportFactory:
                 connection=connection,
                 serializer=serializer,
                 vad_analyzer=vad_analyzer,
-                extra_params={
-                    "vad_enabled": True,
-                    "vad_audio_passthrough": True,
-                },
             )
 
             # SIP transport configuration optimized for Twilio
@@ -287,7 +263,7 @@ class TransportFactory:
                 params=LiveKitParams(
                     audio_out_enabled=True,
                     transcription_enabled=True,
-                    vad_enabled=True,
+                    audio_in_enabled=True,
                     vad_analyzer=vad_analyzer,
                 ),
             )

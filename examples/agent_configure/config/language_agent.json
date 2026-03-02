@@ -15,11 +15,12 @@
       },
       "llm": {
         "provider": "openai",
-        "model": "gpt-4o-mini"
+        "model": "gpt-4.1-mini"
       },
       "tts": {
-        "provider": "smallestai",
-        "voice_id": "ananya"
+        "provider": "elevenlabs",
+        "voice_id": "21m00Tcm4TlvDq8ikWAM",
+        "model": "eleven_turbo_v2"
       },
       "mcp": { 
         "type": "llm_orchestrator",

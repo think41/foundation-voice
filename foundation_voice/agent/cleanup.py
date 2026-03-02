@@ -1,7 +1,7 @@
 from typing import Optional, Union
 from fastapi import WebSocket
 from loguru import logger
-from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.pipeline.task import PipelineTask
 from ..utils.transport.session_manager import session_manager
 

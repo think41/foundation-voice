@@ -2,35 +2,34 @@ import os
 import json
 import uuid
 import argparse
-
-from dotenv import load_dotenv
+import logging
 from typing import Optional
+from xml.sax.saxutils import escape
+
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from foundation_voice.utils.transport.session_manager import session_manager
-from foundation_voice.utils.transport.connection_manager import WebRTCOffer
-import logging
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from foundation_voice.lib import CaiSDK
-from foundation_voice.utils.config_loader import ConfigLoader
 from starlette.responses import HTMLResponse
 from twilio.rest import Client as TwilioClient
 from twilio.base.exceptions import TwilioRestException
-from xml.sax.saxutils import escape
 
-from agent_configure.utils.context import contexts
-from agent_configure.utils.tool import tool_config
-from agent_configure.utils.callbacks import custom_callbacks
-from foundation_voice.utils.api_utils import auto_detect_transport
-from foundation_voice.routers import agent_router
-from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
+load_dotenv()
+
+from agent_configure.utils.context import contexts  # noqa: E402
+from agent_configure.utils.tool import tool_config  # noqa: E402
+from agent_configure.utils.callbacks import custom_callbacks  # noqa: E402
+from foundation_voice.utils.transport.session_manager import session_manager  # noqa: E402
+from foundation_voice.utils.transport.connection_manager import WebRTCOffer  # noqa: E402
+from foundation_voice.lib import CaiSDK  # noqa: E402
+from foundation_voice.utils.config_loader import ConfigLoader  # noqa: E402
+from foundation_voice.utils.api_utils import auto_detect_transport  # noqa: E402
+from foundation_voice.routers import agent_router  # noqa: E402
+from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (  # noqa: E402
     router as sip_router,
 )
-
-# Load environment variables
-load_dotenv()
 
 # Initialize the SDK - it handles all complexity internally
 cai_sdk = CaiSDK()
@@ -52,11 +51,15 @@ config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.
 config_path4 = os.path.join(
     BASE_DIR, "agent_configure", "config", "language_agent.json"
 )
+config_path_sarvam = os.path.join(
+    BASE_DIR, "agent_configure", "config", "sarvam_ai.json"
+)
 
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
 agent_config_4 = ConfigLoader.load_config(config_path4)
+agent_config_sarvam = ConfigLoader.load_config(config_path_sarvam)
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +98,15 @@ defined_agents = {
         "callbacks": custom_callbacks,
     },
     "agent4": {"config": agent_config_4},
-    "agent4": {"config": agent_config_4},
+    "sarvam_agent": {
+        "config": agent_config_sarvam,
+        "contexts": contexts,
+        "tool_dict": tool_config,
+        "callbacks": custom_callbacks,
+    },
 }
 
 metadata = {
-    "transcript": [
-        {"role": "assistant", "content": "Hi there!"},
-        {"role": "user", "content": "my name is shubham"},
-    ]
-}
     "transcript": [
         {"role": "assistant", "content": "Hi there!"},
         {"role": "user", "content": "my name is shubham"},
@@ -218,14 +221,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 logger.info(
                     f"Processing SIP connection with custom parameters{sip_params}"
                 )
-                agent_name = sip_params.get("agent_name", "agent1")
-                session_id = sip_params.get("session_id")
+                custom_params = sip_params.get("customParameters", {})
+                agent_name = custom_params.get("agent_name", "agent1")
+                session_id = custom_params.get("session_id")
                 if not session_id:
                     logger.warning(
                         "No session_id provided in SIP params, generating new one"
                     )
                     session_id = str(uuid.uuid4())
-                sip_params = sip_params.pop("customParameters")
 
             metadata = {"session_id": session_id}
             try:
@@ -294,7 +297,6 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close(code=1008, reason=str(e))
     except Exception as e:
         logger.error(f"WebSocket endpoint error: {e}", exc_info=True)
-        logger.error(f"WebSocket endpoint error: {e}", exc_info=True)
         if not websocket.client_state.DISCONNECTED:
             await websocket.close(code=1011, reason="Server Error")
 
@@ -318,9 +320,6 @@ async def webrtc_endpoint(
     response = await cai_sdk.webrtc_endpoint(
         offer, agent, session_id=offer.session_id, metadata=parsed_metadata
     )
-    response = await cai_sdk.webrtc_endpoint(
-        offer, agent, session_id=offer.session_id, metadata=parsed_metadata
-    )
     if "background_task_args" in response:
         task_args = response.pop("background_task_args")
         func = task_args.pop("func")
@@ -336,9 +335,6 @@ async def connect_handler(background_tasks: BackgroundTasks, request: dict):
     session_id = request.get("session_id")
 
     # response = await cai_sdk.connect_handler(request, agent, session_id=session_id, session_resume=session_resume)
-    response = await cai_sdk.connect_handler(
-        request, agent, session_id=session_id, metadata=metadata
-    )
     response = await cai_sdk.connect_handler(
         request, agent, session_id=session_id, metadata=metadata
     )
@@ -358,7 +354,6 @@ async def get_sessions():
     active_session_ids = list(session_manager.active_sessions.keys())
     return {
         "active_sessions_count": len(active_session_ids),
-        "active_session_ids": active_session_ids,
         "active_session_ids": active_session_ids,
     }
 
