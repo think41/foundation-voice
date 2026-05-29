@@ -30,9 +30,6 @@ class FunctionAdapter:
         return function_tool(
             name_override=self.name, description_override=self.description
         )(self.func)
-        return function_tool(
-            name_override=self.name, description_override=self.description
-        )(self.func)
 
     def to_function_schema(self):
         properties = {}
@@ -41,9 +38,6 @@ class FunctionAdapter:
         for param_name, param in self.signature.parameters.items():
             logger.info(param_name)
             if param_name == "ctx":
-                logger.warning(
-                    "Context parameter not allowed for llm functions. Skipping function"
-                )
                 logger.warning(
                     "Context parameter not allowed for llm functions. Skipping function"
                 )
@@ -57,12 +51,8 @@ class FunctionAdapter:
             properties[param_name] = {
                 "type": json_type,
                 "description": f"{param_name} parameter",
-                "description": f"{param_name} parameter",
             }
 
-            if param.default is inspect.Parameter.empty and not self._is_optional(
-                annotation
-            ):
             if param.default is inspect.Parameter.empty and not self._is_optional(
                 annotation
             ):
@@ -72,7 +62,6 @@ class FunctionAdapter:
             name=self.name,
             description=self.description,
             properties=properties,
-            required=required,
             required=required,
         )
 
@@ -105,18 +94,13 @@ class FunctionAdapter:
 
     def _is_optional(self, annotation):
         origin = getattr(annotation, "__origin__", None)
-        origin = getattr(annotation, "__origin__", None)
         if origin is Union:
-            return getattr(annotation, "__origin__", None) is Union and type(
-                None
-            ) in getattr(annotation, "__args__", [])
             return getattr(annotation, "__origin__", None) is Union and type(
                 None
             ) in getattr(annotation, "__args__", [])
         return False
 
     def _python_type_to_json_type(self, annotation) -> str:
-        origin = getattr(annotation, "__origin__", None)
         origin = getattr(annotation, "__origin__", None)
         base = origin or annotation
 
@@ -126,7 +110,6 @@ class FunctionAdapter:
             float: "number",
             bool: "boolean",
             list: "array",
-            dict: "object",
             dict: "object",
         }
 

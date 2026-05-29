@@ -129,9 +129,6 @@ class TransportFactory:
                 from pipecat.transports.network.webrtc_connection import (
                     SmallWebRTCConnection,
                 )
-                from pipecat.transports.network.webrtc_connection import (
-                    SmallWebRTCConnection,
-                )
                 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
             except ImportError as e:
                 logger.error(
@@ -160,10 +157,6 @@ class TransportFactory:
         elif transport_type == TransportType.DAILY:
             logger.debug("TransportFactory: Creating Daily transport")
             try:
-                from pipecat.transports.services.daily import (
-                    DailyTransport,
-                    DailyParams,
-                )
                 from pipecat.transports.services.daily import (
                     DailyTransport,
                     DailyParams,

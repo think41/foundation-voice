@@ -8,11 +8,6 @@ from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
 )
-from pipecat.frames.frames import (
-    MetricsFrame,
-    BotStartedSpeakingFrame,
-    UserStoppedSpeakingFrame,
-)
 from pipecat.metrics.metrics import (
     TTFBMetricsData,
     ProcessingMetricsData,
@@ -82,7 +77,6 @@ class CallSummaryMetricsObserver(BaseObserver):
             "call_duration": time.time() - self._call_start_time,
             "avg_userbot_latency": None,
             "userbot_latency_samples": len(self._userbot_latencies),
-            "userbot_latency_samples": len(self._userbot_latencies),
         }
 
         # Calculate averages if we have data
@@ -125,13 +119,9 @@ class CallSummaryMetricsObserver(BaseObserver):
             metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(
                 self._userbot_latencies
             )
-            metrics["avg_userbot_latency"] = sum(self._userbot_latencies) / len(
-                self._userbot_latencies
-            )
 
         return metrics
 
-    async def on_push_frame(self, metric_data: FramePushed):
     async def on_push_frame(self, metric_data: FramePushed):
         """
         Process incoming frames to collect metrics.
@@ -152,15 +142,9 @@ class CallSummaryMetricsObserver(BaseObserver):
                         logger.trace(
                             f"Observer received TTFB from {data.processor}: {data.value:.4f}s"
                         )
-                        logger.trace(
-                            f"Observer received TTFB from {data.processor}: {data.value:.4f}s"
-                        )
                         self._ttfb_values.append(data.value)
                 elif isinstance(data, ProcessingMetricsData):
                     if data.value > 0:
-                        logger.trace(
-                            f"Observer received ProcessingTime from {data.processor}: {data.value:.4f}s"
-                        )
                         logger.trace(
                             f"Observer received ProcessingTime from {data.processor}: {data.value:.4f}s"
                         )
@@ -177,9 +161,6 @@ class CallSummaryMetricsObserver(BaseObserver):
                     logger.trace(
                         f"Observer received TTSUsage from {data.processor}: {data.value} chars"
                     )
-                    logger.trace(
-                        f"Observer received TTSUsage from {data.processor}: {data.value} chars"
-                    )
                     self._total_tts_characters += data.value
 
 
@@ -190,10 +171,6 @@ class CallSummaryMetricsObserver(BaseObserver):
 
         if isinstance(metric_data.frame, UserStoppedSpeakingFrame):
             self._user_stopped_time = time.time()
-        elif (
-            isinstance(metric_data.frame, BotStartedSpeakingFrame)
-            and self._user_stopped_time is not None
-        ):
         elif (
             isinstance(metric_data.frame, BotStartedSpeakingFrame)
             and self._user_stopped_time is not None
@@ -216,16 +193,10 @@ class CallSummaryMetricsObserver(BaseObserver):
             logger.info(
                 f"• Average TTFB: {metrics['avg_ttfb']:.4f} seconds ({metrics['ttfb_samples']} samples)"
             )
-            logger.info(
-                f"• Average TTFB: {metrics['avg_ttfb']:.4f} seconds ({metrics['ttfb_samples']} samples)"
-            )
         else:
             logger.info("• Average TTFB: No data")
 
         if metrics["avg_processing_time"] is not None:
-            logger.info(
-                f"• Average Processing Time: {metrics['avg_processing_time']:.4f} seconds ({metrics['processing_samples']} samples)"
-            )
             logger.info(
                 f"• Average Processing Time: {metrics['avg_processing_time']:.4f} seconds ({metrics['processing_samples']} samples)"
             )
@@ -248,9 +219,6 @@ class CallSummaryMetricsObserver(BaseObserver):
 
 
         if metrics["avg_userbot_latency"] is not None:
-            logger.info(
-                f"• Average Userbot Latency: {metrics['avg_userbot_latency']:.3f} seconds ({metrics['userbot_latency_samples']} samples)"
-            )
             logger.info(
                 f"• Average Userbot Latency: {metrics['avg_userbot_latency']:.3f} seconds ({metrics['userbot_latency_samples']} samples)"
             )

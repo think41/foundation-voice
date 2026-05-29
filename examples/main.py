@@ -52,7 +52,6 @@ config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.
 config_path4 = os.path.join(
     BASE_DIR, "agent_configure", "config", "language_agent.json"
 )
-
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
@@ -95,15 +94,9 @@ defined_agents = {
         "callbacks": custom_callbacks,
     },
     "agent4": {"config": agent_config_4},
-    "agent4": {"config": agent_config_4},
 }
 
 metadata = {
-    "transcript": [
-        {"role": "assistant", "content": "Hi there!"},
-        {"role": "user", "content": "my name is shubham"},
-    ]
-}
     "transcript": [
         {"role": "assistant", "content": "Hi there!"},
         {"role": "user", "content": "my name is shubham"},
@@ -358,7 +351,6 @@ async def get_sessions():
     active_session_ids = list(session_manager.active_sessions.keys())
     return {
         "active_sessions_count": len(active_session_ids),
-        "active_session_ids": active_session_ids,
         "active_session_ids": active_session_ids,
     }
 

@@ -19,15 +19,6 @@ from pipecat.processors.frameworks.rtvi import (
 from pipecat.observers.loggers.user_bot_latency_log_observer import (
     UserBotLatencyLogObserver,
 )
-from pipecat.processors.frameworks.rtvi import (
-    RTVIConfig,
-    RTVIProcessor,
-    RTVIAction,
-    RTVIActionArgument,
-)
-from pipecat.observers.loggers.user_bot_latency_log_observer import (
-    UserBotLatencyLogObserver,
-)
 
 from foundation_voice.custom_plugins.agent_callbacks import AgentCallbacks, AgentEvent
 from foundation_voice.utils.function_adapter import FunctionFactory
@@ -37,10 +28,6 @@ from foundation_voice.utils.idle_processor.user_idle_processor import UserIdlePr
 from foundation_voice.utils.transcripts.transcript_handler import TranscriptHandler
 from foundation_voice.utils.providers.stt_provider import create_stt_service
 from foundation_voice.utils.providers.tts_provider import create_tts_service
-from foundation_voice.utils.providers.llm_provider import (
-    create_llm_service,
-    create_llm_context,
-)
 from foundation_voice.utils.providers.llm_provider import (
     create_llm_service,
     create_llm_context,
@@ -191,18 +178,6 @@ async def create_agent_pipeline(
                         },
                     ]
                 )
-                context_aggregator.assistant().add_messages(
-                    [
-                        {
-                            "role": "assistant",
-                            "content": f'The call sid is "{call_sid}", use it only when needed.',
-                        },
-                        {
-                            "role": "assistant",
-                            "content": f'The session_id is "{session_id}", use it only when needed.',
-                        },
-                    ]
-                )
         else:
             call_sid = None
 
@@ -229,11 +204,9 @@ async def create_agent_pipeline(
     transcript = TranscriptProcessor()
 
     idle_processor = UserIdleProcessor(tries=2, timeout=10)
-    idle_processor = UserIdleProcessor(tries=2, timeout=10)
 
     transcript_handler = TranscriptHandler(
         transport=transport,
-        session_id=session_id,
         session_id=session_id,
         transport_type=transport_type.value,  # Use enum value for backward compatibility
         connection=connection,
@@ -265,7 +238,6 @@ async def create_agent_pipeline(
     async def append_to_messages_func(processor, service, arguments):
         messages = arguments.get("messages")
         _run_immediately = arguments.get("run_immediately")
-        _run_immediately = arguments.get("run_immediately")
         context_aggregator.user().add_messages(messages)
         await task.queue_frames([context_aggregator.user().get_context_frame()])
         return True
@@ -276,11 +248,8 @@ async def create_agent_pipeline(
         arguments=[
             RTVIActionArgument(name="messages", type="array"),
             RTVIActionArgument(name="_run_immediately", type="bool"),
-            RTVIActionArgument(name="messages", type="array"),
-            RTVIActionArgument(name="_run_immediately", type="bool"),
         ],
         result="bool",
-        handler=append_to_messages_func,
         handler=append_to_messages_func,
     )
     rtvi.register_action(append_to_messages)
@@ -290,7 +259,6 @@ async def create_agent_pipeline(
     task_observers = [
         UserBotLatencyLogObserver(),
         call_metrics_observer,
-        FunctionObserver(rtvi=rtvi),
         FunctionObserver(rtvi=rtvi),
     ]
 
@@ -346,7 +314,6 @@ async def create_agent_pipeline(
             "frame": frame,
             "metadata": metadata_without_transcript,
             "session_id": session_id,
-            "session_id": session_id,
         }
         await callback(data)
         await transcript_handler.on_transcript_update(frame)
@@ -363,16 +330,9 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.PARTICIPANT_LEFT.value)
         async def on_participant_left(transport, participant, reason):
             logger.info("Participant left Daily room")
-            logger.info("Participant left Daily room")
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()
-            end_transcript = transcript_handler.get_all_messages()
             # Get metrics from the observer
-            metrics = (
-                call_metrics_observer.get_metrics_summary()
-                if call_metrics_observer
-                else None
-            )
             metrics = (
                 call_metrics_observer.get_metrics_summary()
                 if call_metrics_observer
@@ -384,7 +344,6 @@ async def create_agent_pipeline(
                 "metadata": metadata,
                 "transcript": end_transcript,
                 "metrics": metrics,
-                "session_id": session_id,
                 "session_id": session_id,
             }
 
@@ -410,7 +369,6 @@ async def create_agent_pipeline(
                 "participant": participant,
                 "metadata": metadata,
                 "session_id": session_id,
-                "session_id": session_id,
             }
             await callback(data)
             await transport.capture_participant_transcription(participant["id"])
@@ -421,16 +379,9 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.CLIENT_DISCONNECTED.value)
         async def on_client_disconnected(transport, client):
             logger.info("WebSocket client disconnected")
-            logger.info("WebSocket client disconnected")
             callback = callbacks.get_callback(AgentEvent.CLIENT_DISCONNECTED)
             end_transcript = transcript_handler.get_all_messages()
-            end_transcript = transcript_handler.get_all_messages()
             # Get metrics from the observer
-            metrics = (
-                call_metrics_observer.get_metrics_summary()
-                if call_metrics_observer
-                else None
-            )
             metrics = (
                 call_metrics_observer.get_metrics_summary()
                 if call_metrics_observer
@@ -439,10 +390,8 @@ async def create_agent_pipeline(
 
             data = {
                 "transcript": end_transcript,
-                "transcript": end_transcript,
                 "metrics": metrics,
                 "metadata": metadata,
-                "session_id": session_id,
                 "session_id": session_id,
             }
 
@@ -457,7 +406,6 @@ async def create_agent_pipeline(
                 logger.error(f"Error generating metrics summary: {e}")
             finally:
                 # Always ensure the task is cancelled
-                # Always ensure the task is cancelled
                 from .cleanup import cleanup
 
 
@@ -466,7 +414,6 @@ async def create_agent_pipeline(
         @transport.event_handler(AgentEvent.CLIENT_CONNECTED.value)
         async def on_client_connected(transport, client):
             callback = callbacks.get_callback(AgentEvent.CLIENT_CONNECTED)
-            data = {"client": client, "metadata": metadata, "session_id": session_id}
             data = {"client": client, "metadata": metadata, "session_id": session_id}
             await callback(data)
             await task.queue_frames([context_aggregator.user().get_context_frame()])
