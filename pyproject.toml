@@ -10,7 +10,7 @@ authors = [
 ]
 description = "Core package for Open Source CAI Pipecat - foundation voice"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.8"
 keywords = ["ai", "pipecat", "open-source", "foundation-voice"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -31,7 +31,6 @@ dependencies = [
     "uvicorn>=0.30.6",
     "websockets>=13.0.1",
     "opentelemetry-exporter-otlp-proto-grpc>=1.25.0", # For OTLP gRPC tracing
-    "twilio>=9.10.9",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +47,7 @@ cartesia = ["pipecat-ai[cartesia]>=0.0.71"]
 
 daily = ["pipecat-ai[daily]>=0.0.71"]
 
-webrtc = ["pipecat-ai[webrtc]>=0.0.71", "pipecat-ai-small-webrtc-prebuilt>=0.5.0", "av>=14.0.0,<14.3.0"]
+webrtc = ["pipecat-ai[webrtc]>=0.0.71", "pipecat-ai-small-webrtc-prebuilt>=0.5.0"]
 
 smallestai = ["smallestai>=3.1.0"]
 

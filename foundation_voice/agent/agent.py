@@ -112,11 +112,9 @@ async def create_agent_pipeline(
         **kwargs,
     )
 
-    provider = agent_config.get("llm", {}).get("provider", "openai")
-    if provider != "openai_agents":
-        tool_dict.update(inhouse_tools)
+    tool_dict.update(inhouse_tools)
     tools = FunctionFactory(
-        provider=provider,
+        provider=agent_config.get("llm", {}).get("provider", "openai"),
         functions=tool_dict,
     ).built_tools
 

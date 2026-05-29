@@ -52,15 +52,10 @@ config_path3 = os.path.join(BASE_DIR, "agent_configure", "config", "basic_agent.
 config_path4 = os.path.join(
     BASE_DIR, "agent_configure", "config", "language_agent.json"
 )
-config_path5 = os.path.join(
-    BASE_DIR, "agent_configure", "config", "act_fibernet_agent.json"
-)
-
 agent_config_1 = ConfigLoader.load_config(config_path1)
 agent_config_2 = ConfigLoader.load_config(config_path2)
 agent_config_3 = ConfigLoader.load_config(config_path3)
 agent_config_4 = ConfigLoader.load_config(config_path4)
-agent_config_5 = ConfigLoader.load_config(config_path5)
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +94,6 @@ defined_agents = {
         "callbacks": custom_callbacks,
     },
     "agent4": {"config": agent_config_4},
-    "act_fibernet": {
-        "config": agent_config_5,
-        "contexts": contexts,
-        "tool_dict": tool_config,
-        "callbacks": custom_callbacks,
-    },
 }
 
 metadata = {

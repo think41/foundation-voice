@@ -1,6 +1,11 @@
 from loguru import logger
 
+from google.protobuf.json_format import MessageToDict
 from pipecat.frames.frames import TTSSpeakFrame
+
+from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
+    get_service_instance,
+)
 
 
 def get_agent_participant(participants: list[dict]) -> dict | None:
@@ -29,11 +34,6 @@ async def transfer_call(room_name: str, trunk_id: str, transfer_to: str, **kwarg
         transfer_to: str
         Transfer the call to this number
     """
-    from google.protobuf.json_format import MessageToDict
-    from foundation_voice.custom_plugins.services.sip.livekitSIP.router import (
-        get_service_instance,
-    )
-
     logger.info(f"params: {kwargs}")
     llm = kwargs["llm"]
     await llm.push_frame(TTSSpeakFrame("Please hold while we transfer the call"))

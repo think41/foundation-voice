@@ -6,22 +6,14 @@ from foundation_voice.utils.file_generator import FileGenerator
 from loguru import logger
 
 router = APIRouter()
-_agent_service = None
+agent_service = AgentGenerationService()
 file_generator = FileGenerator()
-
-
-def _get_agent_service():
-    global _agent_service
-    if _agent_service is None:
-        _agent_service = AgentGenerationService()
-    return _agent_service
 
 
 @router.post("/generate-agent", response_model=AgentResponse)
 async def generate_agent(request: AgentRequest):
     """Generate a voice agent based on user prompt"""
     try:
-        agent_service = _get_agent_service()
         # Validate agent type
         if request.agent_type not in ["single", "multi"]:
             raise HTTPException(

@@ -19,11 +19,7 @@ class FunctionAdapter:
         self.description = description or func.__doc__
         self.name = func.__name__
         self.signature = inspect.signature(func)
-        # Skip type resolution for OpenAI Agents SDK tools (ctx param) — agents may not be installed
-        if "ctx" in inspect.signature(func).parameters:
-            self.annotations = {}
-        else:
-            self.annotations = get_type_hints(func)
+        self.annotations = get_type_hints(func)
 
     def to_tool_schema(self):
         if function_tool is None:
