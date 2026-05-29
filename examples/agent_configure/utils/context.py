@@ -24,17 +24,6 @@ class MagicalNestContext(BaseModel):
     products: str | None = None
 
 
-class ACTFibernetContext(BaseModel):
-    customer_name: str | None = None
-    customer_address: str | None = None
-    purpose: str | None = None          # WFH / School / Entertainment / Commercial / Community
-    device_count: int | None = None
-    previous_isp: str | None = None
-    recommended_plan: str | None = None  # 100Mbps / 400Mbps / 500Mbps / GIGA
-    booking_status: str | None = None   # interested / booked / not_ready / follow_up
-
-
 contexts = {
     "MagicalNestContext": MagicalNestContext,
-    "ACTFibernetContext": ACTFibernetContext,
 }
