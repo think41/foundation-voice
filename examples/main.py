@@ -352,7 +352,6 @@ async def get_sessions():
     return {
         "active_sessions_count": len(active_session_ids),
         "active_session_ids": active_session_ids,
-        "active_session_ids": active_session_ids,
     }
 
 
