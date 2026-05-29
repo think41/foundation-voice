@@ -19,7 +19,11 @@ class FunctionAdapter:
         self.description = description or func.__doc__
         self.name = func.__name__
         self.signature = inspect.signature(func)
-        self.annotations = get_type_hints(func)
+        # Skip type resolution for OpenAI Agents SDK tools (ctx param) — agents may not be installed
+        if "ctx" in inspect.signature(func).parameters:
+            self.annotations = {}
+        else:
+            self.annotations = get_type_hints(func)
 
     def to_tool_schema(self):
         if function_tool is None:
@@ -27,9 +31,6 @@ class FunctionAdapter:
                 "The 'agents' package is not installed, but it's required to use 'to_tool_schema'. "
                 "Please install it, for example, with 'pip install foundation-voice[openai_agents]' or your specific extras."
             )
-        return function_tool(
-            name_override=self.name, description_override=self.description
-        )(self.func)
         return function_tool(
             name_override=self.name, description_override=self.description
         )(self.func)
@@ -44,9 +45,6 @@ class FunctionAdapter:
                 logger.warning(
                     "Context parameter not allowed for llm functions. Skipping function"
                 )
-                logger.warning(
-                    "Context parameter not allowed for llm functions. Skipping function"
-                )
                 return None
 
 
@@ -57,12 +55,8 @@ class FunctionAdapter:
             properties[param_name] = {
                 "type": json_type,
                 "description": f"{param_name} parameter",
-                "description": f"{param_name} parameter",
             }
 
-            if param.default is inspect.Parameter.empty and not self._is_optional(
-                annotation
-            ):
             if param.default is inspect.Parameter.empty and not self._is_optional(
                 annotation
             ):
@@ -72,7 +66,6 @@ class FunctionAdapter:
             name=self.name,
             description=self.description,
             properties=properties,
-            required=required,
             required=required,
         )
 
@@ -105,18 +98,13 @@ class FunctionAdapter:
 
     def _is_optional(self, annotation):
         origin = getattr(annotation, "__origin__", None)
-        origin = getattr(annotation, "__origin__", None)
         if origin is Union:
-            return getattr(annotation, "__origin__", None) is Union and type(
-                None
-            ) in getattr(annotation, "__args__", [])
             return getattr(annotation, "__origin__", None) is Union and type(
                 None
             ) in getattr(annotation, "__args__", [])
         return False
 
     def _python_type_to_json_type(self, annotation) -> str:
-        origin = getattr(annotation, "__origin__", None)
         origin = getattr(annotation, "__origin__", None)
         base = origin or annotation
 
@@ -126,7 +114,6 @@ class FunctionAdapter:
             float: "number",
             bool: "boolean",
             list: "array",
-            dict: "object",
             dict: "object",
         }
 

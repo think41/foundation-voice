@@ -1,5 +1,5 @@
 from agents import RunContextWrapper
-from .context import MagicalNestContext
+from .context import MagicalNestContext, ACTFibernetContext
 
 """
 Define your agent tools here
@@ -64,9 +64,70 @@ def search_tool(query: str):
     return f"Searching for {query}"
 
 
+
+# ── ACT Fibernet tools ────────────────────────────────────────────────────────
+
+def save_customer_name(
+    ctx: RunContextWrapper[ACTFibernetContext],
+    name: str = None,
+):
+    if name is not None:
+        ctx.context.customer_name = name
+    return f"Customer name saved: {name}"
+
+
+def save_address(
+    ctx: RunContextWrapper[ACTFibernetContext],
+    address: str = None,
+):
+    if address is not None:
+        ctx.context.customer_address = address
+    return f"Address saved: {address}"
+
+
+def save_requirements(
+    ctx: RunContextWrapper[ACTFibernetContext],
+    purpose: str = None,
+    device_count: int = None,
+    previous_isp: str = None,
+):
+    if purpose is not None:
+        ctx.context.purpose = purpose
+    if device_count is not None:
+        ctx.context.device_count = device_count
+    if previous_isp is not None:
+        ctx.context.previous_isp = previous_isp
+    return f"Requirements saved: purpose={purpose}, devices={device_count}, previous_isp={previous_isp}"
+
+
+def save_plan(
+    ctx: RunContextWrapper[ACTFibernetContext],
+    recommended_plan: str = None,
+):
+    if recommended_plan is not None:
+        ctx.context.recommended_plan = recommended_plan
+    return f"Plan saved: {recommended_plan}"
+
+
+def save_booking_status(
+    ctx: RunContextWrapper[ACTFibernetContext],
+    status: str = None,
+):
+    """status: interested | booked | not_ready | follow_up"""
+    if status is not None:
+        ctx.context.booking_status = status
+    return f"Booking status saved: {status}"
+
+
 tool_config = {
     "update_basic_info": update_basic_info,
     "update_room_data": update_room_data,
     "update_products": update_products,
     "search_tool": search_tool,
+    # ACT Fibernet
+    "save_customer_name": save_customer_name,
+    "save_address": save_address,
+    "save_requirements": save_requirements,
+    "save_plan": save_plan,
+    "save_booking_status": save_booking_status,
 }

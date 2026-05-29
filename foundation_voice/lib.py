@@ -24,15 +24,12 @@ class CaiSDK:
         """Ensure metadata and session_id are present in kwargs with default values."""
         kwargs.setdefault("metadata", {})
         kwargs.setdefault("session_id", str(uuid.uuid4()))
-        kwargs.setdefault("metadata", {})
-        kwargs.setdefault("session_id", str(uuid.uuid4()))
 
     def create_args(
         self,
         transport_type: TransportType,
         connection: Any,
         agent: Dict[str, Any],
-        **kwargs,
         **kwargs,
     ):
         args = {
@@ -44,10 +41,6 @@ class CaiSDK:
             "contexts": agent.get("contexts", {}),
         }
         return {**args, **kwargs}
-
-    async def _auto_detect_transport(
-        self, websocket: WebSocket
-    ) -> tuple[TransportType, Optional[dict]]:
 
     async def _auto_detect_transport(
         self, websocket: WebSocket
@@ -66,8 +59,6 @@ class CaiSDK:
         client_ip = websocket.client.host if websocket.client else "unknown"
         headers = dict(websocket.headers) if hasattr(websocket, "headers") else {}
 
-        headers = dict(websocket.headers) if hasattr(websocket, "headers") else {}
-
         if SIPDetector.detect_sip_connection(client_ip, headers, query_params):
             sip_params = await SIPDetector.handle_sip_handshake(websocket)
             if sip_params:
@@ -79,8 +70,6 @@ class CaiSDK:
         return TransportType.WEBSOCKET, None
 
     async def websocket_endpoint_with_agent(
-        self, websocket: WebSocket, agent: dict, transport_type: TransportType, **kwargs
-    ):
         self, websocket: WebSocket, agent: dict, transport_type: TransportType, **kwargs
     ):
         self._ensure_metadata_and_session_id(kwargs)
@@ -109,7 +98,6 @@ class CaiSDK:
                 connection=websocket,
                 agent=agent,
                 **kwargs,
-                **kwargs,
             )
 
 
@@ -131,14 +119,12 @@ class CaiSDK:
             connection=connection,
             agent=agent,
             **kwargs,
-            **kwargs,
         )
         response = {
             "answer": answer,
             "background_task_args": {
                 "func": run_agent,
                 **args,
-            },
             },
         }
         return response
@@ -161,8 +147,6 @@ class CaiSDK:
                 return {
                     "session_id": kwargs["session_id"],
                     "websocket_url": f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}",
-                    "session_id": kwargs["session_id"],
-                    "websocket_url": f"/ws?session_id={kwargs['session_id']}&agent_name={request.get('agent_name')}",
                 }
 
 
@@ -174,7 +158,6 @@ class CaiSDK:
                         type=request["type"],
                         session_id=request.get("session_id"),
                         restart_pc=request.get("restart_pc", False),
-                        agent_name=request.get("agent_name"),
                         agent_name=request.get("agent_name"),
                     )
 
